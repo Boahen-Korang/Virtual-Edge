@@ -580,13 +580,17 @@
             </div>
             <div class="field full">
               <label>Public Key</label>
-              <input id="pg-key" type="text" placeholder="pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+              <div style="position:relative">
+                <input id="pg-key" type="text" placeholder="pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" style="width:100%;padding-right:62px">
+                <button type="button" onclick="copyField('pg-key','Public key')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
+              </div>
               <div class="hint">Find it in your Paystack dashboard → Settings → API Keys & Webhooks. Use <b>pk_live_…</b> to receive real money, or <b>pk_test_…</b> while testing. This key powers the checkout popup.</div>
             </div>
             <div class="field full">
               <label>Secret Key <span style="color:var(--crimson)">· keep private</span></label>
               <div style="position:relative">
-                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="width:100%;padding-right:62px">
+                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="width:100%;padding-right:112px">
+                <button type="button" onclick="copyField('pg-secret','Secret key')" style="position:absolute;right:58px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
                 <button type="button" onclick="toggleSecret()" id="pg-secret-toggle" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Show</button>
               </div>
               <div class="hint">Used to <b>verify</b> payments and issue refunds — this belongs on a <b>server/backend</b>, never in a public page. Stored here only for your reference; the checkout does <b>not</b> send it to the browser.</div>
@@ -967,6 +971,19 @@ function copyRef(code){
     );
   } else {
     prompt('Copy this referral link:', link);
+  }
+}
+function copyField(id, label){
+  const el = document.getElementById(id);
+  const val = el ? el.value.trim() : '';
+  if(!val){ toast('Nothing to copy yet.'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(val).then(
+      () => toast((label || 'Key') + ' copied', 'success'),
+      () => prompt('Copy this ' + (label || 'key') + ':', val)
+    );
+  } else {
+    prompt('Copy this ' + (label || 'key') + ':', val);
   }
 }
 function exportPartners(){
