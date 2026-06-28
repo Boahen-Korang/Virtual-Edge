@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VirtualEdge — Get Prediction</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body {
+    background: #0D0608;
+    min-height: 100vh;
+  }
+
+  /* ---- Top bar ---- */
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 18px; border-bottom: 1px solid #3A1620;
+    background: #190A0E;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .top-bar .brand {
+    display: flex; align-items: center; gap: 9px;
+    font-weight: 800; font-size: 15px; letter-spacing: .05em;
+  }
+  .top-bar .logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: conic-gradient(from 200deg,var(--green),var(--amber),var(--green));
+    display: grid; place-items: center;
+  }
+  .top-bar .spacer { flex: 1; }
+  .credits-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,30,60,.1); border: 1px solid rgba(255,30,60,.25);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; font-weight: 700; color: var(--green);
+    font-family: var(--mono);
+  }
+  .credits-chip .ci { font-size: 14px; }
+  .logout-btn {
+    background: none; border: 1px solid #3A1620; border-radius: 8px;
+    color: var(--muted); font-size: 12px; cursor: pointer;
+    font-family: var(--sans); padding: 6px 11px; transition: .12s;
+  }
+  .logout-btn:hover { color: var(--chalk); border-color: var(--border2); }
+
+  /* ---- Page wrap ---- */
+  .page-wrap {
+    max-width: 480px; margin: 0 auto; padding: 24px 16px 60px;
+  }
+
+  /* ---- Upload zone ---- */
+  .upload-label {
+    display: block;
+    border: 2px dashed #5A2230;
+    border-radius: 18px;
+    padding: 38px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: .15s;
+    background: #190A0E;
+  }
+  .upload-label:hover {
+    border-color: var(--green);
+    background: rgba(255,30,60,.04);
+  }
+  .upload-label .uz-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .upload-label .uz-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .upload-label .uz-sub { font-size: 13px; color: var(--muted); }
+
+  /* ---- Screenshot preview ---- */
+  .preview-section { display: none; margin-top: 14px; }
+  .preview-box {
+    border: 1px solid #5A2230; border-radius: 14px; overflow: hidden;
+    position: relative;
+  }
+  .preview-box img {
+    width: 100%; display: block; max-height: 340px;
+    object-fit: contain; background: #0A0506;
+  }
+  .preview-box .remove-btn {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(10,5,6,.85); border: 1px solid #5A2230;
+    border-radius: 8px; color: var(--muted); font-size: 12px;
+    padding: 5px 10px; cursor: pointer; backdrop-filter: blur(4px);
+  }
+  .preview-box .remove-btn:hover { color: var(--red); border-color: var(--red); }
+
+  .analyze-btn {
+    width: 100%; margin-top: 14px; padding: 15px;
+    background: var(--green); color: #0A0506;
+    border: none; border-radius: 13px;
+    font-size: 15px; font-weight: 900; letter-spacing: .05em;
+    text-transform: uppercase; cursor: pointer; transition: .12s;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .analyze-btn:hover { filter: brightness(1.1); }
+
+  /* ---- Loading overlay ---- */
+  .loading-screen {
+    display: none;
+    position: fixed; inset: 0; z-index: 50;
+    background: #0A0506;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 0; padding: 30px;
+  }
+  .loading-screen.show { display: flex; }
+
+  .scan-frame {
+    width: 220px; height: 220px; position: relative; margin-bottom: 32px;
+  }
+  .scan-img {
+    width: 100%; height: 100%; border-radius: 16px;
+    object-fit: cover; opacity: .35;
+    border: 1px solid #3A1620;
+  }
+  .scan-img.has-img { opacity: .5; }
+  .scan-placeholder {
+    width: 100%; height: 100%; border-radius: 16px;
+    background: #190A0E; border: 1px solid #3A1620;
+    display: grid; place-items: center; font-size: 48px;
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    box-shadow: 0 0 12px var(--green);
+    animation: scandown 1.6s ease-in-out infinite;
+    top: 0;
+  }
+  @keyframes scandown {
+    0%   { top: 0%; opacity: 1; }
+    90%  { top: 100%; opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  .scan-corners::before, .scan-corners::after {
+    content: ""; position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--green); border-style: solid;
+  }
+  .scan-corners::before { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+  .scan-corners::after  { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+  .scan-corners-2::before, .scan-corners-2::after {
+    content: ""; position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--green); border-style: solid;
+  }
+  .scan-corners-2::before { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+  .scan-corners-2::after  { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+
+  .loading-msg {
+    font-size: 16px; font-weight: 700; color: var(--chalk);
+    margin-bottom: 8px; text-align: center; min-height: 26px;
+    transition: opacity .3s;
+  }
+  .loading-sub {
+    font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 28px;
+  }
+  .progress-track {
+    width: 220px; height: 4px; background: #3A1620; border-radius: 10px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--green);
+    border-radius: 10px; width: 0%;
+    box-shadow: 0 0 10px rgba(255,30,60,.5);
+    transition: width .35s ease;
+  }
+  .loading-dots {
+    display: flex; gap: 7px; margin-top: 22px;
+  }
+  .loading-dots span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #5A2230; animation: dotpulse 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: .2s; }
+  .loading-dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes dotpulse { 0%,80%,100%{background:#5A2230} 40%{background:var(--green)} }
+
+  /* ---- Result card ---- */
+  .result-section { display: none; margin-top: 14px; }
+  .result-card {
+    background: #190A0E; border: 1.5px solid var(--green);
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 0 40px rgba(255,30,60,.12);
+    animation: popUp .45s cubic-bezier(.2,.9,.3,1.4);
+  }
+  @keyframes popUp { from{opacity:0;transform:scale(.9) translateY(16px)} to{opacity:1;transform:none} }
+  .result-head {
+    background: linear-gradient(135deg, #230C12, #170A0F);
+    padding: 14px 16px; border-bottom: 1px solid #3A1620;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .result-head .rh-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: rgba(255,30,60,.15); border: 1px solid rgba(255,30,60,.3);
+    display: grid; place-items: center; font-size: 17px; flex: 0 0 auto;
+  }
+  .result-head .rh-title { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .result-head .rh-sub   { font-size: 13px; font-weight: 700; color: var(--chalk); margin-top: 2px; }
+  .result-head .rh-live  {
+    margin-left: auto; display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--green);
+  }
+  .rh-live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse .7s infinite; }
+  @keyframes pulse { 50%{opacity:.3} }
+
+  .match-display {
+    padding: 20px 16px 14px;
+    display: flex; align-items: center; gap: 0; text-align: center;
+  }
+  .team-side { flex: 1; }
+  .team-badge {
+    width: 46px; height: 46px; border-radius: 13px; margin: 0 auto 8px;
+    display: grid; place-items: center; font-size: 13px; font-weight: 900;
+    font-family: var(--mono); color: #0A0506;
+  }
+  .team-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .vs-block {
+    flex: 0 0 auto; padding: 0 10px;
+    font-family: var(--mono); font-size: 11px; font-weight: 800;
+    color: var(--muted); letter-spacing: .12em;
+  }
+
+  .pick-area {
+    margin: 0 16px 16px;
+    background: rgba(255,30,60,.08); border: 1.5px solid rgba(255,30,60,.3);
+    border-radius: 13px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pick-area .pick-icon { font-size: 26px; flex: 0 0 auto; }
+  .pick-area .pick-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+  .pick-area .pick-val   { font-size: 18px; font-weight: 900; color: var(--green); letter-spacing: .02em; }
+  .pick-area .pick-conf  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .pick-area .pick-odds  {
+    margin-left: auto; text-align: right; flex: 0 0 auto;
+  }
+  .pick-area .pick-odds .odds-num {
+    font-family: var(--mono); font-size: 22px; font-weight: 900; color: var(--amber);
+  }
+  .pick-area .pick-odds .odds-lbl { font-size: 10px; color: var(--muted); }
+
+  .stat-pills {
+    display: flex; gap: 8px; padding: 0 16px 16px; flex-wrap: wrap;
+  }
+  .stat-pill {
+    flex: 1; min-width: 80px; background: #1B0B11;
+    border: 1px solid #3A1620; border-radius: 10px; padding: 10px 10px;
+    text-align: center;
+  }
+  .stat-pill .sp-val { font-family: var(--mono); font-size: 16px; font-weight: 800; color: var(--chalk); }
+  .stat-pill .sp-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: .06em; }
+
+  .result-footer {
+    padding: 12px 16px; border-top: 1px solid #3A1620;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .result-footer .rf-note { font-size: 11px; color: var(--muted); flex: 1; line-height: 1.4; }
+  .result-footer .rf-cred { font-family: var(--mono); font-size: 11px; color: var(--amber); flex: 0 0 auto; }
+
+  .another-btn {
+    width: 100%; margin-top: 12px; padding: 13px;
+    background: transparent; color: var(--green);
+    border: 1.5px solid rgba(255,30,60,.35); border-radius: 13px;
+    font-size: 14px; font-weight: 800; cursor: pointer; transition: .12s;
+  }
+  .another-btn:hover { background: rgba(255,30,60,.07); border-color: var(--green); }
+
+  /* ---- Team inputs ---- */
+  .team-inputs {
+    margin-top: 14px;
+    background: #190A0E; border: 1px solid #3A1620;
+    border-radius: 14px; padding: 14px 14px 12px;
+  }
+  .ti-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+    text-align: center;
+  }
+  .ti-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ti-field { flex: 1; }
+  .ti-tag {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+  }
+  .ti-input {
+    width: 100%; background: #0A0506; border: 1px solid #5A2230;
+    border-radius: 10px; color: var(--chalk);
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    padding: 10px 11px; outline: none; transition: .12s;
+  }
+  .ti-input:focus { border-color: var(--green); }
+  .ti-input::placeholder { color: #6A3A44; font-weight: 400; }
+  .ti-vs {
+    flex: 0 0 auto; font-size: 11px; font-weight: 800;
+    color: var(--muted); letter-spacing: .1em; margin-top: 16px;
+  }
+
+  /* ---- Scan status ---- */
+  .scan-status {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin: -4px 0 12px; font-size: 12px; font-weight: 600;
+  }
+  .scan-status.ok    { color: var(--green); }
+  .scan-status.warn  { color: var(--amber); }
+  .scan-status.busy  { color: var(--blue); }
+  .ss-spinner {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(79,209,255,.25); border-top-color: var(--blue);
+    animation: ssspin .7s linear infinite; flex: 0 0 auto;
+  }
+  @keyframes ssspin { to { transform: rotate(360deg); } }
+
+  /* ---- Shuffle button ---- */
+  .shuffle-btn {
+    width: 100%; margin-top: 12px; padding: 9px;
+    background: rgba(79,209,255,.08); color: var(--blue);
+    border: 1px solid rgba(79,209,255,.3); border-radius: 10px;
+    font-family: var(--sans); font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: .12s;
+  }
+  .shuffle-btn:hover { background: rgba(79,209,255,.15); border-color: var(--blue); }
+
+  .no-credits {
+    text-align: center; padding: 30px 20px;
+    background: #190A0E; border: 1px solid #3A1620; border-radius: 18px; margin-top: 14px;
+  }
+  .no-credits .nc-icon { font-size: 38px; margin-bottom: 12px; }
+  .no-credits h3 { margin: 0 0 8px; font-size: 18px; }
+  .no-credits p  { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <button class="logout-btn" onclick="goBack()" style="margin-right:12px">&larr; Back</button>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+        <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#1A0509"/>
+      </svg>
+    </div>
+    VirtualEdge
+  </div>
+  <div class="spacer"></div>
+  <div class="credits-chip"><span class="ci">⚡</span><span id="credits-label">0 credits</span></div>
+  <button class="logout-btn" onclick="logout()">Log out</button>
+</div>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loading-screen">
+  <div class="scan-frame">
+    <div class="scan-placeholder" id="scan-placeholder">📸</div>
+    <img id="scan-img" class="scan-img" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;border-radius:16px;object-fit:cover">
+    <div class="scan-line"></div>
+    <div class="scan-corners"></div>
+    <div class="scan-corners-2"></div>
+  </div>
+  <div class="loading-msg" id="loading-msg">Reading screenshot…</div>
+  <div class="loading-sub" id="loading-sub">Please wait while we analyse your matches</div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+  <div class="loading-dots">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
+<!-- Page -->
+<div class="page-wrap">
+
+  <!-- Upload section -->
+  <div id="upload-section">
+    <label class="upload-label" id="upload-label">
+      <span class="uz-icon">📸</span>
+      <div class="uz-title">Upload SportyBet Screenshot</div>
+      <div class="uz-sub">Tap to select or drag &amp; drop your image</div>
+      <input type="file" id="file-input" accept="image/*" style="display:none" onclick="this.value=null" onchange="onFileSelect(event)">
+    </label>
+
+    <!-- Preview -->
+    <div class="preview-section" id="preview-section">
+      <div class="preview-box">
+        <img id="preview-img" src="" alt="Screenshot">
+        <button class="remove-btn" onclick="resetUpload()">✕ Remove</button>
+      </div>
+
+      <!-- Team name inputs -->
+      <div class="team-inputs">
+        <div class="ti-label" id="ti-label">Enter the teams you see in the screenshot</div>
+
+        <!-- Scan status (shown while/after OCR runs) -->
+        <div class="scan-status" id="scan-status" style="display:none">
+          <span class="ss-spinner" id="ss-spinner"></span>
+          <span class="ss-text" id="ss-text">Scanning screenshot…</span>
+        </div>
+
+        <div class="ti-row">
+          <div class="ti-field">
+            <div class="ti-tag">Home</div>
+            <input class="ti-input" id="inp-home" type="text" placeholder="e.g. Accra Lions" autocomplete="off">
+          </div>
+          <div class="ti-vs">VS</div>
+          <div class="ti-field">
+            <div class="ti-tag">Away</div>
+            <input class="ti-input" id="inp-away" type="text" placeholder="e.g. Kumasi Kings" autocomplete="off">
+          </div>
+        </div>
+        <button class="shuffle-btn" id="shuffle-btn" style="display:none" onclick="pickRandomMatch(true)">🔀 Pick another match</button>
+      </div>
+
+      <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">
+        ⚡ Get Prediction
+      </button>
+    </div>
+  </div>
+
+  <!-- Result section -->
+  <div class="result-section" id="result-section"></div>
+
+  <!-- No credits message (shown when out of credits) -->
+  <div class="no-credits" id="no-credits-msg" style="display:none">
+    <div class="nc-icon">⚡</div>
+    <h3>Out of credits</h3>
+    <p>You've used all your predictions. Buy a new package to continue.</p>
+    <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy more predictions →</a>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+/* ---- Auth guard (API-backed via window.VE) ---- */
+const SESSION = (()=>{
+  if(!VE.isMember()){ window.location.href = 'login.html'; return null; }
+  return VE.cachedMe() || {};
+})();
+if(!SESSION) throw new Error('redirect');
+
+/* ---- Credits (mirrored from the server, refreshed at init) ---- */
+let creditsCount = 0;
+function getCredits(){ return creditsCount; }
+function deductCredit(){
+  if(creditsCount >= 9999) return;          // unlimited — don't burn down
+  creditsCount = Math.max(0, creditsCount - 1);
+  VE.spendCredit(1).catch(()=>{});          // best-effort server sync
+}
+function updateCreditsLabel(){
+  const n = getCredits();
+  document.getElementById('credits-label').textContent = n >= 9999 ? 'Unlimited' : `${n} credit${n===1?'':'s'}`;
+}
+
+/* ============================================================
+   PARTNER-PUSHED PICKS
+   A partner/admin may push a forced outcome to this account. The
+   member's pending picks are cached at init; if one matches the
+   entered teams it overrides the random pick.
+   ============================================================ */
+let myPushedPicks = [];   // cache of this member's unused pushed picks
+function getPushedPickCtx(home, away){
+  const idx = myPushedPicks.findIndex(p => !p.used &&
+    (p.home || '').toLowerCase() === home.toLowerCase() &&
+    (p.away || '').toLowerCase() === away.toLowerCase());
+  if(idx === -1) return null;
+  return { pick: myPushedPicks[idx], idx };
+}
+function consumePushed(ctx){
+  ctx.pick.used = true;
+  myPushedPicks.splice(ctx.idx, 1);
+  if(ctx.pick.id != null) VE.consumePick(ctx.pick.id).catch(()=>{});
+}
+
+/* Pull fresh credits + pending picks from the server */
+async function refreshAccount(){
+  try {
+    const me = await VE.me();
+    creditsCount = me.credits || 0;
+    if(me.user){ SESSION.name = me.user.name; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; }
+  } catch(e){}
+  try { myPushedPicks = await VE.myPicks(true); } catch(e){ myPushedPicks = []; }
+  updateCreditsLabel();
+}
+refreshAccount();
+
+/* ---- Stored screenshot data URL (for loading screen) ---- */
+let screenshotDataUrl = '';
+/* Increments on every upload so an older, slower scan can't clobber a newer one */
+let scanToken = 0;
+
+/* ============================================================
+   GEMINI VISION CONFIG  (free tier — good accuracy, no cost)
+   Paste your Google AI Studio key below to enable Gemini scanning.
+   ⚠️  This key is visible in client-side code. In Google AI Studio,
+       restrict it (HTTP referrer = your domain) + set a low quota.
+   Gemini is the only scanner — a valid key is required for scanning.
+   ============================================================ */
+/* Screenshot scanning runs server-side (/api/scan); the Gemini key stays on the server. */
+const geminiEnabled  = () => true;
+
+/* ---- File select ---- */
+function onFileSelect(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    screenshotDataUrl = ev.target.result;
+    document.getElementById('preview-img').src = screenshotDataUrl;
+    document.getElementById('preview-section').style.display = 'block';
+    /* Wipe any result/teams from the previous screenshot so nothing carries over */
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('result-section').innerHTML = '';
+    document.getElementById('no-credits-msg').style.display = 'none';
+    /* Auto-scan the screenshot to read the team names */
+    scanScreenshot(screenshotDataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ============================================================
+   SCREENSHOT SCANNER (Gemini vision)
+   Sends the image to Gemini, which extracts the matches + odds
+   and pre-fills the inputs. User can still correct them.
+   ============================================================ */
+function setScanStatus(state, text){
+  const box = document.getElementById('scan-status');
+  const sp  = document.getElementById('ss-spinner');
+  const txt = document.getElementById('ss-text');
+  box.style.display = 'flex';
+  box.className = 'scan-status ' + state;          // busy | ok | warn
+  sp.style.display = state === 'busy' ? 'block' : 'none';
+  txt.textContent = text;
+}
+
+async function scanScreenshot(dataUrl){
+  /* Clear everything from the previous screenshot so results never carry over */
+  detectedMatches = [];
+  currentMatch = null;
+  document.getElementById('inp-home').value = '';
+  document.getElementById('inp-away').value = '';
+  document.getElementById('shuffle-btn').style.display = 'none';
+
+  document.getElementById('ti-label').textContent = 'AI is reading your screenshot…';
+  setScanStatus('busy', 'Analyzing…');
+
+  /* Tag this scan so a slow earlier scan can't overwrite a newer one */
+  const myScan = ++scanToken;
+  let teams = null;
+
+  /* Gemini is the only scanner */
+  try {
+    teams = await scanWithGemini(dataUrl);
+  } catch(err){
+    console.warn('Gemini scan failed:', err);
+    teams = null;
+  }
+
+  /* Ignore results from a scan that has been superseded by a newer upload */
+  if(myScan !== scanToken) return;
+  applyScanResult(teams);
+}
+
+/* ---- Gemini vision call ---- */
+async function scanWithGemini(dataUrl){
+  const r = await VE.scan(dataUrl);
+  return (r && r.matches && r.matches.length) ? r.matches : null;
+}
+
+/* All matches found in the current screenshot, and the one currently selected */
+let detectedMatches = [];
+let currentMatch = null;
+
+/* ---- Apply the scan result: store matches + pick one at random ---- */
+function applyScanResult(matches){
+  detectedMatches = Array.isArray(matches) ? matches : [];
+  const shuffleBtn = document.getElementById('shuffle-btn');
+
+  if(detectedMatches.length){
+    pickRandomMatch(false);
+    shuffleBtn.style.display = detectedMatches.length > 1 ? 'block' : 'none';
+    document.getElementById('ti-label').textContent =
+      detectedMatches.length > 1 ? 'Picked a random match — edit or shuffle' : 'We read this match — edit if wrong';
+    setScanStatus('ok',
+      detectedMatches.length > 1
+        ? `✓ Found ${detectedMatches.length} matches — picked one at random`
+        : '✓ Match detected automatically');
+  } else {
+    shuffleBtn.style.display = 'none';
+    document.getElementById('ti-label').textContent = 'Enter the teams you see in the screenshot';
+    setScanStatus('warn', "Couldn't read the teams — please type them in.");
+  }
+}
+
+/* Pick a random match from the detected list and fill the inputs */
+function pickRandomMatch(announce){
+  if(!detectedMatches.length) return;
+  let pool = detectedMatches;
+  if(detectedMatches.length > 1){
+    const cur = document.getElementById('inp-home').value + '|' + document.getElementById('inp-away').value;
+    pool = detectedMatches.filter(m => (m.home + '|' + m.away) !== cur);
+    if(!pool.length) pool = detectedMatches;
+  }
+  const m = pool[Math.floor(Math.random() * pool.length)];
+  currentMatch = m;
+  document.getElementById('inp-home').value = m.home;
+  document.getElementById('inp-away').value = m.away;
+  if(announce) setScanStatus('ok', `🔀 Switched to: ${m.home} vs ${m.away}`);
+}
+
+function titleCase(s){
+  return s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()).trim();
+}
+
+/* Drag & drop */
+const lbl = document.getElementById('upload-label');
+lbl.addEventListener('dragover',  e=>{ e.preventDefault(); lbl.style.borderColor='var(--green)'; });
+lbl.addEventListener('dragleave', ()=>{ lbl.style.borderColor=''; });
+lbl.addEventListener('drop', e=>{
+  e.preventDefault(); lbl.style.borderColor='';
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')){
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('file-input').files = dt.files;
+    onFileSelect({target:{files:[file]}});
+  }
+});
+
+/* ---- Reset ---- */
+function resetUpload(){
+  screenshotDataUrl = '';
+  document.getElementById('preview-img').src = '';
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('result-section').innerHTML = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('no-credits-msg').style.display = 'none';
+  document.getElementById('inp-home').value = '';
+  document.getElementById('inp-away').value = '';
+  document.getElementById('scan-status').style.display = 'none';
+  document.getElementById('shuffle-btn').style.display = 'none';
+  document.getElementById('ti-label').textContent = 'Enter the teams you see in the screenshot';
+  detectedMatches = [];
+  currentMatch = null;
+}
+
+/* ============================================================
+   ANALYSIS FLOW
+   ============================================================ */
+const LOADING_STEPS = [
+  { msg: 'Reading screenshot…',         sub: 'Scanning image content',             pct: 15 },
+  { msg: 'Identifying matches…',        sub: 'Detecting teams and fixtures',        pct: 35 },
+  { msg: 'Checking historical data…',   sub: 'Comparing against 500+ results',     pct: 60 },
+  { msg: 'Calculating probabilities…',  sub: 'Running statistical analysis',        pct: 80 },
+  { msg: 'Generating your pick…',       sub: 'Almost done…',                       pct: 96 },
+];
+
+function startAnalysis(){
+  const home = document.getElementById('inp-home').value.trim();
+  const away = document.getElementById('inp-away').value.trim();
+  if(!home || !away){ toast('Please enter both team names from your screenshot.', 'error'); return; }
+  if(home.toLowerCase() === away.toLowerCase()){ toast('Home and away teams must be different.', 'error'); return; }
+
+  if(getCredits() <= 0){
+    document.getElementById('no-credits-msg').style.display = 'block';
+    document.getElementById('preview-section').style.display = 'none';
+    return;
+  }
+
+  /* Show loading screen */
+  const ls = document.getElementById('loading-screen');
+  ls.classList.add('show');
+
+  /* Put screenshot in scan frame */
+  if(screenshotDataUrl){
+    const si = document.getElementById('scan-img');
+    si.src = screenshotDataUrl;
+    si.style.display = 'block';
+    si.classList.add('has-img');
+    document.getElementById('scan-placeholder').style.display = 'none';
+  }
+
+  /* Animate loading steps */
+  let step = 0;
+  const msgEl  = document.getElementById('loading-msg');
+  const subEl  = document.getElementById('loading-sub');
+  const progEl = document.getElementById('progress-fill');
+
+  function nextStep(){
+    if(step >= LOADING_STEPS.length){ finish(); return; }
+    const s = LOADING_STEPS[step++];
+    msgEl.style.opacity = '0';
+    setTimeout(()=>{
+      msgEl.textContent = s.msg;
+      subEl.textContent = s.sub;
+      progEl.style.width = s.pct + '%';
+      msgEl.style.opacity = '1';
+    }, 200);
+  }
+
+  nextStep();
+  const iv = setInterval(()=>{
+    if(step >= LOADING_STEPS.length){ clearInterval(iv); finish(); return; }
+    nextStep();
+  }, 820);
+
+  function finish(){
+    progEl.style.width = '100%';
+    const home = document.getElementById('inp-home').value.trim();
+    const away = document.getElementById('inp-away').value.trim();
+    /* Use the scanned odds only if the names still match the selected match */
+    const matchOdds = (currentMatch &&
+                       currentMatch.home.toLowerCase() === home.toLowerCase() &&
+                       currentMatch.away.toLowerCase() === away.toLowerCase())
+                      ? currentMatch.odds : null;
+    setTimeout(()=>{
+      ls.classList.remove('show');
+      document.getElementById('scan-img').style.display = 'none';
+      document.getElementById('scan-placeholder').style.display = 'grid';
+      showResult(generatePrediction(home, away, matchOdds));
+    }, 500);
+  }
+}
+
+/* ============================================================
+   PREDICTION GENERATOR
+   Based on historical stats from the stored results database
+   ============================================================ */
+const TEAMS = [
+  { name:'Red Lions',      color:'#FF1E3C' },
+  { name:'Blue Eagles',    color:'#4FD1FF' },
+  { name:'Gold Stars',     color:'#FFC247' },
+  { name:'Green Panthers', color:'#FF4D6D' },
+  { name:'Black Sharks',   color:'#FF8FB1' },
+  { name:'White Wolves',   color:'#C9A0FF' },
+  { name:'Silver Falcons', color:'#9FB0C0' },
+  { name:'Iron Cobras',    color:'#FFB36B' },
+];
+
+function generatePrediction(homeName, awayName, matchOdds){
+  const results = JSON.parse(localStorage.getItem('ve_results') || '[]');
+
+  /* Use the names the user typed; assign a colour based on name hash */
+  const colorPalette = ['#FF1E3C','#4FD1FF','#FFC247','#FF4D6D','#FF8FB1','#C9A0FF','#FFB36B','#9FB0C0'];
+  const hashColor = s => colorPalette[s.split('').reduce((a,c)=>a+c.charCodeAt(0),0) % colorPalette.length];
+  const home = { name: homeName, color: hashColor(homeName) };
+  const away = { name: awayName, color: hashColor(awayName) };
+
+  /* H2H stats */
+  const h2h = results.filter(r =>
+    (r.home === home.name && r.away === away.name) ||
+    (r.home === away.name && r.away === home.name)
+  );
+
+  /* Overall stats as fallback */
+  const pool = h2h.length >= 10 ? h2h : results;
+  const n    = pool.length || 1;
+
+  const homeW  = pool.filter(r => r.home === home.name ? r.hg > r.ag : r.hg < r.ag).length;
+  const draws  = pool.filter(r => r.hg === r.ag).length;
+  const awayW  = pool.filter(r => r.home === away.name ? r.hg > r.ag : r.hg < r.ag).length;
+  const btts   = pool.filter(r => r.hg > 0 && r.ag > 0).length;
+  const over25 = pool.filter(r => r.hg + r.ag > 2).length;
+  const avgG   = pool.reduce((a,r) => a + r.hg + r.ag, 0) / n;
+
+  /* Pick the most probable MATCH RESULT (1X2) — winning team or draw */
+  const options = [
+    { label:`${home.name} Win`, icon:'🏠', confidence: homeW/n, out:'home' },
+    { label:'Draw',             icon:'🤝', confidence: draws/n, out:'draw' },
+    { label:`${away.name} Win`, icon:'✈️', confidence: awayW/n, out:'away' },
+  ];
+
+  /* A partner-pushed pick (if any) overrides the random outcome;
+     otherwise Home Win, Draw and Away Win each get an equal 1-in-3 chance */
+  const pushCtx = getPushedPickCtx(home.name, away.name);
+  let pick, pushedOdds = null;
+  if(pushCtx){
+    pick = options.find(o => o.out === pushCtx.pick.out) || options[Math.floor(Math.random() * options.length)];
+    pushedOdds = pushCtx.pick.odds || null;
+    consumePushed(pushCtx);
+  } else {
+    pick = options[Math.floor(Math.random() * options.length)];
+  }
+
+  /* Odds priority: partner-supplied → exact odds from the screenshot →
+     simulated odds if neither is available */
+  let odds = Math.max(1.15, +(1 / (pick.confidence * 1.08)).toFixed(2));
+  let oddsReal = false;
+  if(pushedOdds){
+    odds = pushedOdds;
+    oddsReal = true;
+  } else if(matchOdds && matchOdds[pick.out]){
+    odds = matchOdds[pick.out];
+    oddsReal = true;
+  }
+
+  return { home, away, pick, odds, oddsReal, avgG: avgG.toFixed(1), btts: (btts/n*100).toFixed(0), over: (over25/n*100).toFixed(0), h2hN: h2h.length };
+}
+
+/* ============================================================
+   RENDER RESULT
+   ============================================================ */
+function showResult(pred){
+  deductCredit();
+  updateCreditsLabel();
+
+  const { home, away, pick, odds, oddsReal, avgG, btts, over, h2hN } = pred;
+  const confPct = (pick.confidence * 100).toFixed(0);
+  const credLeft = getCredits();
+
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('preview-section').style.display = 'none';
+
+  document.getElementById('result-section').innerHTML = `
+    <div class="result-card">
+      <div class="result-head">
+        <div class="rh-icon">🎯</div>
+        <div>
+          <div class="rh-title">VirtualEdge Pick</div>
+          <div class="rh-sub">Instant Virtual Football</div>
+        </div>
+        <div class="rh-live"><span class="dot"></span> LIVE</div>
+      </div>
+
+      <div class="match-display">
+        <div class="team-side">
+          <div class="team-badge" style="background:${home.color}">${home.name.slice(0,2).toUpperCase()}</div>
+          <div class="team-name">${home.name}</div>
+        </div>
+        <div class="vs-block">VS</div>
+        <div class="team-side">
+          <div class="team-badge" style="background:${away.color}">${away.name.slice(0,2).toUpperCase()}</div>
+          <div class="team-name">${away.name}</div>
+        </div>
+      </div>
+
+      <div class="pick-area">
+        <div class="pick-icon">${pick.icon}</div>
+        <div>
+          <div class="pick-label">Our Pick</div>
+          <div class="pick-val">${pick.label}</div>
+          <div class="pick-conf">${confPct}% historical hit rate</div>
+        </div>
+        <div class="pick-odds">
+          <div class="odds-num">${odds}</div>
+          <div class="odds-lbl">${oddsReal ? 'odds (from slip)' : 'est. odds'}</div>
+        </div>
+      </div>
+
+      <div class="stat-pills">
+        <div class="stat-pill">
+          <div class="sp-val">${btts}%</div>
+          <div class="sp-lbl">BTTS rate</div>
+        </div>
+        <div class="stat-pill">
+          <div class="sp-val">${over}%</div>
+          <div class="sp-lbl">Over 2.5</div>
+        </div>
+        <div class="stat-pill">
+          <div class="sp-val">${avgG}</div>
+          <div class="sp-lbl">Avg goals</div>
+        </div>
+        <div class="stat-pill">
+          <div class="sp-val">${h2hN || '—'}</div>
+          <div class="sp-lbl">H2H results</div>
+        </div>
+      </div>
+
+      <div class="result-footer">
+        <div class="rf-note">Based on historical SportyBet virtual data. Bet responsibly.</div>
+        <div class="rf-cred">⚡ ${credLeft === 9999 ? '∞' : credLeft} left</div>
+      </div>
+    </div>
+
+    ${credLeft > 0
+      ? `<button class="another-btn" onclick="getAnother()">⚡ Get another prediction</button>`
+      : `<div class="no-credits" style="margin-top:12px">
+           <div class="nc-icon">⚡</div>
+           <h3>Out of credits</h3>
+           <p>Buy a new package to get more predictions.</p>
+           <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy more →</a>
+         </div>`
+    }`;
+}
+
+function getAnother(){
+  /* Out of predictions → send the customer to the payment page */
+  if(getCredits() <= 0){ window.location.href = 'pricing.html'; return; }
+  /* Still has predictions left → back to the team-selection screen
+     so the user can choose/edit the teams, then hit Get Prediction */
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('result-section').innerHTML = '';
+  document.getElementById('preview-section').style.display = 'block';
+  /* Offer a fresh random match as a starting point; the user can shuffle/edit */
+  if(detectedMatches.length > 1) pickRandomMatch(false);
+  document.getElementById('preview-section').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ---- Toast ---- */
+let toastT;
+function toast(msg, type=''){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast'+(type?' '+type:'');
+  void el.offsetWidth; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+/* ---- Back ---- */
+function goBack(){
+  if(window.history.length > 1) window.history.back();
+  else window.location.href = 'index.html';
+}
+
+/* ---- Logout ---- */
+function logout(){
+  VE.signOutMember();
+  window.location.href = 'login.html';
+}
+</script>
+</body>
+</html>

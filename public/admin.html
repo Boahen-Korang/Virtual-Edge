@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VirtualEdge — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;1,400&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0A0506;
+    --panel:#150A0B;
+    --panel2:#1C0E0F;
+    --blood:#A40E1E;
+    --crimson:#E11D2A;
+    --ember:#FF3B22;
+    --gore:#5E0912;
+    --bone:#F2E9E6;
+    --ash:#B49B98;
+    --ash-dim:#7C6663;
+    --sulfur:#D9A441;
+    --display:'Cinzel',Georgia,'Times New Roman',serif;
+    --body:'Spectral',Georgia,serif;
+    --ui:'Oswald','Arial Narrow',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--body);
+    color:var(--bone);
+    min-height:100vh;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1100px 620px at 50% -240px, rgba(255,59,34,.14), transparent 62%),
+      radial-gradient(900px 520px at 100% 8%, rgba(164,14,30,.11), transparent 55%),
+      radial-gradient(1100px 900px at 0% 102%, rgba(94,9,18,.20), transparent 60%),
+      var(--void);
+    background-attachment:fixed;
+  }
+  ::selection{background:var(--crimson);color:#fff}
+  a{color:inherit;text-decoration:none}
+
+  .grain{position:fixed;inset:0;pointer-events:none;z-index:9000;opacity:.045;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .vig{position:fixed;inset:0;pointer-events:none;z-index:8999;
+    box-shadow:inset 0 0 240px 40px rgba(5,2,3,.85)}
+
+  /* ===== Layout ===== */
+  .layout{display:flex;min-height:100vh;position:relative;z-index:2}
+
+  /* ---- Sidebar ---- */
+  .sidebar{
+    width:248px;flex:0 0 248px;
+    border-right:1px solid rgba(225,29,42,.18);
+    background:rgba(10,5,6,.6);backdrop-filter:blur(8px);
+    padding:24px 16px;display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh
+  }
+  .side-brand{display:flex;align-items:center;gap:9px;padding:4px 8px 0;
+    font-family:var(--display);font-weight:900;font-size:17px;letter-spacing:.07em;color:var(--bone)}
+  .side-brand .di{color:var(--crimson);filter:drop-shadow(0 0 7px rgba(225,29,42,.6));font-size:14px}
+  .side-brand .tag{font-family:var(--ui);font-weight:500;font-size:9px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--crimson);border:1px solid rgba(225,29,42,.4);
+    border-radius:20px;padding:2px 8px;margin-left:2px}
+  .nav{display:flex;flex-direction:column;gap:4px;margin-top:30px}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;
+    font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:12.5px;
+    color:var(--ash);padding:11px 13px;border-radius:4px;cursor:pointer;transition:.15s;
+    border:1px solid transparent
+  }
+  .nav-item .ico{font-size:14px;width:16px;text-align:center;opacity:.85}
+  .nav-item:hover{color:var(--bone);background:rgba(225,29,42,.06)}
+  .nav-item.active{
+    color:#FCEFEC;background:linear-gradient(180deg,rgba(225,29,42,.9),rgba(164,14,30,.9));
+    border-color:#FF4736;box-shadow:0 6px 20px rgba(164,14,30,.4)
+  }
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:4px;
+    border-top:1px solid rgba(225,29,42,.16);padding-top:14px}
+  .nav-item .badge{margin-left:auto;font-size:10px;letter-spacing:.04em;color:var(--sulfur);background:rgba(217,164,65,.12);
+    border:1px solid rgba(217,164,65,.35);border-radius:20px;padding:1px 7px;min-width:18px;text-align:center}
+  .nav-item.active .badge{color:#fff;background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.3)}
+
+  /* ---- Main ---- */
+  .main{flex:1;min-width:0;padding:26px 30px 70px}
+  .main-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+  .page-eyebrow{font-family:var(--ui);text-transform:uppercase;letter-spacing:.3em;font-size:11px;
+    font-weight:500;color:var(--crimson);display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
+  .page-eyebrow::before{content:"◆";font-size:8px;color:var(--blood)}
+  .page-title{font-family:var(--display);font-weight:700;font-size:clamp(1.6rem,3.6vw,2.3rem);
+    color:var(--bone);letter-spacing:.01em}
+
+  .tbtn{background:rgba(20,10,11,.5);border:1px solid rgba(242,233,230,.16);border-radius:3px;
+    color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.12em;
+    font-size:11px;cursor:pointer;padding:9px 14px;transition:.15s}
+  .tbtn:hover{color:var(--bone);border-color:var(--crimson);box-shadow:inset 0 0 22px rgba(225,29,42,.14)}
+
+  .view[hidden]{display:none}
+
+  /* ---- Overview lead ---- */
+  .section-lead{margin-bottom:18px}
+  .section-lead h2{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.02em;color:var(--bone)}
+  .section-lead p{font-size:13px;color:var(--ash-dim);margin-top:3px}
+
+  /* ---- Stat cards ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:16px;margin-bottom:30px}
+  .stat{
+    background:linear-gradient(165deg,rgba(34,17,18,.92),rgba(17,9,10,.94));
+    border:1px solid rgba(225,29,42,.16);border-radius:11px;
+    padding:20px 20px 16px;position:relative;overflow:hidden;transition:.2s ease
+  }
+  .stat::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--crimson),rgba(225,29,42,0) 72%);opacity:.75}
+  .stat::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(280px 150px at 105% -10%,rgba(255,59,34,.09),transparent 60%)}
+  .stat:hover{transform:translateY(-3px);border-color:rgba(225,29,42,.42);
+    box-shadow:0 16px 36px rgba(0,0,0,.45),0 0 24px rgba(225,29,42,.1)}
+  .stat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;position:relative}
+  .stat .label{font-family:var(--ui);text-transform:uppercase;letter-spacing:.18em;font-size:10.5px;color:var(--ash-dim)}
+  .stat-ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:16px;
+    color:var(--crimson);background:rgba(225,29,42,.1);border:1px solid rgba(225,29,42,.26);flex:0 0 auto}
+  .stat-ico.gold{color:var(--sulfur);background:rgba(217,164,65,.1);border-color:rgba(217,164,65,.3)}
+  .stat .val{font-family:var(--display);font-weight:900;font-size:33px;line-height:1;color:var(--bone);position:relative}
+  .stat .val.crimson{color:var(--crimson);text-shadow:0 0 20px rgba(225,29,42,.35)}
+  .stat .val.gold{color:var(--sulfur);text-shadow:0 0 20px rgba(217,164,65,.25)}
+  .stat-foot{margin-top:15px;padding-top:13px;border-top:1px solid rgba(242,233,230,.07);position:relative}
+  .stat .sub{font-family:var(--ui);font-size:11px;letter-spacing:.06em;color:var(--ash)}
+
+  /* ---- Overview activity ---- */
+  .ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:920px){.ov-grid{grid-template-columns:1fr}}
+  .mini-list{display:flex;flex-direction:column}
+  .mini-row{display:flex;align-items:center;gap:13px;padding:13px 20px;border-bottom:1px solid rgba(242,233,230,.06)}
+  .mini-row:last-child{border-bottom:none}
+  .mini-row:hover{background:rgba(225,29,42,.05)}
+  .mini-avatar{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;
+    font-family:var(--display);font-weight:700;font-size:14px;color:var(--crimson);
+    background:rgba(225,29,42,.1);border:1px solid rgba(225,29,42,.24)}
+  .mini-main{flex:1;min-width:0}
+  .mini-title{font-size:13.5px;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mini-sub{font-family:var(--ui);font-size:11px;letter-spacing:.04em;color:var(--ash-dim);margin-top:2px}
+  .mini-val{font-family:var(--display);font-weight:700;font-size:14px;color:var(--sulfur);white-space:nowrap}
+  .mini-empty{padding:30px 20px;text-align:center;color:var(--ash-dim);font-style:italic}
+
+  /* ---- Panel ---- */
+  .panel{background:linear-gradient(180deg,rgba(28,14,15,.7),rgba(21,10,11,.7));
+    border:1px solid rgba(225,29,42,.16);border-radius:8px;margin-bottom:24px;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:16px 20px;border-bottom:1px solid rgba(225,29,42,.16)}
+  .panel-head h2{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.02em;color:var(--bone)}
+  .panel-head .count{font-family:var(--ui);font-size:11px;letter-spacing:.1em;color:var(--ash-dim);
+    border:1px solid rgba(242,233,230,.14);border-radius:20px;padding:2px 9px}
+  .panel-head .ph-spacer{flex:1}
+  .panel-body{padding:22px 20px}
+
+  .search{background:rgba(10,5,6,.6);border:1px solid rgba(242,233,230,.16);border-radius:3px;
+    color:var(--bone);font-family:var(--body);font-size:13px;padding:8px 12px;min-width:200px;outline:none;transition:.15s}
+  .search:focus{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(225,29,42,.18)}
+  .search::placeholder{color:var(--ash-dim)}
+  .mini{background:linear-gradient(180deg,var(--crimson),var(--blood));color:#FCEFEC;border:1px solid #FF4736;
+    border-radius:3px;font-family:var(--ui);text-transform:uppercase;letter-spacing:.12em;font-size:11px;
+    cursor:pointer;padding:8px 13px;transition:.15s;box-shadow:0 6px 18px rgba(164,14,30,.35)}
+  .mini:hover{filter:brightness(1.08);box-shadow:0 0 18px rgba(255,59,34,.45)}
+  .mini.ghost{background:rgba(20,10,11,.5);color:var(--ash);border:1px solid rgba(242,233,230,.16);box-shadow:none}
+  .mini.ghost:hover{color:var(--bone);border-color:var(--crimson)}
+
+  /* ---- Tables ---- */
+  .tbl-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+  thead th{font-family:var(--ui);text-transform:uppercase;letter-spacing:.12em;font-size:10px;font-weight:500;
+    color:var(--ash-dim);text-align:left;padding:12px 18px;border-bottom:1px solid rgba(225,29,42,.16);white-space:nowrap}
+  tbody td{padding:13px 18px;border-bottom:1px solid rgba(242,233,230,.06);color:var(--bone);vertical-align:middle}
+  tbody tr:hover{background:rgba(225,29,42,.05)}
+  tbody tr:last-child td{border-bottom:none}
+  td .email{color:var(--ash);font-size:12px}
+  td .name{font-weight:500}
+  .pill{font-family:var(--ui);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    border-radius:20px;padding:3px 10px;display:inline-block}
+  .pill.active{color:var(--sulfur);border:1px solid rgba(217,164,65,.5);background:rgba(217,164,65,.08)}
+  .pill.expired{color:var(--ash-dim);border:1px solid rgba(242,233,230,.16)}
+  .pill.none{color:var(--ash-dim);border:1px solid rgba(242,233,230,.1)}
+  .pill.pending{color:var(--ember);border:1px solid rgba(255,59,34,.5);background:rgba(255,59,34,.1)}
+  .pill.locked{color:var(--sulfur);border:1px solid rgba(217,164,65,.5);background:rgba(217,164,65,.1)}
+  .pill.live{color:#7CE6A0;border:1px solid rgba(124,230,160,.45);background:rgba(124,230,160,.08)}
+  .credits-num{font-family:var(--display);font-weight:700;color:var(--bone)}
+  .credits-num.inf{color:var(--sulfur)}
+  .row-actions{display:flex;gap:6px;white-space:nowrap}
+  .act{background:none;border:1px solid rgba(242,233,230,.16);border-radius:3px;color:var(--ash);
+    font-family:var(--ui);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:5px 9px;transition:.14s}
+  .act:hover{color:var(--bone);border-color:var(--crimson)}
+  .act.danger:hover{color:#FFB1A6;border-color:var(--crimson);background:rgba(225,29,42,.12)}
+  .act.approve{color:#9FE8B8;border-color:rgba(124,230,160,.4)}
+  .act.approve:hover{color:#fff;border-color:#7CE6A0;background:rgba(124,230,160,.16)}
+  .act.warn{color:var(--sulfur);border-color:rgba(217,164,65,.4)}
+  .act.warn:hover{color:#fff;border-color:var(--sulfur);background:rgba(217,164,65,.16)}
+  .ref{font-family:var(--ui);font-size:11px;letter-spacing:.04em;color:var(--ash-dim)}
+  .codechip{font-family:var(--ui);font-size:12px;font-weight:500;letter-spacing:.1em;color:var(--sulfur);
+    background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.3);border-radius:5px;padding:3px 9px}
+  .empty{padding:34px 18px;text-align:center;color:var(--ash-dim);font-style:italic}
+
+  /* ---- Forms (gateway) ---- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .field{margin-bottom:18px}
+  .field.full{grid-column:1 / -1}
+  .field label{display:block;font-family:var(--ui);text-transform:uppercase;letter-spacing:.12em;
+    font-size:10px;color:var(--ash-dim);margin-bottom:8px}
+  .field input,.field select{width:100%;background:rgba(10,5,6,.6);border:1px solid rgba(242,233,230,.16);
+    border-radius:3px;color:var(--bone);font-family:var(--body);font-size:14px;padding:12px 13px;outline:none;transition:.15s}
+  .field input:focus,.field select:focus{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(225,29,42,.18)}
+  .field input::placeholder{color:var(--ash-dim)}
+  .field .hint{font-family:var(--ui);font-size:11px;letter-spacing:.04em;color:var(--ash-dim);margin-top:7px}
+  .save-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px}
+  .save-row .mini{padding:12px 22px;font-size:12px}
+  .warn{background:rgba(217,164,65,.08);border:1px solid rgba(217,164,65,.35);border-radius:6px;
+    padding:13px 16px;font-size:13px;color:var(--sulfur);margin-bottom:22px}
+  .warn b{font-family:var(--ui);letter-spacing:.04em}
+  .gw-status{display:flex;align-items:center;gap:10px;font-family:var(--ui);font-size:12px;letter-spacing:.06em;color:var(--ash)}
+
+  /* ---- Gate ---- */
+  .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    padding:20px;background:rgba(5,2,3,.92);backdrop-filter:blur(6px)}
+  .gate-card{width:100%;max-width:360px;background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid rgba(225,29,42,.3);border-radius:8px;padding:30px 26px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .gate-card .di{font-family:var(--display);font-size:30px;color:var(--crimson);
+    filter:drop-shadow(0 0 12px rgba(225,29,42,.6));margin-bottom:8px}
+  .gate-card h1{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.04em;margin-bottom:6px}
+  .gate-card p{font-size:13px;color:var(--ash);margin-bottom:20px}
+  .gate-card input{width:100%;background:rgba(10,5,6,.6);border:1px solid rgba(242,233,230,.18);
+    border-radius:3px;color:var(--bone);font-family:var(--body);font-size:15px;padding:12px;text-align:center;
+    letter-spacing:.2em;outline:none;transition:.15s;margin-bottom:14px}
+  .gate-card input:focus{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(225,29,42,.18)}
+  .gate-card button{width:100%;background:linear-gradient(180deg,var(--crimson),var(--blood));color:#FCEFEC;
+    border:1px solid #FF4736;border-radius:3px;font-family:var(--ui);text-transform:uppercase;letter-spacing:.16em;
+    font-size:13px;font-weight:600;padding:13px;cursor:pointer;transition:.16s;box-shadow:0 8px 26px rgba(164,14,30,.4)}
+  .gate-card button:hover{filter:brightness(1.08);box-shadow:0 0 22px rgba(255,59,34,.5)}
+  .gate-err{color:#FFB1A6;font-size:12px;font-family:var(--ui);letter-spacing:.06em;min-height:16px;margin-bottom:8px}
+
+  /* ---- Toast ---- */
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel2);color:var(--bone);border:1px solid rgba(225,29,42,.4);border-radius:4px;
+    padding:13px 22px;font-family:var(--ui);letter-spacing:.06em;font-size:13px;
+    box-shadow:0 14px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:.25s ease;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.success{border-color:var(--sulfur);color:var(--sulfur)}
+
+  /* ---- Responsive ---- */
+  @media(max-width:820px){
+    .layout{flex-direction:column}
+    .sidebar{width:auto;flex:none;height:auto;position:static;flex-direction:row;align-items:center;
+      gap:10px;overflow-x:auto;border-right:none;border-bottom:1px solid rgba(225,29,42,.18);padding:14px}
+    .side-brand{padding:0;white-space:nowrap}
+    .nav{flex-direction:row;margin-top:0;gap:6px}
+    .nav-item{white-space:nowrap;padding:9px 12px}
+    .nav-item .ico{display:none}
+    .side-foot{margin-top:0;flex-direction:row;border-top:none;padding-top:0;margin-left:auto}
+    .main{padding:22px 18px 60px}
+    .form-grid{grid-template-columns:1fr}
+  }
+
+  /* ===== Send a prediction ===== */
+  .sendpanel{margin-bottom:26px}
+  .send-body{padding:20px}
+  .send-lead{font-size:14px;color:var(--ash);margin-bottom:18px}
+  .drop{display:flex;flex-direction:column;align-items:center;gap:6px;border:2px dashed rgba(225,29,42,.3);
+    border-radius:12px;padding:34px 20px;text-align:center;cursor:pointer;transition:.15s;background:rgba(10,5,6,.4)}
+  .drop:hover{border-color:var(--crimson);background:rgba(225,29,42,.05)}
+  .drop-ico{font-size:34px}
+  .drop-title{font-family:var(--display);font-weight:700;font-size:16px;color:var(--bone)}
+  .drop-sub{font-size:12.5px;color:var(--ash-dim)}
+  .prev{position:relative;border:1px solid rgba(225,29,42,.2);border-radius:12px;overflow:hidden;margin-bottom:12px}
+  .prev img{width:100%;display:block;max-height:320px;object-fit:contain;background:var(--void)}
+  .prev-x{position:absolute;top:10px;right:10px;background:rgba(10,5,6,.85);border:1px solid rgba(225,29,42,.4);
+    color:var(--bone);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:14px;line-height:1}
+  .prev-x:hover{color:var(--crimson);border-color:var(--crimson)}
+  .scanline{display:none;align-items:center;justify-content:center;gap:8px;font-family:var(--ui);font-size:12px;
+    letter-spacing:.06em;margin-bottom:14px}
+  .scanline.busy{display:flex;color:var(--ash)}
+  .scanline.ok{display:flex;color:var(--sulfur)}
+  .scanline.warn{display:flex;color:var(--ember)}
+  .spin{width:13px;height:13px;border-radius:50%;border:2px solid rgba(180,155,152,.3);border-top-color:var(--crimson);
+    animation:spin .7s linear infinite;flex:0 0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .sel{width:100%;background:rgba(10,5,6,.6);border:1px solid rgba(242,233,230,.16);border-radius:6px;
+    color:var(--bone);font-family:var(--body);font-size:14px;padding:11px 12px;outline:none;transition:.15s}
+  .sel:focus{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(225,29,42,.16)}
+  .sel optgroup{background:var(--panel2);color:var(--ash-dim)}
+  .sel option{background:var(--panel2);color:var(--bone)}
+  .ghost{width:100%;margin-top:4px;background:rgba(225,29,42,.06);border:1px solid rgba(225,29,42,.28);border-radius:8px;
+    color:var(--crimson);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:11px;padding:9px;cursor:pointer;transition:.15s}
+  .ghost:hover{background:rgba(225,29,42,.14)}
+  .field-block{margin-bottom:16px}
+  .fb-label{font-family:var(--ui);text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--ash-dim);margin-bottom:9px}
+  .send-btn{width:100%;justify-content:center;padding:14px;font-size:12px}
+  .pick-tag{font-family:var(--ui);font-size:11px;letter-spacing:.04em;color:var(--crimson)}
+  .xbtn{background:rgba(225,29,42,.06);border:1px solid rgba(225,29,42,.3);border-radius:5px;color:var(--ash);
+    font-family:var(--ui);text-transform:uppercase;letter-spacing:.08em;font-size:10px;cursor:pointer;padding:6px 11px;transition:.15s;white-space:nowrap}
+  .xbtn:hover{color:#FFB1A6;border-color:var(--crimson);background:rgba(225,29,42,.14)}
+  #send-fields{display:none}
+
+  /* Per-match rows */
+  .match-row{background:rgba(10,5,6,.45);border:1px solid rgba(242,233,230,.1);border-radius:11px;padding:13px 13px 11px;margin-bottom:11px;position:relative;transition:.15s}
+  .match-row.chosen{border-color:rgba(225,29,42,.45);box-shadow:0 0 14px rgba(225,29,42,.12)}
+  .mr-teams{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .mr-in{flex:1;min-width:0;background:rgba(10,5,6,.6);border:1px solid rgba(242,233,230,.16);border-radius:6px;color:var(--bone);
+    font-family:var(--body);font-size:13.5px;font-weight:500;padding:9px 10px;outline:none;transition:.15s}
+  .mr-in:focus{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(225,29,42,.16)}
+  .mr-vs{font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--ash-dim);flex:0 0 auto}
+  .mr-rm{flex:0 0 auto;background:none;border:none;color:var(--ash-dim);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;transition:.15s}
+  .mr-rm:hover{color:var(--crimson)}
+  .mr-outs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .ocm{background:rgba(10,5,6,.5);border:1px solid rgba(242,233,230,.14);border-radius:8px;padding:9px 6px;cursor:pointer;
+    text-align:center;transition:.15s;color:var(--ash);font-family:var(--ui);font-size:11px;font-weight:500;letter-spacing:.03em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ocm small{display:block;font-size:9px;color:var(--ash-dim);letter-spacing:.08em;margin-top:3px;text-transform:uppercase}
+  .ocm:hover{border-color:rgba(225,29,42,.5);color:var(--bone)}
+  .ocm.on{border-color:var(--crimson);background:rgba(225,29,42,.14);color:var(--crimson)}
+  .ocm.on small{color:var(--crimson)}
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+<div class="vig"></div>
+
+<!-- ===== Passcode gate ===== -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="di">◆</div>
+    <h1>Admin Access</h1>
+    <p>Enter the passcode to view the control room.</p>
+    <div class="gate-err" id="gate-err"></div>
+    <input type="password" id="gate-input" placeholder="• • • • • •" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button onclick="tryUnlock()">Unlock</button>
+  </div>
+</div>
+
+<!-- ===== App ===== -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="side-brand"><span class="di">◆</span>VirtualEdge<span class="tag">Admin</span></div>
+    <nav class="nav">
+      <a class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="ico">▦</span>Overview</a>
+      <a class="nav-item" data-view="members" onclick="showView('members')"><span class="ico">☷</span>Members</a>
+      <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">⊕</span>Send Prediction</a>
+      <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">✦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
+      <a class="nav-item" data-view="partners" onclick="showView('partners')"><span class="ico">⬡</span>Partners</a>
+      <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">⇄</span>Transactions</a>
+      <a class="nav-item" data-view="gateway" onclick="showView('gateway')"><span class="ico">▤</span>Payment Gateway</a>
+    </nav>
+    <div class="side-foot">
+      <a class="nav-item" onclick="lock()"><span class="ico">🔒</span>Lock</a>
+      <a class="nav-item" onclick="signOut()"><span class="ico">⏻</span>Sign out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="main-top">
+      <div>
+        <div class="page-eyebrow">Control Room</div>
+        <div class="page-title" id="view-title">Overview</div>
+      </div>
+      <button class="tbtn" onclick="refresh()">↻ Refresh</button>
+    </div>
+
+    <!-- ===== Overview ===== -->
+    <section class="view" id="view-overview">
+      <div class="section-lead">
+        <h2>At a glance</h2>
+        <p>Live snapshot of members, revenue and recent activity.</p>
+      </div>
+      <div class="stats" id="stats"></div>
+
+      <div class="ov-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Recent Transactions</h2>
+            <div class="ph-spacer"></div>
+            <button class="mini ghost" onclick="showView('transactions')">View all</button>
+          </div>
+          <div class="mini-list" id="ov-tx"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Newest Members</h2>
+            <div class="ph-spacer"></div>
+            <button class="mini ghost" onclick="showView('members')">View all</button>
+          </div>
+          <div class="mini-list" id="ov-members"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Members ===== -->
+    <section class="view" id="view-members" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Members</h2>
+          <span class="count" id="users-count">0</span>
+          <div class="ph-spacer"></div>
+          <input class="search" id="users-search" placeholder="Search name or email…" oninput="renderUsers()">
+          <button class="mini ghost" onclick="exportUsers()">Export CSV</button>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Member</th><th>Plan</th><th>Status</th><th>Credits</th><th>Ref</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Send a prediction ===== -->
+    <section class="view" id="view-send" hidden>
+      <div class="panel sendpanel">
+        <div class="panel-head">
+          <h2>Send a Prediction</h2>
+          <span class="count">to a member's account</span>
+        </div>
+        <div class="send-body">
+          <p class="send-lead">Upload a SportyBet screenshot, let it scan the teams &amp; odds, choose the winner for each match, and push the picks straight into a member's account.</p>
+
+          <label class="drop" id="drop">
+            <span class="drop-ico">📸</span>
+            <span class="drop-title">Upload screenshot</span>
+            <span class="drop-sub">Tap to select — we'll read the matches automatically</span>
+            <input type="file" id="file-input" accept="image/*" hidden onclick="this.value=null" onchange="onFile(event)">
+          </label>
+
+          <div id="send-fields">
+            <div class="prev">
+              <img id="prev-img" alt="Screenshot">
+              <button class="prev-x" onclick="resetSend()" title="Remove">✕</button>
+            </div>
+
+            <div class="scanline" id="scan-stat"><span class="spin" id="scan-spin"></span><span id="scan-txt">Scanning…</span></div>
+
+            <div class="fb-label" id="matches-head" style="display:none">Choose the winning team for each match</div>
+            <div id="matches-list"></div>
+            <button class="ghost" id="add-match" style="display:none" onclick="addMatchRow()">+ Add a match manually</button>
+
+            <div class="field-block" style="margin-top:18px">
+              <div class="fb-label">Reflect in account</div>
+              <select id="s-account" class="sel"></select>
+            </div>
+
+            <button class="mini send-btn" onclick="sendPrediction()">Send picks to account →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Sent picks log ===== -->
+    <section class="view" id="view-sent" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Sent Picks</h2>
+          <span class="count" id="sent-count">0</span>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Match</th><th>Pick</th><th>Account</th><th>From</th><th>Sent</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sent-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Partners ===== -->
+    <section class="view" id="view-partners" hidden>
+      <div class="panel">
+        <div class="panel-head"><h2>Add a Partner</h2><span class="codechip" style="color:var(--ash);background:none;border-color:rgba(242,233,230,.16)">auto-approved</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field">
+              <label>Partner Name</label>
+              <input id="np-name" type="text" placeholder="e.g. Kwame Mensah" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input id="np-email" type="text" placeholder="partner@email.com" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input id="np-pass" type="text" placeholder="Temporary password" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Referral Code <span style="color:var(--ash-dim)">(optional)</span></label>
+              <input id="np-code" type="text" placeholder="Leave blank to auto-generate" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field full">
+              <div class="hint">Members who sign up via <b>index.html?ref=CODE</b> are credited to this partner. Partners added here can sign in immediately at <b>partner-login.html</b> with this email & password. To review self-registered applicants, see the table below.</div>
+            </div>
+          </div>
+          <div class="save-row">
+            <button class="mini" onclick="addPartner()">Add Partner</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Partners</h2>
+          <span class="count" id="partners-count">0</span>
+          <div class="ph-spacer"></div>
+          <input class="search" id="partners-search" placeholder="Search name, email, code…" oninput="renderPartners()">
+          <button class="mini ghost" onclick="exportPartners()">Export CSV</button>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Partner</th><th>Status</th><th>Code</th><th>Link</th><th>Referrals</th><th>Revenue</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="partners-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Transactions ===== -->
+    <section class="view" id="view-transactions" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Transaction History</h2>
+          <span class="count" id="tx-count">0</span>
+          <div class="ph-spacer"></div>
+          <input class="search" id="tx-search" placeholder="Search email, package, ref…" oninput="renderTx()">
+          <button class="mini ghost" onclick="exportTx()">Export CSV</button>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Member</th><th>Package</th><th>Amount</th><th>Predictions</th><th>Reference</th>
+            </tr></thead>
+            <tbody id="tx-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Payment Gateway ===== -->
+    <section class="view" id="view-gateway" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Payment Gateway</h2>
+          <div class="ph-spacer"></div>
+          <div class="gw-status" id="pg-status"></div>
+        </div>
+        <div class="panel-body">
+          <div class="warn">
+            <b>⚠ Security note.</b> The <b>public key (pk_…)</b> safely powers the checkout. The
+            <b>secret key (sk_…)</b> is stored here only for your convenience — on a live site it must live
+            on a secure server, never shipped to visitors' browsers. Anything saved on this page is kept in
+            this browser's local storage, so treat this device as trusted.
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label>Provider</label>
+              <select id="pg-provider">
+                <option value="paystack">Paystack</option>
+                <option value="flutterwave">Flutterwave (coming soon)</option>
+              </select>
+              <div class="hint">Checkout currently runs on Paystack.</div>
+            </div>
+            <div class="field">
+              <label>Currency</label>
+              <select id="pg-currency">
+                <option value="GHS">GHS — Ghana Cedi</option>
+                <option value="NGN">NGN — Nigerian Naira</option>
+                <option value="USD">USD — US Dollar</option>
+                <option value="KES">KES — Kenyan Shilling</option>
+                <option value="ZAR">ZAR — South African Rand</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>Public Key</label>
+              <input id="pg-key" type="text" placeholder="pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+              <div class="hint">Find it in your Paystack dashboard → Settings → API Keys & Webhooks. Use <b>pk_live_…</b> to receive real money, or <b>pk_test_…</b> while testing. This key powers the checkout popup.</div>
+            </div>
+            <div class="field full">
+              <label>Secret Key <span style="color:var(--crimson)">· keep private</span></label>
+              <div style="display:flex;gap:8px">
+                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="flex:1">
+                <button class="mini ghost" type="button" onclick="toggleSecret()" id="pg-secret-toggle">Show</button>
+              </div>
+              <div class="hint">Used to <b>verify</b> payments and issue refunds — this belongs on a <b>server/backend</b>, never in a public page. Stored here only for your reference; the checkout does <b>not</b> send it to the browser.</div>
+            </div>
+            <div class="field full">
+              <label>Business / Display Name</label>
+              <input id="pg-business" type="text" placeholder="VirtualEdge" autocomplete="off">
+              <div class="hint">Shown to customers on the Paystack popup.</div>
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button class="mini" onclick="saveGateway()">Save Settings</button>
+            <button class="mini ghost" onclick="loadGateway()">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Packages being charged -->
+      <div class="panel">
+        <div class="panel-head"><h2>Packages &amp; Prices</h2></div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Package</th><th>Price</th><th>Predictions</th></tr></thead>
+            <tbody id="pkg-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+/* ================================================================
+   VirtualEdge — Admin dashboard (API-backed via window.VE)
+   The passcode is verified server-side (ADMIN_PASSCODE env var) and
+   exchanged for a JWT; it is no longer present in client code.
+   ================================================================ */
+
+/* Packages — keep in sync with pricing.html */
+const PACKAGES = [
+  { price:300,  label:'GHS 300',  tag:'1 prediction'  },
+  { price:500,  label:'GHS 500',  tag:'2 predictions' },
+  { price:700,  label:'GHS 700',  tag:'4 predictions' },
+  { price:900,  label:'GHS 900',  tag:'7 predictions' },
+  { price:1400, label:'GHS 1.4K', tag:'Unlimited'     },
+];
+
+/* ---- Data access (cached from the API; loadAll() refreshes them) ---- */
+const read = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || fb); } catch(e){ return JSON.parse(fb); } };
+let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {};
+const getUsers     = () => _users;
+const getCredits   = () => _credits;
+const getPurchases = () => _purchases;
+const getResults   = () => read('ve_results', '[]');   // reference data only
+const getPayConfig = () => _paycfg;
+const getPartners  = () => _partners;
+
+/* Fetch everything the dashboard needs, then re-render */
+async function loadAll(){
+  try {
+    const [users, partners, purchases, picks, cfg] = await Promise.all([
+      VE.adminUsers(), VE.adminPartners(), VE.adminPurchases(), VE.adminPicks(), VE.adminPaymentConfig()
+    ]);
+    _users = {}; _credits = {};
+    users.forEach(u => { _users[u.email] = u; _credits[u.email] = u.credits || 0; });
+    _partners = partners;
+    _purchases = purchases.map(p => ({ ...p, preds: p.predictions, ref: p.reference }));
+    _picks = picks;
+    _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret, business: cfg.business };
+  } catch(e){
+    console.error(e);
+    toast(e.message || 'Could not load data.', 'error');
+  }
+  refresh();
+}
+
+/* Build a full referral URL for a partner code (works on file:// and http) */
+function refLink(code){
+  try { return new URL('index.html?ref=' + encodeURIComponent(code), location.href).href; }
+  catch(e){ return 'index.html?ref=' + code; }
+}
+/* Emails of members attributed to a partner code */
+function partnerMembers(code){
+  const users = getUsers();
+  return Object.keys(users).filter(e => (users[e].partner || '') === code);
+}
+function partnerRevenue(code){
+  const set = new Set(partnerMembers(code));
+  return getPurchases().filter(p => set.has(p.email)).reduce((a,p) => a + parsePrice(p.pkg), 0);
+}
+
+function parsePrice(label){
+  if(!label) return 0;
+  const s = String(label).replace(/ghs/i,'').trim();
+  let n = parseFloat(s);
+  if(/k/i.test(s)) n *= 1000;
+  return isNaN(n) ? 0 : n;
+}
+const fmtMoney = n => 'GHS ' + n.toLocaleString('en-US');
+function fmtDate(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) +
+         ' · ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const creditLabel = n => (n >= 9999 ? '∞' : (n||0));
+
+/* ================= View switching ================= */
+const VIEW_TITLES = { overview:'Overview', members:'Members', send:'Send a Prediction', sent:'Sent Picks', partners:'Partners', transactions:'Transaction History', gateway:'Payment Gateway' };
+function showView(v){
+  document.querySelectorAll('.view').forEach(s => s.hidden = (s.id !== 'view-'+v));
+  document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.toggle('active', n.dataset.view === v));
+  document.getElementById('view-title').textContent = VIEW_TITLES[v] || '';
+  if(v === 'gateway'){ loadGateway(); renderPackages(); }
+  if(v === 'partners'){ renderPartners(); }
+  if(v === 'send'){ populateAccounts(); }
+  if(v === 'sent'){ renderSentPicks(); }
+}
+
+/* ================= Stats ================= */
+function renderStats(){
+  const users = getUsers(), credits = getCredits(), purchases = getPurchases(), now = Date.now();
+  const emails = Object.keys(users);
+  const totalUsers = emails.length;
+  const active = emails.filter(e => users[e].planEnd && users[e].planEnd > now).length;
+  const revenue = purchases.reduce((a,p) => a + parsePrice(p.pkg), 0);
+  const txCount = purchases.length;
+  const outstanding = Object.values(credits).reduce((a,c) => a + (c >= 9999 ? 0 : (c||0)), 0);
+  const hasUnlim = Object.values(credits).some(c => c >= 9999);
+
+  const cards = [
+    { label:'Total Members', val: totalUsers, cls:'', ico:'☷', sub: active+' active subscription'+(active===1?'':'s') },
+    { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'₵', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
+    { label:'Transactions', val: txCount, cls:'crimson', ico:'⇄', sub:'all-time purchases' },
+    { label:'Credits Live', val: outstanding + (hasUnlim?' +∞':''), cls:'', ico:'⚡', sub:'unused predictions' },
+    { label:'Seed Matches', val: getResults().length, cls:'', ico:'⚽', sub:'in prediction pool' },
+  ];
+  document.getElementById('stats').innerHTML = cards.map(c => `
+    <div class="stat">
+      <div class="stat-head">
+        <div class="label">${c.label}</div>
+        <div class="stat-ico ${c.icoCls||''}">${c.ico}</div>
+      </div>
+      <div class="val ${c.cls}">${c.val}</div>
+      <div class="stat-foot"><span class="sub">${esc(c.sub)}</span></div>
+    </div>`).join('');
+
+  renderOverview();
+}
+
+/* ================= Overview activity lists ================= */
+function renderOverview(){
+  const users = getUsers();
+
+  /* Recent transactions */
+  const tx = getPurchases().slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5);
+  const txEl = document.getElementById('ov-tx');
+  if(txEl){
+    txEl.innerHTML = tx.length ? tx.map(p => {
+      const nm = users[p.email] ? users[p.email].name : (p.email||'');
+      const initial = (nm || '?').trim().charAt(0).toUpperCase() || '?';
+      return `
+        <div class="mini-row">
+          <div class="mini-avatar">${esc(initial)}</div>
+          <div class="mini-main">
+            <div class="mini-title">${esc(nm || p.email || '—')}</div>
+            <div class="mini-sub">${esc(p.pkg)} · ${esc(fmtDate(p.date))}</div>
+          </div>
+          <div class="mini-val">${esc(fmtMoney(parsePrice(p.pkg)))}</div>
+        </div>`;
+    }).join('') : `<div class="mini-empty">No transactions yet.</div>`;
+  }
+
+  /* Newest members (by plan end as a recency proxy) */
+  const mem = Object.keys(users).map(e => ({ email:e, ...users[e] }))
+    .sort((a,b) => (b.planEnd||0) - (a.planEnd||0)).slice(0,5);
+  const now = Date.now();
+  const memEl = document.getElementById('ov-members');
+  if(memEl){
+    memEl.innerHTML = mem.length ? mem.map(m => {
+      const initial = (m.name || m.email || '?').trim().charAt(0).toUpperCase() || '?';
+      const isActive = m.planEnd && m.planEnd > now;
+      const badge = isActive ? `<span class="pill active">Active</span>` : `<span class="pill expired">Expired</span>`;
+      return `
+        <div class="mini-row">
+          <div class="mini-avatar">${esc(initial)}</div>
+          <div class="mini-main">
+            <div class="mini-title">${esc(m.name || '—')}</div>
+            <div class="mini-sub">${esc(m.email)}</div>
+          </div>
+          ${badge}
+        </div>`;
+    }).join('') : `<div class="mini-empty">No members yet.</div>`;
+  }
+}
+
+/* ================= Users ================= */
+function renderUsers(){
+  const users = getUsers(), credits = getCredits(), now = Date.now();
+  const q = (document.getElementById('users-search').value || '').toLowerCase().trim();
+  let rows = Object.keys(users).map(email => ({ email, ...users[email], credits: credits[email] || 0 }));
+  rows.sort((a,b) => (b.planEnd||0) - (a.planEnd||0));
+  if(q) rows = rows.filter(r => r.email.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q));
+
+  document.getElementById('users-count').textContent = rows.length;
+  const body = document.getElementById('users-body');
+  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No members yet.</div></td></tr>`; return; }
+
+  body.innerHTML = rows.map(r => {
+    const isActive = r.planEnd && r.planEnd > now;
+    const status = (r.plan == null && !r.planEnd)
+      ? `<span class="pill none">No plan</span>`
+      : isActive ? `<span class="pill active">Active</span>` : `<span class="pill expired">Expired</span>`;
+    const exp = r.planEnd ? new Date(r.planEnd).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const inf = r.credits >= 9999 ? ' inf' : '';
+    return `
+      <tr>
+        <td><div class="name">${esc(r.name||'—')}</div><div class="email">${esc(r.email)}</div></td>
+        <td>${esc(r.plan || '—')}</td>
+        <td>${status}<div class="email" style="margin-top:4px">exp ${exp}</div></td>
+        <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span></td>
+        <td><span class="ref">${esc(r.ref || '—')}</span></td>
+        <td><div class="row-actions">
+          <button class="act" onclick="grantCredits('${esc(r.email)}')">+ Credits</button>
+          <button class="act danger" onclick="deleteUser('${esc(r.email)}')">Delete</button>
+        </div></td>
+      </tr>`;
+  }).join('');
+}
+
+/* ================= Transactions ================= */
+function renderTx(){
+  const purchases = getPurchases().slice(), users = getUsers();
+  const q = (document.getElementById('tx-search').value || '').toLowerCase().trim();
+  purchases.sort((a,b) => new Date(b.date) - new Date(a.date));
+  let rows = purchases;
+  if(q) rows = rows.filter(p =>
+    (p.email||'').toLowerCase().includes(q) || (p.pkg||'').toLowerCase().includes(q) ||
+    (p.ref||'').toLowerCase().includes(q) || (p.preds||'').toLowerCase().includes(q));
+
+  document.getElementById('tx-count').textContent = rows.length;
+  const body = document.getElementById('tx-body');
+  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No transactions yet.</div></td></tr>`; return; }
+
+  body.innerHTML = rows.map(p => {
+    const name = users[p.email] ? users[p.email].name : '';
+    return `
+      <tr>
+        <td><span class="ref">${esc(fmtDate(p.date))}</span></td>
+        <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(p.email)}</div></td>
+        <td><span class="credits-num">${esc(p.pkg)}</span></td>
+        <td>${esc(fmtMoney(parsePrice(p.pkg)))}</td>
+        <td>${esc(p.preds || '—')}</td>
+        <td><span class="ref">${esc(p.ref || '—')}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+/* ================= Partners ================= */
+function renderPartners(){
+  let partners = getPartners().slice();
+  const q = (document.getElementById('partners-search').value || '').toLowerCase().trim();
+  if(q) partners = partners.filter(p =>
+    (p.name||'').toLowerCase().includes(q) ||
+    (p.email||'').toLowerCase().includes(q) ||
+    (p.code||'').toLowerCase().includes(q));
+
+  /* pending first, so applicants needing review are on top */
+  const order = { pending:0, approved:1, rejected:2 };
+  partners.sort((a,b) => (order[a.status||'approved']) - (order[b.status||'approved']));
+
+  const pending = partners.filter(p => (p.status||'approved') === 'pending').length;
+  document.getElementById('partners-count').textContent = partners.length + (pending ? ' · '+pending+' pending' : '');
+
+  const body = document.getElementById('partners-body');
+  if(!partners.length){
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">No partners yet. Add one above, or wait for applications.</div></td></tr>`;
+    return;
+  }
+
+  body.innerHTML = partners.map(p => {
+    const status = p.status || 'approved';
+    const refs = partnerMembers(p.code).length;
+    const rev  = partnerRevenue(p.code);
+    const locked = !!p.locked;
+    const statusPill = status==='pending'  ? `<span class="pill pending">Pending</span>`
+                     : status==='rejected' ? `<span class="pill expired">Rejected</span>`
+                     : locked              ? `<span class="pill locked">Locked</span>`
+                     :                        `<span class="pill active">Approved</span>`;
+    let actions;
+    if(status==='pending'){
+      actions = `<button class="act approve" onclick="approvePartner('${esc(p.code)}')">Approve</button>
+         <button class="act danger" onclick="rejectPartner('${esc(p.code)}')">Reject</button>`;
+    } else if(status==='approved'){
+      const lockBtn = locked
+        ? `<button class="act approve" onclick="unlockPartner('${esc(p.code)}')">Unlock</button>`
+        : `<button class="act warn" onclick="lockPartner('${esc(p.code)}')">Lock</button>`;
+      actions = `<button class="act" onclick="copyRef('${esc(p.code)}')">Copy link</button>
+         ${lockBtn}
+         <button class="act danger" onclick="deletePartner('${esc(p.code)}')">Delete</button>`;
+    } else {
+      actions = `<button class="act danger" onclick="deletePartner('${esc(p.code)}')">Delete</button>`;
+    }
+    return `
+      <tr>
+        <td><div class="name">${esc(p.name||'—')}</div><div class="email">${esc(p.email||'—')}</div></td>
+        <td>${statusPill}</td>
+        <td><span class="codechip">${esc(p.code)}</span></td>
+        <td>${status==='pending' ? '<span class="ref">—</span>' : `<button class="act" onclick="copyRef('${esc(p.code)}')">Copy</button>`}</td>
+        <td><span class="credits-num">${refs}</span></td>
+        <td>${esc(fmtMoney(rev))}</td>
+        <td><div class="row-actions">${actions}</div></td>
+      </tr>`;
+  }).join('');
+}
+
+const pById = code => (getPartners().find(x => x.code === code) || {});
+async function partnerAction(code, action, okMsg){
+  const p = pById(code);
+  if(!p.id) return;
+  try { await VE.adminPartnerAction(p.id, action); toast(okMsg(p), 'success'); await loadAll(); }
+  catch(e){ toast(e.message || 'Action failed.', 'error'); }
+}
+function approvePartner(code){
+  partnerAction(code, 'approve', p => 'Approved · ' + (p.name || code) + ' can now sign in');
+}
+function rejectPartner(code){
+  const p = pById(code);
+  if(!confirm('Reject ' + (p.name || code) + '? They will not be able to sign in.')) return;
+  partnerAction(code, 'reject', () => 'Application rejected');
+}
+function lockPartner(code){
+  const p = pById(code);
+  if(!confirm('Lock ' + (p.name || code) + '? They will be signed out and blocked from signing in until unlocked.')) return;
+  partnerAction(code, 'lock', p => 'Account locked · ' + (p.name || code));
+}
+function unlockPartner(code){
+  partnerAction(code, 'unlock', p => 'Account unlocked · ' + (p.name || code));
+}
+
+async function addPartner(){
+  const name  = document.getElementById('np-name').value.trim();
+  const email = document.getElementById('np-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('np-pass').value;
+  let code    = document.getElementById('np-code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!name){ toast('Enter a partner name.'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Enter a valid email.'); return; }
+  if(pass.length < 6){ toast('Password must be at least 6 characters.'); return; }
+  try {
+    const r = await VE.adminAddPartner({ name, email, password: pass, code });
+    document.getElementById('np-name').value = '';
+    document.getElementById('np-email').value = '';
+    document.getElementById('np-pass').value = '';
+    document.getElementById('np-code').value = '';
+    toast('Partner added · code ' + (r.partner ? r.partner.code : ''), 'success');
+    await loadAll();
+  } catch(e){ toast(e.message || 'Could not add partner.', 'error'); }
+}
+async function deletePartner(code){
+  const p = pById(code);
+  if(!confirm('Delete partner "' + code + '"?\nMembers already referred keep their tag, but this code is removed.')) return;
+  if(!p.id) return;
+  try { await VE.adminDeletePartner(p.id); toast('Partner deleted'); await loadAll(); }
+  catch(e){ toast(e.message || 'Could not delete.', 'error'); }
+}
+function copyRef(code){
+  const link = refLink(code);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(
+      () => toast('Referral link copied', 'success'),
+      () => prompt('Copy this referral link:', link)
+    );
+  } else {
+    prompt('Copy this referral link:', link);
+  }
+}
+function exportPartners(){
+  const rows = [['Name','Email','Code','Referrals','Revenue','ReferralLink','Created']];
+  getPartners().forEach(p => rows.push([
+    p.name||'', p.email||'', p.code, partnerMembers(p.code).length, partnerRevenue(p.code), refLink(p.code), p.created||''
+  ]));
+  downloadCSV('virtualedge-partners.csv', rows);
+  toast('Partners exported', 'success');
+}
+
+/* ================= Packages (gateway view) ================= */
+function renderPackages(){
+  document.getElementById('pkg-body').innerHTML = PACKAGES.map(p => `
+    <tr>
+      <td><span class="credits-num">${esc(p.label)}</span></td>
+      <td>${esc(fmtMoney(p.price))}</td>
+      <td>${esc(p.tag)}</td>
+    </tr>`).join('');
+}
+
+/* ================= Payment gateway ================= */
+function loadGateway(){
+  const c = getPayConfig();
+  document.getElementById('pg-provider').value = c.provider || 'paystack';
+  document.getElementById('pg-currency').value = c.currency || 'GHS';
+  document.getElementById('pg-key').value = c.publicKey || '';
+  document.getElementById('pg-secret').value = c.secretKey || '';
+  document.getElementById('pg-business').value = c.business || '';
+  renderGatewayStatus();
+}
+async function saveGateway(){
+  const cfg = {
+    provider:  document.getElementById('pg-provider').value,
+    currency:  document.getElementById('pg-currency').value,
+    publicKey: document.getElementById('pg-key').value.trim(),
+    secretKey: document.getElementById('pg-secret').value.trim(),
+    business:  document.getElementById('pg-business').value.trim(),
+  };
+  if(/sk_(live|test)_/i.test(cfg.publicKey)){
+    toast('That looks like a SECRET key in the Public Key box — move it to the Secret Key field.');
+    return;
+  }
+  if(cfg.secretKey && !/^sk_/i.test(cfg.secretKey)){
+    toast('Secret keys should start with sk_ — please check it.');
+    return;
+  }
+  try {
+    await VE.adminSavePaymentConfig({
+      provider: cfg.provider, currency: cfg.currency,
+      key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business
+    });
+    _paycfg = cfg;
+    toast('Payment settings saved', 'success');
+    renderGatewayStatus();
+  } catch(e){ toast(e.message || 'Could not save.', 'error'); }
+}
+function toggleSecret(){
+  const inp = document.getElementById('pg-secret');
+  const btn = document.getElementById('pg-secret-toggle');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+}
+function renderGatewayStatus(){
+  const k = (getPayConfig().publicKey || '');
+  const el = document.getElementById('pg-status');
+  if(!k)                       el.innerHTML = `<span class="pill none">Not configured</span>`;
+  else if(/^pk_live_/.test(k)) el.innerHTML = `<span class="pill live">Live · receiving payments</span>`;
+  else if(/^pk_test_/.test(k)) el.innerHTML = `<span class="pill expired">Test mode</span>`;
+  else                         el.innerHTML = `<span class="pill expired">Custom key set</span>`;
+}
+
+/* ================= Actions ================= */
+async function grantCredits(email){
+  const raw = prompt('Add how many predictions to ' + email + '?\n(Use 9999 for unlimited)');
+  if(raw == null) return;
+  const add = parseInt(raw, 10);
+  if(isNaN(add)){ toast('Enter a valid number.'); return; }
+  try { await VE.adminGrantCredits(email, add); toast('Added ' + add + ' credits to ' + email, 'success'); await loadAll(); }
+  catch(e){ toast(e.message || 'Could not add credits.', 'error'); }
+}
+async function deleteUser(email){
+  if(!confirm('Delete member ' + email + '?\nThis removes their account and credits (transaction history is kept).')) return;
+  try { await VE.adminDeleteUser(email); toast('Deleted ' + email); await loadAll(); }
+  catch(e){ toast(e.message || 'Could not delete.', 'error'); }
+}
+
+/* ================= CSV export ================= */
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function exportUsers(){
+  const users = getUsers(), credits = getCredits();
+  const rows = [['Name','Email','Plan','PlanEnd','Credits','Ref']];
+  Object.keys(users).forEach(e => {
+    const u = users[e];
+    rows.push([u.name||'', e, u.plan||'', u.planEnd ? new Date(u.planEnd).toISOString() : '', credits[e]||0, u.ref||'']);
+  });
+  downloadCSV('virtualedge-members.csv', rows);
+  toast('Members exported', 'success');
+}
+function exportTx(){
+  const rows = [['Date','Email','Package','Amount','Predictions','Reference']];
+  getPurchases().forEach(p => rows.push([p.date||'', p.email||'', p.pkg||'', parsePrice(p.pkg), p.preds||'', p.ref||'']));
+  downloadCSV('virtualedge-transactions.csv', rows);
+  toast('Transactions exported', 'success');
+}
+
+/* ================= Refresh / gate ================= */
+/* ================================================================
+   SEND A PREDICTION (admin)
+   Upload a screenshot → Gemini reads the matches & odds → choose a
+   winner per match → push into a member's ve_pushed[email] queue.
+   Picks are attributed to "Admin" and surface in that member's
+   dashboard the next time they get a prediction for those teams.
+   ================================================================ */
+/* Screenshot scanning runs server-side (/api/scan); the Gemini key stays on the server. */
+
+let sendShot = '', detected = [], picks = {}, scanToken = 0;
+
+/* Populate the target-account dropdown with every member */
+function populateAccounts(){
+  const sel = document.getElementById('s-account');
+  if(!sel) return;
+  const users = getUsers();
+  const emails = Object.keys(users).sort((a,b) => (users[a].name||a).localeCompare(users[b].name||b));
+  if(!emails.length){
+    sel.innerHTML = `<option value="" disabled selected>No member accounts yet</option>`;
+    return;
+  }
+  sel.innerHTML = emails.map(e => `<option value="${esc(e)}">${esc(users[e].name || e)} — ${esc(e)}</option>`).join('');
+}
+
+function onFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    sendShot = ev.target.result;
+    document.getElementById('prev-img').src = sendShot;
+    document.getElementById('send-fields').style.display = 'block';
+    document.getElementById('drop').style.display = 'none';
+    scanShot(sendShot);
+  };
+  r.readAsDataURL(file);
+}
+
+function setScan(state, text){
+  const box = document.getElementById('scan-stat');
+  box.className = 'scanline ' + state;
+  document.getElementById('scan-spin').style.display = state === 'busy' ? 'block' : 'none';
+  document.getElementById('scan-txt').textContent = text;
+}
+
+async function scanShot(dataUrl){
+  detected = []; picks = {};
+  document.getElementById('matches-list').innerHTML = '';
+  document.getElementById('matches-head').style.display = 'none';
+  document.getElementById('add-match').style.display = 'none';
+  setScan('busy', 'Reading screenshot…');
+  const my = ++scanToken;
+  let teams = null;
+  try { teams = await scanWithGemini(dataUrl); }
+  catch(err){ console.warn('scan failed', err); teams = null; }
+  if(my !== scanToken) return;
+  applyScan(teams);
+}
+
+async function scanWithGemini(dataUrl){
+  const r = await VE.scan(dataUrl);
+  return (r && r.matches && r.matches.length) ? r.matches : null;
+}
+
+function titleCase(s){ return s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()).trim(); }
+
+function applyScan(matches){
+  detected = (Array.isArray(matches) ? matches : []).map(m => ({
+    home: m.home || '', away: m.away || '', odds: m.odds || { home:null, draw:null, away:null }
+  }));
+  picks = {};
+  if(detected.length){
+    setScan('ok', detected.length > 1 ? `✓ Found ${detected.length} matches — choose a winner for each` : '✓ Match detected — choose a winner');
+  } else {
+    detected = [{ home:'', away:'', odds:{ home:null, draw:null, away:null } }];
+    setScan('warn', "Couldn't read the matches — type them in below.");
+  }
+  renderMatches();
+}
+
+/* Render every detected match as a row with a winner selector */
+function renderMatches(){
+  document.getElementById('matches-head').style.display = detected.length ? 'block' : 'none';
+  document.getElementById('add-match').style.display = 'block';
+  const list = document.getElementById('matches-list');
+  list.innerHTML = detected.map((m, i) => {
+    const sel = picks[i];
+    const homeLbl = (m.home || 'Home').length > 14 ? (m.home || 'Home').slice(0,13)+'…' : (m.home || 'Home');
+    const awayLbl = (m.away || 'Away').length > 14 ? (m.away || 'Away').slice(0,13)+'…' : (m.away || 'Away');
+    return `
+      <div class="match-row ${sel?'chosen':''}" data-i="${i}">
+        <div class="mr-teams">
+          <input class="mr-in" value="${esc(m.home)}" placeholder="Home team" autocomplete="off"
+                 oninput="setTeam(${i},'home',this.value)">
+          <span class="mr-vs">VS</span>
+          <input class="mr-in" value="${esc(m.away)}" placeholder="Away team" autocomplete="off"
+                 oninput="setTeam(${i},'away',this.value)">
+          <button class="mr-rm" title="Remove match" onclick="removeMatch(${i})">✕</button>
+        </div>
+        <div class="mr-outs">
+          <button class="ocm ${sel==='home'?'on':''}" onclick="selectOut(${i},'home')">${esc(homeLbl)}<small>Win</small></button>
+          <button class="ocm ${sel==='draw'?'on':''}" onclick="selectOut(${i},'draw')">Draw<small>X</small></button>
+          <button class="ocm ${sel==='away'?'on':''}" onclick="selectOut(${i},'away')">${esc(awayLbl)}<small>Win</small></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* Update a team name without re-rendering (keeps input focus) */
+function setTeam(i, side, val){
+  if(!detected[i]) return;
+  detected[i][side] = val;
+  const btns = document.querySelectorAll(`.match-row[data-i="${i}"] .ocm`);
+  if(btns.length){
+    const lbl = (val.trim() || (side==='home'?'Home':'Away'));
+    const short = lbl.length > 14 ? lbl.slice(0,13)+'…' : lbl;
+    const target = side==='home' ? btns[0] : btns[2];
+    target.childNodes[0].nodeValue = short;
+  }
+}
+/* Toggle the winner for a match (click again to clear) */
+function selectOut(i, out){
+  picks[i] = (picks[i] === out) ? undefined : out;
+  if(picks[i] === undefined) delete picks[i];
+  const row = document.querySelector(`.match-row[data-i="${i}"]`);
+  if(row){
+    row.classList.toggle('chosen', !!picks[i]);
+    row.querySelectorAll('.ocm').forEach((b, idx) => {
+      const map = ['home','draw','away'];
+      b.classList.toggle('on', picks[i] === map[idx]);
+    });
+  }
+}
+function addMatchRow(){
+  detected.push({ home:'', away:'', odds:{ home:null, draw:null, away:null } });
+  renderMatches();
+}
+function removeMatch(i){
+  detected.splice(i,1);
+  const np = {};
+  Object.keys(picks).forEach(k => {
+    const n = +k;
+    if(n < i) np[n] = picks[k];
+    else if(n > i) np[n-1] = picks[k];
+  });
+  picks = np;
+  if(!detected.length) detected.push({ home:'', away:'', odds:{ home:null, draw:null, away:null } });
+  renderMatches();
+}
+
+async function sendPrediction(){
+  const email = document.getElementById('s-account').value;
+  if(!email){ toast('Select the account to send it to.'); return; }
+
+  const objs = [];
+  for(let i=0; i<detected.length; i++){
+    const out = picks[i];
+    if(!out) continue;
+    const home = (detected[i].home || '').trim();
+    const away = (detected[i].away || '').trim();
+    if(!home || !away){ toast(`Match ${i+1}: enter both team names.`); return; }
+    if(home.toLowerCase() === away.toLowerCase()){ toast(`Match ${i+1}: teams must differ.`); return; }
+    const label = out === 'home' ? home + ' Win' : out === 'away' ? away + ' Win' : 'Draw';
+    objs.push({
+      home, away, out, label,
+      odds: (detected[i].odds && detected[i].odds[out]) || null
+    });
+  }
+  if(!objs.length){ toast('Choose a winner for at least one match.'); return; }
+
+  try {
+    await VE.adminSendPicks(email, objs);
+    toast(`${objs.length} pick${objs.length>1?'s':''} sent → ${email}`, 'success');
+    resetSend();
+    await loadAll();
+  } catch(e){ toast(e.message || 'Could not send picks.', 'error'); }
+}
+
+function resetSend(){
+  sendShot = ''; detected = []; picks = {};
+  const fi = document.getElementById('file-input'); if(fi) fi.value = '';
+  document.getElementById('prev-img').src = '';
+  document.getElementById('send-fields').style.display = 'none';
+  document.getElementById('drop').style.display = 'flex';
+  document.getElementById('matches-list').innerHTML = '';
+  document.getElementById('matches-head').style.display = 'none';
+  document.getElementById('add-match').style.display = 'none';
+  document.getElementById('scan-stat').className = 'scanline';
+}
+
+/* ---- Sent picks log (all senders — admin oversight) ---- */
+function fmtDateTime(ts){
+  const d = new Date(ts);
+  if(isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' · ' +
+         d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function senderName(p){
+  if(p.fromName) return p.fromName;
+  if((p.from || '') === 'ADMIN') return 'Admin';
+  const partner = getPartners().find(x => x.code === p.from);
+  return partner ? partner.name : (p.from || '—');
+}
+function getSentPicks(){
+  const users = getUsers();
+  return _picks.map(p => ({ ...p, accName: (users[p.email] && users[p.email].name) || p.email }));
+}
+function renderSentPicks(){
+  const rows = getSentPicks();
+  const pending = rows.filter(r => !r.used).length;
+  document.getElementById('sent-count').textContent =
+    rows.length + (pending ? ' · ' + pending + ' pending' : '');
+  const sb = document.getElementById('nav-sent-badge');
+  if(sb){ sb.textContent = pending; sb.style.display = pending ? 'inline-block' : 'none'; }
+  const body = document.getElementById('sent-body');
+  if(!rows.length){
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">No picks sent yet. Use “Send a Prediction”.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const statusPill = r.used
+      ? `<span class="pill active">Reflected</span>`
+      : `<span class="pill pending">Pending</span>`;
+    const oddStr = r.odds ? ` <span style="color:var(--sulfur)">@ ${r.odds}</span>` : '';
+    const action = r.used
+      ? ''
+      : `<button class="xbtn" onclick="cancelPick(${r.id})">Cancel</button>`;
+    return `
+      <tr>
+        <td><div class="name">${esc(r.home)} <span style="color:var(--ash-dim)">vs</span> ${esc(r.away)}</div></td>
+        <td><span class="pick-tag">${esc(r.label)}</span>${oddStr}</td>
+        <td><div class="name">${esc(r.accName)}</div><div class="email">${esc(r.email)}</div></td>
+        <td>${esc(senderName(r))}</td>
+        <td>${esc(fmtDateTime(r.date))}</td>
+        <td>${statusPill}</td>
+        <td>${action}</td>
+      </tr>`;
+  }).join('');
+}
+async function cancelPick(id){
+  if(!confirm('Cancel this pending pick? It will no longer reflect in the member\'s account.')) return;
+  try { await VE.adminCancelPick(id); toast('Pick cancelled'); await loadAll(); }
+  catch(e){ toast(e.message || 'Could not cancel.', 'error'); }
+}
+
+/* Drag & drop onto the upload zone */
+(function(){
+  const d = document.getElementById('drop');
+  if(!d) return;
+  d.addEventListener('dragover', e => { e.preventDefault(); d.style.borderColor = 'var(--crimson)'; });
+  d.addEventListener('dragleave', () => { d.style.borderColor = ''; });
+  d.addEventListener('drop', e => {
+    e.preventDefault(); d.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if(file && file.type.startsWith('image/')) onFile({ target: { files: [file] } });
+  });
+})();
+
+function refresh(){ renderStats(); renderUsers(); renderTx(); renderPartners(); renderSentPicks(); }
+
+async function tryUnlock(){
+  const v = document.getElementById('gate-input').value;
+  try {
+    await VE.adminLogin(v);
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('gate-err').textContent = '';
+    loadAll();
+  } catch(e){
+    document.getElementById('gate-err').textContent = e.message || 'Wrong passcode.';
+    document.getElementById('gate-input').value = '';
+  }
+}
+function lock(){ VE.signOutAdmin(); location.reload(); }
+function signOut(){ VE.signOutAdmin(); window.location.href = 'index.html'; }
+
+/* ---- Toast ---- */
+let toastT;
+function toast(msg, type=''){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' '+type : '');
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ---- Init ---- */
+(function init(){
+  if(VE.isAdmin()){
+    document.getElementById('gate').style.display = 'none';
+    loadAll();
+  } else {
+    document.getElementById('gate-input').focus();
+  }
+})();
+</script>
+</body>
+</html>
