@@ -560,6 +560,26 @@
           </div>
 
           <div class="form-grid">
+            <div class="field">
+              <label>Provider</label>
+              <select id="pg-provider" onchange="onProviderChange()">
+                <option value="paystack">Paystack</option>
+                <option value="flutterwave">Flutterwave</option>
+                <option value="cowrie">Cowrie</option>
+                <option value="manual">Manual / Mobile Money</option>
+              </select>
+              <div class="hint" id="pg-provider-hint">The gateway that powers checkout. It's also auto-detected from your key prefix.</div>
+            </div>
+            <div class="field">
+              <label>Currency</label>
+              <select id="pg-currency">
+                <option value="GHS">GHS — Ghana Cedi</option>
+                <option value="NGN">NGN — Nigerian Naira</option>
+                <option value="USD">USD — US Dollar</option>
+                <option value="KES">KES — Kenyan Shilling</option>
+                <option value="ZAR">ZAR — South African Rand</option>
+              </select>
+            </div>
             <div class="field full">
               <label>Public Key</label>
               <div style="position:relative">
@@ -990,16 +1010,17 @@ function renderPackages(){
 /* ================= Payment gateway ================= */
 function loadGateway(){
   const c = getPayConfig();
+  document.getElementById('pg-provider').value = c.provider || 'paystack';
+  document.getElementById('pg-currency').value = c.currency || 'GHS';
   document.getElementById('pg-key').value = c.publicKey || '';
   document.getElementById('pg-secret').value = c.secretKey || '';
   document.getElementById('pg-business').value = c.business || '';
   renderGatewayStatus();
 }
 async function saveGateway(){
-  const prev = getPayConfig() || {};
   const cfg = {
-    provider:  prev.provider || 'paystack',
-    currency:  prev.currency || 'GHS',
+    provider:  document.getElementById('pg-provider').value,
+    currency:  document.getElementById('pg-currency').value,
     publicKey: document.getElementById('pg-key').value.trim(),
     secretKey: document.getElementById('pg-secret').value.trim(),
     business:  document.getElementById('pg-business').value.trim(),
@@ -1025,11 +1046,31 @@ function toggleSecret(){
 function renderGatewayStatus(){
   const c = getPayConfig();
   const k = (c.publicKey || '');
+  const provider = (document.getElementById('pg-provider') || {}).value || c.provider || 'paystack';
+  const name = provider === 'flutterwave' ? 'Flutterwave'
+             : provider === 'cowrie'      ? 'Cowrie'
+             : provider === 'manual'      ? 'Manual / MoMo'
+             : 'Paystack';
   const el = document.getElementById('pg-status');
-  if(!k)                  el.innerHTML = `<span class="pill none">Not configured</span>`;
-  else if(/_live_/i.test(k)) el.innerHTML = `<span class="pill live">Live · receiving payments</span>`;
-  else if(/_test_/i.test(k)) el.innerHTML = `<span class="pill expired">Test mode</span>`;
-  else                    el.innerHTML = `<span class="pill live">Key set</span>`;
+  if(provider === 'manual')   el.innerHTML = `<span class="pill live">${name} · active</span>`;
+  else if(!k)                 el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
+  else if(/_live_/i.test(k))  el.innerHTML = `<span class="pill live">${name} · Live · receiving payments</span>`;
+  else if(/_test_/i.test(k))  el.innerHTML = `<span class="pill expired">${name} · Test mode</span>`;
+  else                        el.innerHTML = `<span class="pill live">${name} · key set</span>`;
+}
+function onProviderChange(){
+  const provider = document.getElementById('pg-provider').value;
+  const hint = document.getElementById('pg-provider-hint');
+  if(hint){
+    hint.innerHTML = provider === 'flutterwave'
+      ? 'Flutterwave checkout. Paste your <b>FLWPUBK-…</b> / <b>FLWSECK-…</b> keys below.'
+      : provider === 'cowrie'
+      ? 'Cowrie checkout (via your server). Paste your <b>cowrie_pk_…</b> / <b>cowrie_sk_…</b> keys below.'
+      : provider === 'manual'
+      ? 'No gateway. The buyer sees your <b>Business / Display Name</b> as payment instructions, then enters a transaction ID you confirm manually.'
+      : 'Paystack checkout. Paste your <b>pk_…</b> / <b>sk_…</b> keys below.';
+  }
+  renderGatewayStatus();
 }
 
 /* ================= Actions ================= */

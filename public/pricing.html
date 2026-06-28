@@ -342,7 +342,9 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
-      PAY_PROVIDER = (window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || cfg.provider || 'paystack';
+      PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
+        ? cfg.provider
+        : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
     }
   } catch(e){}
 })();
