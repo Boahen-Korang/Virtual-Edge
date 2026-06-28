@@ -315,7 +315,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://js.paystack.co/v2/inline.js"></script>
+<script src="gateways.js"></script>
 <script src="api.js"></script>
 <script>
 /* ================================================================
@@ -325,6 +325,7 @@
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
+let PAY_PROVIDER = 'paystack';
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
@@ -341,6 +342,7 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
+      if(cfg.provider) PAY_PROVIDER = cfg.provider;
     }
   } catch(e){}
 })();
@@ -405,10 +407,10 @@ function buyPackage(e, i){
   selectPackage(i);
   const pkg = PACKAGES[i];
 
-  // Demo mode if key not set
-  if(PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
+  // Demo mode if a key-based gateway has no key configured
+  if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
     const ok = confirm(
-      `⚠️ Demo mode — Paystack key not configured.\n\n` +
+      `⚠️ Demo mode — payment gateway key not configured.\n\n` +
       `Package: ${pkg.label}\nPredictions: ${pkg.tag}\n\n` +
       `Click OK to simulate a successful payment.`
     );
@@ -419,29 +421,29 @@ function buyPackage(e, i){
   document.getElementById('paying-overlay').classList.add('show');
   const ref = 'VE_' + Date.now() + '_' + Math.random().toString(36).slice(2,6).toUpperCase();
 
-  const popup = new PaystackPop();
-  popup.newTransaction({
-    key:       PAYSTACK_PUBLIC_KEY,
-    email:     SESSION.email,
-    amount:    pkg.price * 100,
-    currency:  PAY_CURRENCY,
-    reference: ref,
-    metadata: {
+  VEPay.checkout(
+    PAY_PROVIDER,
+    { key: PAYSTACK_PUBLIC_KEY, business: PAY_BUSINESS },
+    {
+      email: SESSION.email,
       name: SESSION.name,
-      business: PAY_BUSINESS,
-      package: pkg.label,
-      predictions: pkg.tag,
+      amount: pkg.price,
+      currency: PAY_CURRENCY,
+      reference: ref,
+      metadata: { name: SESSION.name, business: PAY_BUSINESS, package: pkg.label, predictions: pkg.tag },
     },
-    onSuccess: (tx) => onPaymentSuccess(pkg, (tx && tx.reference) || ref),
-    onCancel: () => {
-      document.getElementById('paying-overlay').classList.remove('show');
-      toast('Payment cancelled.');
-    },
-    onError: (err) => {
-      document.getElementById('paying-overlay').classList.remove('show');
-      toast((err && err.message) || 'Payment error. Please try again.', 'error');
+    {
+      onSuccess: (reference) => onPaymentSuccess(pkg, reference || ref),
+      onCancel: () => {
+        document.getElementById('paying-overlay').classList.remove('show');
+        toast('Payment cancelled.');
+      },
+      onError: (msg) => {
+        document.getElementById('paying-overlay').classList.remove('show');
+        toast(msg || 'Payment error. Please try again.', 'error');
+      },
     }
-  });
+  );
 }
 
 async function onPaymentSuccess(pkg, ref){

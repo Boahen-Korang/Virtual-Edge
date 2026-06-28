@@ -562,11 +562,12 @@
           <div class="form-grid">
             <div class="field">
               <label>Provider</label>
-              <select id="pg-provider">
+              <select id="pg-provider" onchange="onProviderChange()">
                 <option value="paystack">Paystack</option>
-                <option value="flutterwave">Flutterwave (coming soon)</option>
+                <option value="flutterwave">Flutterwave</option>
+                <option value="manual">Manual / Mobile Money</option>
               </select>
-              <div class="hint">Checkout currently runs on Paystack.</div>
+              <div class="hint" id="pg-provider-hint">Choose which gateway powers checkout. Paystack &amp; Flutterwave use the public/secret keys below; Manual collects a transaction ID you confirm yourself.</div>
             </div>
             <div class="field">
               <label>Currency</label>
@@ -1023,12 +1024,14 @@ async function saveGateway(){
     secretKey: document.getElementById('pg-secret').value.trim(),
     business:  document.getElementById('pg-business').value.trim(),
   };
-  if(/sk_(live|test)_/i.test(cfg.publicKey)){
-    toast('That looks like a SECRET key in the Public Key box — move it to the Secret Key field.');
-    return;
-  }
-  if(cfg.secretKey && !/^sk_/i.test(cfg.secretKey)){
-    if(!confirm('This secret key doesn\'t start with "sk_", which is unusual for Paystack (normally sk_live_… or sk_test_…).\n\nMake sure you didn\'t paste the Public Key here by mistake.\n\nSave it anyway?')) return;
+  if(cfg.provider === 'paystack'){
+    if(/sk_(live|test)_/i.test(cfg.publicKey)){
+      toast('That looks like a SECRET key in the Public Key box — move it to the Secret Key field.');
+      return;
+    }
+    if(cfg.secretKey && !/^sk_/i.test(cfg.secretKey)){
+      if(!confirm('This secret key doesn\'t start with "sk_", which is unusual for Paystack (normally sk_live_… or sk_test_…).\n\nMake sure you didn\'t paste the Public Key here by mistake.\n\nSave it anyway?')) return;
+    }
   }
   try {
     await VE.adminSavePaymentConfig({
@@ -1048,12 +1051,34 @@ function toggleSecret(){
   btn.textContent = show ? 'Hide' : 'Show';
 }
 function renderGatewayStatus(){
-  const k = (getPayConfig().publicKey || '');
+  const c = getPayConfig();
+  const k = (c.publicKey || '');
+  const provider = c.provider || 'paystack';
+  const name = provider === 'flutterwave' ? 'Flutterwave' : provider === 'manual' ? 'Manual / MoMo' : 'Paystack';
   const el = document.getElementById('pg-status');
-  if(!k)                       el.innerHTML = `<span class="pill none">Not configured</span>`;
-  else if(/^pk_live_/.test(k)) el.innerHTML = `<span class="pill live">Live · receiving payments</span>`;
-  else if(/^pk_test_/.test(k)) el.innerHTML = `<span class="pill expired">Test mode</span>`;
-  else                         el.innerHTML = `<span class="pill expired">Custom key set</span>`;
+  if(provider === 'manual'){
+    el.innerHTML = `<span class="pill live">${name} · active</span>`;
+  } else if(!k){
+    el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
+  } else if(/_live_|^FLWPUBK-(?!TEST)/i.test(k)){
+    el.innerHTML = `<span class="pill live">${name} · Live · receiving payments</span>`;
+  } else if(/_test_|TEST/i.test(k)){
+    el.innerHTML = `<span class="pill expired">${name} · Test mode</span>`;
+  } else {
+    el.innerHTML = `<span class="pill expired">${name} · key set</span>`;
+  }
+}
+function onProviderChange(){
+  const provider = document.getElementById('pg-provider').value;
+  const hint = document.getElementById('pg-provider-hint');
+  if(hint){
+    hint.innerHTML = provider === 'flutterwave'
+      ? 'Flutterwave checkout. Paste your <b>FLWPUBK-…</b> public key and <b>FLWSECK-…</b> secret key below.'
+      : provider === 'manual'
+      ? 'No gateway. The buyer is shown your <b>Business / Display Name</b> field as payment instructions (put your MoMo number there), then enters a transaction ID you confirm manually.'
+      : 'Paystack checkout. Paste your <b>pk_…</b> public key and <b>sk_…</b> secret key below.';
+  }
+  renderGatewayStatus();
 }
 
 /* ================= Actions ================= */

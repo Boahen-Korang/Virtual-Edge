@@ -227,7 +227,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- Paystack inline JS -->
-<script src="https://js.paystack.co/v2/inline.js"></script>
+<script src="gateways.js"></script>
 <script src="api.js"></script>
 <script>
 /* ================================================================
@@ -235,6 +235,9 @@
    The Paystack public key is loaded from the server config.
    ================================================================ */
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
+let PAY_CURRENCY = 'GHS';
+let PAY_BUSINESS = 'VirtualEdge';
+let PAY_PROVIDER = 'paystack';
 
 let pendingUser = {};    // Holds registration data before payment
 let selectedPlan = {};   // Holds chosen plan
@@ -347,44 +350,42 @@ function startPayment(){
 
   const ref = 'VE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
 
-  // Safety: if Paystack key not configured, simulate for demo
-  if(PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
+  // Safety: if a key-based gateway has no key configured, simulate for demo
+  if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
     btn.disabled = false; btn.textContent = 'Pay with Paystack →';
     const proceed = confirm(
-      '⚠️ Demo mode: Paystack key not configured.\n\n' +
-      `Plan: ${selectedPlan.label}\nAmount: GHS ${selectedPlan.price}\n\n` +
+      '⚠️ Demo mode: payment gateway key not configured.\n\n' +
+      `Plan: ${selectedPlan.label}\nAmount: ${PAY_CURRENCY} ${selectedPlan.price}\n\n` +
       'Click OK to simulate a successful payment.'
     );
     if(proceed) onPaymentSuccess(ref);
     return;
   }
 
-  const popup = new PaystackPop();
-  popup.newTransaction({
-    key:       PAYSTACK_PUBLIC_KEY,
-    email:     pendingUser.email,
-    amount:    selectedPlan.price * 100, // kobo/pesewas
-    currency:  'GHS',
-    reference: ref,
-    metadata: {
-      name:    pendingUser.name,
-      plan:    selectedPlan.plan,
-      custom_fields: [
-        { display_name: 'Plan', variable_name: 'plan', value: selectedPlan.label }
-      ]
+  const reset = () => { btn.disabled = false; btn.textContent = 'Pay with Paystack →'; };
+  VEPay.checkout(
+    PAY_PROVIDER,
+    { key: PAYSTACK_PUBLIC_KEY, business: PAY_BUSINESS },
+    {
+      email: pendingUser.email,
+      name: pendingUser.name,
+      amount: selectedPlan.price,
+      currency: PAY_CURRENCY,
+      reference: ref,
+      metadata: {
+        name: pendingUser.name,
+        plan: selectedPlan.plan,
+        custom_fields: [
+          { display_name: 'Plan', variable_name: 'plan', value: selectedPlan.label }
+        ]
+      },
     },
-    onSuccess: function(tx){ onPaymentSuccess((tx && tx.reference) || ref); },
-    onCancel:  function(){
-      btn.disabled = false;
-      btn.textContent = 'Pay with Paystack →';
-      toast('Payment cancelled.');
-    },
-    onError:   function(err){
-      btn.disabled = false;
-      btn.textContent = 'Pay with Paystack →';
-      toast((err && err.message) || 'Payment error. Please try again.', 'error');
+    {
+      onSuccess: (reference) => onPaymentSuccess(reference || ref),
+      onCancel: () => { reset(); toast('Payment cancelled.'); },
+      onError: (msg) => { reset(); toast(msg || 'Payment error. Please try again.', 'error'); },
     }
-  });
+  );
 }
 
 async function onPaymentSuccess(ref){
@@ -413,7 +414,12 @@ async function onPaymentSuccess(ref){
   // Load the Paystack public key from the server payment config
   try{
     const cfg = await VE.paymentConfigPublic();
-    if(cfg && cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
+    if(cfg){
+      if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
+      if(cfg.currency) PAY_CURRENCY = cfg.currency;
+      if(cfg.business) PAY_BUSINESS = cfg.business;
+      if(cfg.provider) PAY_PROVIDER = cfg.provider;
+    }
   }catch(e){}
 
   // Capture partner referral code (?ref=CODE) if a partner link landed here
