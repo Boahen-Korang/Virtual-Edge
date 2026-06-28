@@ -585,9 +585,9 @@
             </div>
             <div class="field full">
               <label>Secret Key <span style="color:var(--crimson)">· keep private</span></label>
-              <div style="display:flex;gap:8px">
-                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="flex:1">
-                <button class="mini ghost" type="button" onclick="toggleSecret()" id="pg-secret-toggle">Show</button>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
+                <button class="mini ghost" type="button" onclick="toggleSecret()" id="pg-secret-toggle" style="flex:0 0 auto;padding:8px 11px;min-width:58px;text-align:center">Show</button>
               </div>
               <div class="hint">Used to <b>verify</b> payments and issue refunds — this belongs on a <b>server/backend</b>, never in a public page. Stored here only for your reference; the checkout does <b>not</b> send it to the browser.</div>
             </div>
