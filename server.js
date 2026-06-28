@@ -515,7 +515,8 @@ app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
     const r = await fetch(COWRIE_BASE + '/api/charges', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: Number(amount), currency: currency || 'GHS', email: email || '', metadata: metadata || {} }),
+      // Cowrie amounts are in minor units (pesewas), like Paystack — GHS 400 = 40000
+      body: JSON.stringify({ amount: Math.round(Number(amount) * 100), currency: currency || 'GHS', email: email || '', metadata: metadata || {} }),
     });
     const data = await r.json().catch(() => null);
     charge = data && data.charge;
