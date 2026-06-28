@@ -130,87 +130,14 @@
               <button class="pw-toggle" onclick="togglePw('r-pw')">👁</button>
             </div>
           </div>
-          <button class="btn btn-primary btn-full" onclick="goToPlans()">Continue to plan selection →</button>
+          <button class="btn btn-primary btn-full" id="reg-btn" onclick="goToPlans()">Create account →</button>
           <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:14px">
             Already have an account? <a href="#" onclick="showTab('login')">Log in</a>
           </p>
         </div>
       </div>
 
-      <!-- STEP 1: Choose plan -->
-      <div class="step" id="step-plan">
-        <div style="margin-bottom:18px">
-          <button class="btn btn-ghost btn-sm" onclick="goBack('step-auth')" style="padding:5px 0;border:none;color:var(--muted)">&larr; Back</button>
-          <h3 style="margin:8px 0 4px;font-size:18px">Choose your plan</h3>
-          <p style="font-size:13px;color:var(--muted);margin:0">Weekly billing · cancel anytime</p>
-        </div>
-        <div class="plan-cards" id="plan-cards">
-
-          <div class="plan-card" data-plan="basic" data-price="50" data-label="Starter" onclick="selectPlan(this)">
-            <div class="radio"></div>
-            <div>
-              <div class="pname">Starter</div>
-              <div class="pfeats">100 results · Scorelines · 1X2 rates</div>
-            </div>
-            <div class="pr">
-              <div class="pprice">GHS 50</div>
-              <div style="font-size:10px;color:var(--muted)">/week</div>
-            </div>
-          </div>
-
-          <div class="plan-card sel" data-plan="pro" data-price="100" data-label="Pro" onclick="selectPlan(this)">
-            <div class="radio"></div>
-            <div>
-              <div class="pname">Pro <span class="badge badge-green" style="font-size:9px">Popular</span></div>
-              <div class="pfeats">Full history · All stats · Charts · Filters</div>
-            </div>
-            <div class="pr">
-              <div class="pprice">GHS 100</div>
-              <div style="font-size:10px;color:var(--muted)">/week</div>
-            </div>
-          </div>
-
-          <div class="plan-card" data-plan="vip" data-price="200" data-label="Elite" onclick="selectPlan(this)">
-            <div class="radio"></div>
-            <div>
-              <div class="pname">Elite <span class="badge badge-amber" style="font-size:9px">VIP</span></div>
-              <div class="pfeats">Pro + Match Lookup + CSV Export</div>
-            </div>
-            <div class="pr">
-              <div class="pprice">GHS 200</div>
-              <div style="font-size:10px;color:var(--muted)">/week</div>
-            </div>
-          </div>
-
-        </div>
-        <button class="btn btn-primary btn-full mt14" onclick="goToPayment()">Continue to payment →</button>
-        <div class="paystack-note mt8">
-          <span class="pn-icon">🔒</span>
-          <span>Payments secured by Paystack · MoMo, Card &amp; more accepted</span>
-        </div>
-      </div>
-
-      <!-- STEP 2: Pay -->
-      <div class="step" id="step-pay">
-        <button class="btn btn-ghost btn-sm" onclick="goBack('step-plan')" style="padding:5px 0;border:none;color:var(--muted);margin-bottom:14px">&larr; Back</button>
-        <h3 style="margin:0 0 4px;font-size:18px">Payment</h3>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 18px">Review your order then pay securely via Paystack.</p>
-        <div class="plan-summary" id="pay-summary"></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6">
-          By completing payment you agree to our <a href="#">Terms of Service</a>.
-          Your subscription runs for 7 days from today. You will not be automatically charged —
-          renew manually from your dashboard.
-        </div>
-        <button class="btn btn-primary btn-full" id="pay-btn" onclick="startPayment()">
-          Pay with Paystack →
-        </button>
-        <div class="paystack-note mt8">
-          <span class="pn-icon">🛡</span>
-          <span>Secured by Paystack · Your card/MoMo details are never stored by us</span>
-        </div>
-      </div>
-
-      <!-- STEP 3: Success -->
+      <!-- STEP: Success -->
       <div class="step" id="step-done">
         <div class="success-check">
           <div class="check">✅</div>
@@ -294,12 +221,13 @@ async function doLogin(){
   }
 }
 
-/* ---- Register step 1: validate & move to plan selection ---- */
-function goToPlans(){
+/* ---- Register: create the account, then go straight to the packages page ---- */
+async function goToPlans(){
   const name  = document.getElementById('r-name').value.trim();
   const email = document.getElementById('r-email').value.trim();
   const pw    = document.getElementById('r-pw').value;
   const errEl = document.getElementById('reg-err');
+  const btn   = document.getElementById('reg-btn');
   errEl.style.display = 'none';
 
   if(!name || !email || !pw){
@@ -312,11 +240,16 @@ function goToPlans(){
     errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display=''; return;
   }
 
-  pendingUser = { name, email, pw };
-  showStep('step-plan');
-
-  // Default selection: Pro
-  selectedPlan = { plan:'pro', price:100, label:'Pro' };
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const refCode = localStorage.getItem('ve_ref') || '';
+    await VE.register(name, email, pw, refCode);
+    localStorage.removeItem('ve_ref');
+    window.location.href = 'pricing.html';
+  } catch(e){
+    btn.disabled = false; btn.textContent = 'Create account →';
+    errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='';
+  }
 }
 
 /* ---- Plan selection ---- */
