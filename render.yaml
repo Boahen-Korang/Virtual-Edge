@@ -26,6 +26,6 @@ services:
 
 databases:
   - name: virtualedge-db
-    plan: free
+    plan: basic-256mb              # paid (~$6/mo): persistent, daily backups, no 30-day expiry
     databaseName: virtualedge
     user: virtualedge
