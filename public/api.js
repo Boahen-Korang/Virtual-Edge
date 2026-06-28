@@ -106,6 +106,10 @@
 
     /* ---- public ---- */
     paymentConfigPublic: () => req('GET', '/payment-config/public'),
+
+    /* ---- Cowrie gateway (proxied server-side; no CORS, secret stays on server) ---- */
+    cowrieInit: (body) => req('POST', '/pay/cowrie/init', body),
+    cowrieStatus: (reference) => req('GET', '/pay/cowrie/status?reference=' + encodeURIComponent(reference)),
   };
 
   window.VE = VE;

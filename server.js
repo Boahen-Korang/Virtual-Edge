@@ -481,6 +481,66 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business });
 }));
 
+/* ===================== Cowrie gateway proxy ===================== */
+/* Cowrie has no CORS, and its secret key must stay server-side, so the
+   browser talks to these endpoints instead of Cowrie directly.
+   Public (no auth): used during signup before the member account exists.
+   Crediting still happens through the authenticated purchase routes once
+   this proxy confirms Cowrie reports the charge as paid. */
+const COWRIE_BASE = (process.env.COWRIE_API_BASE || 'https://cowrie-gateway.onrender.com').replace(/\/+$/, '');
+
+async function cowrieKey() {
+  const { rows } = await query('SELECT secret_key, public_key FROM payment_config WHERE id=1');
+  const r = rows[0] || {};
+  return (r.secret_key && r.secret_key.trim()) || (r.public_key && r.public_key.trim()) || '';
+}
+
+// create a charge → returns { reference, checkoutUrl }
+app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
+  const key = await cowrieKey();
+  if (!key) return res.status(503).json({ error: 'Payment gateway is not configured.' });
+  const { amount, currency, email, metadata } = req.body || {};
+  if (!amount || isNaN(amount)) return res.status(400).json({ error: 'A valid amount is required.' });
+  let charge;
+  try {
+    const r = await fetch(COWRIE_BASE + '/api/charges', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: Number(amount), currency: currency || 'GHS', email: email || '', metadata: metadata || {} }),
+    });
+    const data = await r.json().catch(() => null);
+    charge = data && data.charge;
+    if (!r.ok || !charge || !charge.reference) return res.status(502).json({ error: 'Could not start payment.' });
+  } catch (e) {
+    return res.status(502).json({ error: 'Could not reach the payment gateway.' });
+  }
+  res.json({
+    reference: charge.reference,
+    checkoutUrl: COWRIE_BASE + '/checkout?reference=' + encodeURIComponent(charge.reference),
+  });
+}));
+
+// poll a charge → returns { status, paid, failed }
+app.get('/api/pay/cowrie/status', wrap(async (req, res) => {
+  const key = await cowrieKey();
+  if (!key) return res.status(503).json({ error: 'Payment gateway is not configured.' });
+  const reference = String(req.query.reference || '');
+  if (!reference) return res.status(400).json({ error: 'reference is required.' });
+  let charge;
+  try {
+    const r = await fetch(COWRIE_BASE + '/api/charges/' + encodeURIComponent(reference), {
+      headers: { 'Authorization': 'Bearer ' + key },
+    });
+    const data = await r.json().catch(() => null);
+    charge = data && data.charge;
+    if (!r.ok || !charge) return res.status(502).json({ error: 'Could not check payment.' });
+  } catch (e) {
+    return res.status(502).json({ error: 'Could not reach the payment gateway.' });
+  }
+  const status = charge.status || 'pending';
+  res.json({ status, paid: status === 'success' || !!charge.paidAt, failed: status === 'failed' });
+}));
+
 /* ============================ static site ============================ */
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

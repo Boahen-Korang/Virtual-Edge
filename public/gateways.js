@@ -80,6 +80,53 @@
       },
     },
 
+    /* ---- Cowrie (REST API, hosted checkout via server proxy) ----
+       The browser can't call Cowrie directly (no CORS) and must not see the
+       secret key, so this goes through /api/pay/cowrie/* on our own server. */
+    cowrie: {
+      label: 'Cowrie',
+      sdk: null,
+      async pay(cfg, o, h) {
+        // open the popup synchronously (inside the click) so mobile doesn't block it
+        const win = window.open('', 'cowrie_pay', 'width=480,height=720');
+        let init;
+        try {
+          init = await window.VE.cowrieInit({
+            amount: o.amount, currency: o.currency, email: o.email, metadata: o.metadata,
+          });
+        } catch (e) {
+          try { win && win.close(); } catch (_) {}
+          return h.onError((e && e.message) || 'Could not start payment.');
+        }
+        if (win) win.location = init.checkoutUrl;
+        else window.location.href = init.checkoutUrl; // popup blocked → full redirect
+
+        const ref = init.reference;
+        let stopped = false;
+        const stop = (fn, arg) => {
+          if (stopped) return; stopped = true;
+          clearInterval(timer); clearTimeout(killer);
+          document.removeEventListener('visibilitychange', onVis);
+          try { win && !win.closed && win.close(); } catch (_) {}
+          fn(arg);
+        };
+        async function check() {
+          try {
+            const s = await window.VE.cowrieStatus(ref);
+            if (s.paid) stop(h.onSuccess, ref);
+            else if (s.failed) stop(h.onError, 'Payment failed.');
+          } catch (_) { /* keep polling */ }
+        }
+        const onVis = () => { if (!document.hidden) check(); };
+        document.addEventListener('visibilitychange', onVis);
+        const timer = setInterval(() => {
+          if (win && win.closed) check().then(() => { if (!stopped) stop(h.onCancel); });
+          else check();
+        }, 3000);
+        const killer = setTimeout(() => { if (!stopped) stop(h.onCancel); }, 10 * 60 * 1000);
+      },
+    },
+
     /* ---- Manual / Mobile Money (no SDK) ----
        Uses the "business" field as the payment instructions to show. */
     manual: {
@@ -103,6 +150,14 @@
     /* list of { id, label } for the admin dropdown */
     list: () => Object.keys(GATEWAYS).map((id) => ({ id, label: GATEWAYS[id].label })),
     has: (id) => !!GATEWAYS[id],
+
+    /* pick the gateway from the API key's prefix (keys are self-identifying) */
+    providerForKey(key) {
+      key = String(key || '');
+      if (/^cowrie_/i.test(key)) return 'cowrie';
+      if (/^FLWPUBK/i.test(key)) return 'flutterwave';
+      return 'paystack';
+    },
 
     async checkout(provider, cfg, opts, handlers) {
       const g = GATEWAYS[provider] || GATEWAYS.paystack;

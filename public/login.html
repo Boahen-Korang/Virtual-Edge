@@ -418,7 +418,7 @@ async function onPaymentSuccess(ref){
       if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
-      if(cfg.provider) PAY_PROVIDER = cfg.provider;
+      PAY_PROVIDER = (window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || cfg.provider || 'paystack';
     }
   }catch(e){}
 
