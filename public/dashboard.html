@@ -491,13 +491,10 @@ let screenshotDataUrl = '';
 let scanToken = 0;
 
 /* ============================================================
-   GEMINI VISION CONFIG  (free tier — good accuracy, no cost)
-   Paste your Google AI Studio key below to enable Gemini scanning.
-   ⚠️  This key is visible in client-side code. In Google AI Studio,
-       restrict it (HTTP referrer = your domain) + set a low quota.
-   Gemini is the only scanner — a valid key is required for scanning.
+   SCREENSHOT SCANNER
+   Runs server-side via POST /api/scan — the API key lives only in
+   the server's GEMINI_API_KEY env var and never reaches the browser.
    ============================================================ */
-/* Screenshot scanning runs server-side (/api/scan); the Gemini key stays on the server. */
 const geminiEnabled  = () => true;
 
 /* ---- File select ---- */
@@ -542,7 +539,7 @@ async function scanScreenshot(dataUrl){
   document.getElementById('inp-away').value = '';
   document.getElementById('shuffle-btn').style.display = 'none';
 
-  document.getElementById('ti-label').textContent = 'AI is reading your screenshot…';
+  document.getElementById('ti-label').textContent = 'VirtualEdge is reading your screenshot…';
   setScanStatus('busy', 'Analyzing…');
 
   /* Tag this scan so a slow earlier scan can't overwrite a newer one */
