@@ -1028,8 +1028,7 @@ async function saveGateway(){
     return;
   }
   if(cfg.secretKey && !/^sk_/i.test(cfg.secretKey)){
-    toast('Secret keys should start with sk_ — please check it.');
-    return;
+    if(!confirm('This secret key doesn\'t start with "sk_", which is unusual for Paystack (normally sk_live_… or sk_test_…).\n\nMake sure you didn\'t paste the Public Key here by mistake.\n\nSave it anyway?')) return;
   }
   try {
     await VE.adminSavePaymentConfig({
