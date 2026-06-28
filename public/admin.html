@@ -560,37 +560,18 @@
           </div>
 
           <div class="form-grid">
-            <div class="field">
-              <label>Provider</label>
-              <select id="pg-provider" onchange="onProviderChange()">
-                <option value="paystack">Paystack</option>
-                <option value="flutterwave">Flutterwave</option>
-                <option value="manual">Manual / Mobile Money</option>
-              </select>
-              <div class="hint" id="pg-provider-hint">Choose which gateway powers checkout. Paystack &amp; Flutterwave use the public/secret keys below; Manual collects a transaction ID you confirm yourself.</div>
-            </div>
-            <div class="field">
-              <label>Currency</label>
-              <select id="pg-currency">
-                <option value="GHS">GHS — Ghana Cedi</option>
-                <option value="NGN">NGN — Nigerian Naira</option>
-                <option value="USD">USD — US Dollar</option>
-                <option value="KES">KES — Kenyan Shilling</option>
-                <option value="ZAR">ZAR — South African Rand</option>
-              </select>
-            </div>
             <div class="field full">
               <label>Public Key</label>
               <div style="position:relative">
-                <input id="pg-key" type="text" placeholder="pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" style="width:100%;padding-right:62px">
+                <input id="pg-key" type="text" placeholder="Paste your payment public/API key" autocomplete="off" spellcheck="false" style="width:100%;padding-right:62px">
                 <button type="button" onclick="copyField('pg-key','Public key')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
               </div>
-              <div class="hint">Find it in your Paystack dashboard → Settings → API Keys & Webhooks. Use <b>pk_live_…</b> to receive real money, or <b>pk_test_…</b> while testing. This key powers the checkout popup.</div>
+              <div class="hint">The public/API key from your payment provider. This key powers the checkout popup. Any key is accepted.</div>
             </div>
             <div class="field full">
               <label>Secret Key <span style="color:var(--crimson)">· keep private</span></label>
               <div style="position:relative">
-                <input id="pg-secret" type="password" placeholder="Paste your Paystack secret key (sk_live_… or sk_test_…)" autocomplete="off" spellcheck="false" style="width:100%;padding-right:112px">
+                <input id="pg-secret" type="password" placeholder="Paste your payment secret key" autocomplete="off" spellcheck="false" style="width:100%;padding-right:112px">
                 <button type="button" onclick="copyField('pg-secret','Secret key')" style="position:absolute;right:58px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
                 <button type="button" onclick="toggleSecret()" id="pg-secret-toggle" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Show</button>
               </div>
@@ -599,7 +580,7 @@
             <div class="field full">
               <label>Business / Display Name</label>
               <input id="pg-business" type="text" placeholder="VirtualEdge" autocomplete="off">
-              <div class="hint">Shown to customers on the Paystack popup.</div>
+              <div class="hint">Shown to customers on the checkout popup.</div>
             </div>
           </div>
 
@@ -1009,30 +990,21 @@ function renderPackages(){
 /* ================= Payment gateway ================= */
 function loadGateway(){
   const c = getPayConfig();
-  document.getElementById('pg-provider').value = c.provider || 'paystack';
-  document.getElementById('pg-currency').value = c.currency || 'GHS';
   document.getElementById('pg-key').value = c.publicKey || '';
   document.getElementById('pg-secret').value = c.secretKey || '';
   document.getElementById('pg-business').value = c.business || '';
   renderGatewayStatus();
 }
 async function saveGateway(){
+  const prev = getPayConfig() || {};
   const cfg = {
-    provider:  document.getElementById('pg-provider').value,
-    currency:  document.getElementById('pg-currency').value,
+    provider:  prev.provider || 'paystack',
+    currency:  prev.currency || 'GHS',
     publicKey: document.getElementById('pg-key').value.trim(),
     secretKey: document.getElementById('pg-secret').value.trim(),
     business:  document.getElementById('pg-business').value.trim(),
   };
-  if(cfg.provider === 'paystack'){
-    if(/sk_(live|test)_/i.test(cfg.publicKey)){
-      toast('That looks like a SECRET key in the Public Key box — move it to the Secret Key field.');
-      return;
-    }
-    if(cfg.secretKey && !/^sk_/i.test(cfg.secretKey)){
-      if(!confirm('This secret key doesn\'t start with "sk_", which is unusual for Paystack (normally sk_live_… or sk_test_…).\n\nMake sure you didn\'t paste the Public Key here by mistake.\n\nSave it anyway?')) return;
-    }
-  }
+  // Any key is accepted — no format validation.
   try {
     await VE.adminSavePaymentConfig({
       provider: cfg.provider, currency: cfg.currency,
@@ -1053,32 +1025,11 @@ function toggleSecret(){
 function renderGatewayStatus(){
   const c = getPayConfig();
   const k = (c.publicKey || '');
-  const provider = c.provider || 'paystack';
-  const name = provider === 'flutterwave' ? 'Flutterwave' : provider === 'manual' ? 'Manual / MoMo' : 'Paystack';
   const el = document.getElementById('pg-status');
-  if(provider === 'manual'){
-    el.innerHTML = `<span class="pill live">${name} · active</span>`;
-  } else if(!k){
-    el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
-  } else if(/_live_|^FLWPUBK-(?!TEST)/i.test(k)){
-    el.innerHTML = `<span class="pill live">${name} · Live · receiving payments</span>`;
-  } else if(/_test_|TEST/i.test(k)){
-    el.innerHTML = `<span class="pill expired">${name} · Test mode</span>`;
-  } else {
-    el.innerHTML = `<span class="pill expired">${name} · key set</span>`;
-  }
-}
-function onProviderChange(){
-  const provider = document.getElementById('pg-provider').value;
-  const hint = document.getElementById('pg-provider-hint');
-  if(hint){
-    hint.innerHTML = provider === 'flutterwave'
-      ? 'Flutterwave checkout. Paste your <b>FLWPUBK-…</b> public key and <b>FLWSECK-…</b> secret key below.'
-      : provider === 'manual'
-      ? 'No gateway. The buyer is shown your <b>Business / Display Name</b> field as payment instructions (put your MoMo number there), then enters a transaction ID you confirm manually.'
-      : 'Paystack checkout. Paste your <b>pk_…</b> public key and <b>sk_…</b> secret key below.';
-  }
-  renderGatewayStatus();
+  if(!k)                  el.innerHTML = `<span class="pill none">Not configured</span>`;
+  else if(/_live_/i.test(k)) el.innerHTML = `<span class="pill live">Live · receiving payments</span>`;
+  else if(/_test_/i.test(k)) el.innerHTML = `<span class="pill expired">Test mode</span>`;
+  else                    el.innerHTML = `<span class="pill live">Key set</span>`;
 }
 
 /* ================= Actions ================= */
