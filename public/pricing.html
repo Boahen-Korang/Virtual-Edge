@@ -315,7 +315,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="api.js"></script>
 <script>
 /* ================================================================
@@ -419,25 +419,29 @@ function buyPackage(e, i){
   document.getElementById('paying-overlay').classList.add('show');
   const ref = 'VE_' + Date.now() + '_' + Math.random().toString(36).slice(2,6).toUpperCase();
 
-  const handler = PaystackPop.setup({
-    key:      PAYSTACK_PUBLIC_KEY,
-    email:    SESSION.email,
-    amount:   pkg.price * 100,
-    currency: PAY_CURRENCY,
-    ref,
+  const popup = new PaystackPop();
+  popup.newTransaction({
+    key:       PAYSTACK_PUBLIC_KEY,
+    email:     SESSION.email,
+    amount:    pkg.price * 100,
+    currency:  PAY_CURRENCY,
+    reference: ref,
     metadata: {
       name: SESSION.name,
       business: PAY_BUSINESS,
       package: pkg.label,
       predictions: pkg.tag,
     },
-    callback:  r => onPaymentSuccess(pkg, r.reference),
-    onClose: () => {
+    onSuccess: (tx) => onPaymentSuccess(pkg, (tx && tx.reference) || ref),
+    onCancel: () => {
       document.getElementById('paying-overlay').classList.remove('show');
       toast('Payment cancelled.');
+    },
+    onError: (err) => {
+      document.getElementById('paying-overlay').classList.remove('show');
+      toast((err && err.message) || 'Payment error. Please try again.', 'error');
     }
   });
-  handler.openIframe();
 }
 
 async function onPaymentSuccess(pkg, ref){
