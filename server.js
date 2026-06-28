@@ -155,6 +155,15 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   const planEnd = req.body.planEnd ? Number(req.body.planEnd) : null;
   const plan = req.body.plan != null ? String(req.body.plan) : null;
 
+  // Idempotency: if this reference was already credited (e.g. by the webhook), don't credit twice.
+  if (reference) {
+    const dup = await query('SELECT 1 FROM purchases WHERE reference=$1', [reference]);
+    if (dup.rows.length) {
+      const c0 = await query('SELECT amount FROM credits WHERE email=$1', [req.user.email]);
+      return res.json({ ok: true, duplicate: true, credits: c0.rows[0] ? c0.rows[0].amount : 0 });
+    }
+  }
+
   await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
     [req.user.email, pkg, reference, predictions]);
   if (predictions > 0) {
@@ -539,6 +548,64 @@ app.get('/api/pay/cowrie/status', wrap(async (req, res) => {
   }
   const status = charge.status || 'pending';
   res.json({ status, paid: status === 'success' || !!charge.paidAt, failed: status === 'failed' });
+}));
+
+// Cowrie webhook — server-to-server payment notification.
+// We don't trust the payload's contents: we use it only as a trigger, then
+// RE-VERIFY the charge directly with Cowrie (with our secret) before crediting.
+// That makes it secure even without a signature. Idempotent per charge reference.
+// Always returns 200 so Cowrie doesn't retry endlessly on cases we intentionally skip.
+app.post('/api/pay/cowrie/webhook', wrap(async (req, res) => {
+  const b = req.body || {};
+  const reference =
+    b.reference ||
+    (b.charge && b.charge.reference) ||
+    (b.data && (b.data.reference || (b.data.charge && b.data.charge.reference))) ||
+    '';
+  if (!reference) return res.status(200).json({ ok: true, ignored: 'no reference' });
+
+  const key = await cowrieKey();
+  if (!key) return res.status(200).json({ ok: true, ignored: 'gateway not configured' });
+
+  let charge;
+  try {
+    const r = await fetch(COWRIE_BASE + '/api/charges/' + encodeURIComponent(reference), {
+      headers: { 'Authorization': 'Bearer ' + key },
+    });
+    const data = await r.json().catch(() => null);
+    charge = data && data.charge;
+  } catch (e) {
+    return res.status(200).json({ ok: true, ignored: 'verify failed' });
+  }
+  if (!charge) return res.status(200).json({ ok: true, ignored: 'charge not found' });
+
+  const paid = charge.status === 'success' || !!charge.paidAt;
+  if (!paid) return res.status(200).json({ ok: true, ignored: 'not paid' });
+
+  const email = norm(charge.email || charge.customerEmail || '');
+  const meta = charge.metadata || {};
+  const credits = parseInt(meta.credits, 10) || 0;
+  const pkg = String(meta.package || ('Cowrie ' + (charge.amount != null ? charge.amount : '')));
+  if (!email) return res.status(200).json({ ok: true, ignored: 'no email on charge' });
+
+  // idempotency: credit a given charge only once
+  const dup = await query('SELECT 1 FROM purchases WHERE reference=$1', [reference]);
+  if (dup.rows.length) return res.status(200).json({ ok: true, duplicate: true });
+
+  // only credit a real, existing member
+  const u = await query('SELECT 1 FROM users WHERE email=$1', [email]);
+  if (!u.rows.length) return res.status(200).json({ ok: true, ignored: 'no matching member' });
+
+  await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
+    [email, pkg, reference, credits]);
+  if (credits > 0) {
+    await query(
+      `INSERT INTO credits (email,amount) VALUES ($1,$2)
+       ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
+      [email, credits]
+    );
+  }
+  res.status(200).json({ ok: true, credited: credits });
 }));
 
 /* ============================ static site ============================ */

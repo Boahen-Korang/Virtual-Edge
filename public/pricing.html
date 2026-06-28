@@ -432,7 +432,7 @@ function buyPackage(e, i){
       amount: pkg.price,
       currency: PAY_CURRENCY,
       reference: ref,
-      metadata: { name: SESSION.name, business: PAY_BUSINESS, package: pkg.label, predictions: pkg.tag },
+      metadata: { name: SESSION.name, business: PAY_BUSINESS, package: pkg.label, predictions: pkg.tag, credits: (pkg.preds === 999 ? 9999 : pkg.preds), email: SESSION.email },
     },
     {
       onSuccess: (reference) => onPaymentSuccess(pkg, reference || ref),
