@@ -510,6 +510,18 @@ footer a:hover { color: var(--green); }
 }
 @keyframes ve-spin { to { transform: rotate(360deg); } }
 
+/* Circular logo with a spinning ring around it */
+.logo-spin { position: relative; width: 76px; height: 76px; }
+.logo-spin::before {
+  content: ""; position: absolute; inset: -9px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.12); border-top-color: var(--green);
+  animation: ve-spin .8s linear infinite;
+}
+.logo-spin img {
+  position: absolute; inset: 0; width: 76px; height: 76px;
+  border-radius: 50%; object-fit: cover; display: block;
+}
+
 /* ---- Progress bar ---- */
 .progress-bar { height: 5px; background: var(--border); border-radius: 10px; overflow: hidden; }
 .progress-bar .fill { height: 100%; background: var(--green); border-radius: 10px; transition: width .3s; }
