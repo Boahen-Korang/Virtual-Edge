@@ -411,6 +411,7 @@
             </tr></thead>
             <tbody id="users-body"></tbody>
           </table>
+          <div id="users-pager"></div>
         </div>
       </div>
     </section>
@@ -467,6 +468,7 @@
             <thead><tr><th>Match</th><th>Pick</th><th>Account</th><th>From</th><th>Sent</th><th>Status</th><th></th></tr></thead>
             <tbody id="sent-body"></tbody>
           </table>
+          <div id="sent-pager"></div>
         </div>
       </div>
     </section>
@@ -518,6 +520,7 @@
             </tr></thead>
             <tbody id="partners-body"></tbody>
           </table>
+          <div id="partners-pager"></div>
         </div>
       </div>
     </section>
@@ -539,6 +542,7 @@
             </tr></thead>
             <tbody id="tx-body"></tbody>
           </table>
+          <div id="tx-pager"></div>
         </div>
       </div>
     </section>
@@ -876,6 +880,39 @@ function renderOverview(){
 }
 
 /* ================= Users ================= */
+/* ================= Pagination (client-side) ================= */
+const PER_PAGE = 10;
+const _pg   = { users:1, tx:1, partners:1, sent:1 };
+const _lastQ = { users:'', tx:'', partners:'', sent:'' };
+function pageItems(arr, key, q){
+  if(q !== undefined && _lastQ[key] !== q){ _lastQ[key] = q; _pg[key] = 1; }   // reset on new search
+  const total = Math.max(1, Math.ceil(arr.length / PER_PAGE));
+  _pg[key] = Math.min(Math.max(1, _pg[key]), total);
+  const start = (_pg[key] - 1) * PER_PAGE;
+  return { items: arr.slice(start, start + PER_PAGE), total };
+}
+function pgBtn(key, n, label, disabled){
+  return `<button onclick="gotoPage('${key}',${n})" ${disabled?'disabled':''}
+    style="min-width:38px;height:34px;padding:0 12px;border:1px solid rgba(242,233,230,.18);border-radius:8px;background:rgba(20,10,11,.5);color:var(--ash);font-family:var(--ui);font-size:13px;cursor:pointer;${disabled?'opacity:.35;cursor:not-allowed':''}">${label}</button>`;
+}
+function renderPager(id, key, total){
+  const el = document.getElementById(id); if(!el) return;
+  if(total <= 1){ el.innerHTML = ''; return; }
+  const p = _pg[key];
+  el.innerHTML = `<div style="display:flex;gap:10px;justify-content:center;align-items:center;padding:16px 0 2px">
+      ${pgBtn(key, p-1, '‹ Prev', p<=1)}
+      <span style="font-family:var(--ui);font-size:12px;letter-spacing:.05em;color:var(--ash)">Page ${p} / ${total}</span>
+      ${pgBtn(key, p+1, 'Next ›', p>=total)}
+    </div>`;
+}
+function gotoPage(key, n){
+  _pg[key] = n;
+  if(key==='users') renderUsers();
+  else if(key==='tx') renderTx();
+  else if(key==='partners') renderPartners();
+  else if(key==='sent') renderSentPicks();
+}
+
 function renderUsers(){
   const users = getUsers(), credits = getCredits(), now = Date.now();
   const q = (document.getElementById('users-search').value || '').toLowerCase().trim();
@@ -885,9 +922,10 @@ function renderUsers(){
 
   document.getElementById('users-count').textContent = rows.length;
   const body = document.getElementById('users-body');
-  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No members yet.</div></td></tr>`; return; }
+  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No members yet.</div></td></tr>`; renderPager('users-pager','users',1); return; }
 
-  body.innerHTML = rows.map(r => {
+  const { items, total } = pageItems(rows, 'users', q);
+  body.innerHTML = items.map(r => {
     const isActive = r.planEnd && r.planEnd > now;
     const status = (r.plan == null && !r.planEnd)
       ? `<span class="pill none">No plan</span>`
@@ -907,6 +945,7 @@ function renderUsers(){
         </div></td>
       </tr>`;
   }).join('');
+  renderPager('users-pager', 'users', total);
 }
 
 /* ================= Transactions ================= */
@@ -921,9 +960,10 @@ function renderTx(){
 
   document.getElementById('tx-count').textContent = rows.length;
   const body = document.getElementById('tx-body');
-  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No transactions yet.</div></td></tr>`; return; }
+  if(!rows.length){ body.innerHTML = `<tr><td colspan="6"><div class="empty">No transactions yet.</div></td></tr>`; renderPager('tx-pager','tx',1); return; }
 
-  body.innerHTML = rows.map(p => {
+  const { items, total } = pageItems(rows, 'tx', q);
+  body.innerHTML = items.map(p => {
     const name = users[p.email] ? users[p.email].name : '';
     return `
       <tr>
@@ -935,6 +975,7 @@ function renderTx(){
         <td><span class="ref">${esc(p.ref || '—')}</span></td>
       </tr>`;
   }).join('');
+  renderPager('tx-pager', 'tx', total);
 }
 
 /* ================= Partners ================= */
@@ -956,10 +997,12 @@ function renderPartners(){
   const body = document.getElementById('partners-body');
   if(!partners.length){
     body.innerHTML = `<tr><td colspan="7"><div class="empty">No partners yet. Add one above, or wait for applications.</div></td></tr>`;
+    renderPager('partners-pager','partners',1);
     return;
   }
 
-  body.innerHTML = partners.map(p => {
+  const { items, total } = pageItems(partners, 'partners', q);
+  body.innerHTML = items.map(p => {
     const status = p.status || 'approved';
     const refs = partnerMembers(p.code).length;
     const rev  = partnerRevenue(p.code);
@@ -993,6 +1036,7 @@ function renderPartners(){
         <td><div class="row-actions">${actions}</div></td>
       </tr>`;
   }).join('');
+  renderPager('partners-pager', 'partners', total);
 }
 
 const pById = code => (getPartners().find(x => x.code === code) || {});
@@ -1411,9 +1455,11 @@ function renderSentPicks(){
   const body = document.getElementById('sent-body');
   if(!rows.length){
     body.innerHTML = `<tr><td colspan="7"><div class="empty">No picks sent yet. Use “Send a Prediction”.</div></td></tr>`;
+    renderPager('sent-pager','sent',1);
     return;
   }
-  body.innerHTML = rows.map(r => {
+  const { items, total } = pageItems(rows, 'sent');
+  body.innerHTML = items.map(r => {
     const statusPill = r.used
       ? `<span class="pill active">Reflected</span>`
       : `<span class="pill pending">Pending</span>`;
@@ -1432,6 +1478,7 @@ function renderSentPicks(){
         <td>${action}</td>
       </tr>`;
   }).join('');
+  renderPager('sent-pager', 'sent', total);
 }
 async function cancelPick(id){
   if(!confirm('Cancel this pending pick? It will no longer reflect in the member\'s account.')) return;
