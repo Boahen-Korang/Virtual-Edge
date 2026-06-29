@@ -148,7 +148,7 @@
           <div class="form-group">
             <label class="form-label">SportyBet Account Number</label>
             <div style="display:flex;gap:8px">
-              <select class="form-select" id="sporty-cc" style="flex:0 0 132px">
+              <select class="form-select" id="sporty-cc" style="flex:0 0 132px" onchange="updateSportyHint()">
                 <option value="+233">🇬🇭 +233</option>
                 <option value="+234">🇳🇬 +234</option>
                 <option value="+254">🇰🇪 +254</option>
@@ -289,6 +289,7 @@ async function goToPlans(){
     localStorage.removeItem('ve_ref');
     // First-time only: ask them to connect their SportyBet account before continuing
     showStep('step-sporty');
+    updateSportyHint();
   } catch(e){
     btn.disabled = false; btn.textContent = 'Create account →';
     errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='';
@@ -296,13 +297,36 @@ async function goToPlans(){
 }
 
 /* ---- Connect SportyBet account (first-time signup) ---- */
+/* Strict local-number length per country (digits as typed, incl. leading 0) */
+const CC_RULES = {
+  '+233': { len: 10, name: 'Ghana',        ph: '0244123456'  },
+  '+234': { len: 11, name: 'Nigeria',      ph: '08031234567' },
+  '+254': { len: 10, name: 'Kenya',        ph: '0712345678'  },
+  '+255': { len: 10, name: 'Tanzania',     ph: '0712345678'  },
+  '+260': { len: 10, name: 'Zambia',       ph: '0977123456'  },
+  '+27':  { len: 10, name: 'South Africa', ph: '0821234567'  },
+};
+function updateSportyHint(){
+  const cc = document.getElementById('sporty-cc').value;
+  const rule = CC_RULES[cc] || { len: 10, ph: '' };
+  const inp = document.getElementById('sporty-num');
+  inp.maxLength = rule.len;
+  inp.placeholder = rule.ph || '';
+  inp.value = inp.value.replace(/\D/g, '').slice(0, rule.len);  // keep digits within the new limit
+}
 async function connectSporty(){
-  const cc    = document.getElementById('sporty-cc').value;
-  let   num   = document.getElementById('sporty-num').value.replace(/\D/g, '').replace(/^0+/, '');
-  const errEl = document.getElementById('sporty-err');
+  const cc     = document.getElementById('sporty-cc').value;
+  const rule   = CC_RULES[cc] || { len: 10, name: 'your country' };
+  const digits = document.getElementById('sporty-num').value.replace(/\D/g, '');
+  const errEl  = document.getElementById('sporty-err');
   errEl.style.display = 'none';
-  if(!num){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display=''; return; }
-  const account = cc + num;   // full international number, e.g. +233244123456
+  if(!digits){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display=''; return; }
+  if(digits.length !== rule.len){
+    errEl.textContent = `${rule.name} numbers must be exactly ${rule.len} digits.`;
+    errEl.style.display = '';
+    return;
+  }
+  const account = cc + digits.replace(/^0/, '');   // international, e.g. +233244123456
 
   // show the loading screen
   document.getElementById('sporty-form').style.display = 'none';
