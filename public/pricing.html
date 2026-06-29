@@ -381,7 +381,7 @@ PACKAGES.forEach((p, i) => {
       <div class="pkg-desc">${p.desc}</div>
       <div class="pkg-tags">
         <span class="pkg-tag">${p.tag}</span>
-        <span class="pkg-tag">No expiry</span>
+        ${p.preds === 999 ? '<span class="pkg-tag">Expires in 24h</span>' : '<span class="pkg-tag">No expiry</span>'}
       </div>
       <button class="pkg-btn" onclick="buyPackage(event, ${i})">
         <span class="arrow">→</span> GET ${p.label.toUpperCase()}

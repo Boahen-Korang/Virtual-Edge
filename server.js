@@ -430,6 +430,19 @@ app.post('/api/admin/credits', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true, credits: rows[0] ? rows[0].amount : 0 });
 }));
 
+// grant a member unlimited predictions for N days (default 1; large N = effectively permanent)
+app.post('/api/admin/unlimited', auth('admin'), wrap(async (req, res) => {
+  const email = norm(req.body.email);
+  const days = req.body.days != null ? Number(req.body.days) : 1;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+  if (isNaN(days) || days < 0) return res.status(400).json({ error: 'days must be a non-negative number.' });
+  const u = await query('SELECT 1 FROM users WHERE email=$1', [email]);
+  if (!u.rows.length) return res.status(404).json({ error: 'Member not found.' });
+  const until = days === 0 ? null : Date.now() + Math.round(days * DAY_MS);
+  const { rows } = await query('UPDATE users SET unlimited_until=$2 WHERE email=$1 RETURNING unlimited_until', [email, until]);
+  res.json({ ok: true, unlimitedUntil: rows[0].unlimited_until ? Number(rows[0].unlimited_until) : null });
+}));
+
 // delete a member (keeps their transaction history)
 app.delete('/api/admin/users/:email', auth('admin'), wrap(async (req, res) => {
   const email = norm(req.params.email);
