@@ -7,6 +7,7 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool, query, initSchema } = require('./db');
@@ -31,8 +32,19 @@ if (ANTHROPIC_API_KEY) {
   }
 }
 
+app.set('trust proxy', 1);   // Render runs behind a proxy — needed for correct client IPs
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+/* ----------------------------- rate limiting ----------------------------- */
+const rlMsg = (m) => ({ windowMs: m.windowMs, max: m.max, standardHeaders: true, legacyHeaders: false, message: { error: m.msg } });
+const authLimiter  = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 40, msg: 'Too many attempts. Please wait a few minutes and try again.' }));
+const loginLimiter = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 12, msg: 'Too many login attempts. Please wait 15 minutes.' }));
+const scanLimiter  = rateLimit(rlMsg({ windowMs: 60 * 1000,      max: 30, msg: 'Scanning too fast — wait a moment and try again.' }));
+app.use('/api/auth', authLimiter);               // register + login
+app.use('/api/admin/login', loginLimiter);       // passcode brute-force guard
+app.use('/api/partner/login', loginLimiter);
+app.use('/api/scan', scanLimiter);               // protect the paid scanner from abuse
 
 /* Best-effort transactional email via Resend (HTTP API — Render blocks SMTP).
    No-ops if RESEND_API_KEY / MAIL_FROM aren't set, so callers never fail on email. */
@@ -247,11 +259,22 @@ app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
 
 // record a purchase + extend plan / add credits
 app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
-  const pkg = String(req.body.pkg || '');
+  let pkg = String(req.body.pkg || '');
   const reference = String(req.body.reference || '');
-  const predictions = parseInt(req.body.predictions, 10) || 0;
+  let predictions = parseInt(req.body.predictions, 10) || 0;
   const planEnd = req.body.planEnd ? Number(req.body.planEnd) : null;
   const plan = req.body.plan != null ? String(req.body.plan) : null;
+
+  // For real Cowrie payments, never trust the client's numbers — re-verify the
+  // charge with the gateway and use ITS amount/credits and confirmation.
+  if (/^cwr_/i.test(reference)) {
+    const v = await verifyCowrieCharge(reference);
+    if (!v) return res.status(502).json({ error: 'Could not verify the payment. Please try again.' });
+    if (!v.paid) return res.status(402).json({ error: 'Payment is not confirmed yet.' });
+    if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
+    predictions = v.credits;     // gateway is the source of truth
+    pkg = v.pkg || pkg;
+  }
 
   // Credit exactly once (atomic; safe against the webhook racing this).
   const r = await creditPurchaseOnce(req.user.email, pkg, reference, predictions);
@@ -526,14 +549,17 @@ app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
 
 app.get('/api/admin/stats', auth('admin'), wrap(async (req, res) => {
   const now = Date.now();
-  const users = await query('SELECT plan_end FROM users');
-  const rev = await query('SELECT pkg FROM purchases');
-  const revenue = rev.rows.reduce((a, r) => a + parsePrice(r.pkg), 0);
+  const [m, a, p, rev] = await Promise.all([
+    query('SELECT COUNT(*)::int AS n FROM users'),
+    query('SELECT COUNT(*)::int AS n FROM users WHERE plan_end > $1', [now]),
+    query('SELECT COUNT(*)::int AS n FROM purchases'),
+    query('SELECT pkg FROM purchases'),   // revenue needs the GHS-label parse (kept in JS)
+  ]);
   res.json({
-    members: users.rows.length,
-    active: users.rows.filter((u) => u.plan_end && Number(u.plan_end) > now).length,
-    purchases: rev.rows.length,
-    revenue,
+    members: m.rows[0].n,
+    active: a.rows[0].n,
+    purchases: p.rows[0].n,
+    revenue: rev.rows.reduce((acc, r) => acc + parsePrice(r.pkg), 0),
   });
 }));
 
@@ -659,6 +685,28 @@ async function cowrieKey() {
   const { rows } = await query('SELECT secret_key, public_key FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   return (r.secret_key && r.secret_key.trim()) || (r.public_key && r.public_key.trim()) || '';
+}
+
+/* Re-verify a Cowrie charge server-side so crediting never trusts the client.
+   Returns { paid, credits, pkg, email } or null if it can't be verified. */
+async function verifyCowrieCharge(reference) {
+  const key = await cowrieKey();
+  if (!key) return null;
+  try {
+    const r = await fetch(COWRIE_BASE + '/api/charges/' + encodeURIComponent(reference), {
+      headers: { 'Authorization': 'Bearer ' + key },
+    });
+    const data = await r.json().catch(() => null);
+    const c = data && data.charge;
+    if (!c) return null;
+    const meta = c.metadata || {};
+    return {
+      paid: c.status === 'success' || !!c.paidAt,
+      credits: parseInt(meta.credits, 10) || 0,
+      pkg: String(meta.package || ('Cowrie ' + (c.amount != null ? c.amount : ''))),
+      email: norm(c.email || c.customerEmail || ''),
+    };
+  } catch (e) { return null; }
 }
 
 // create a charge → returns { reference, checkoutUrl }
