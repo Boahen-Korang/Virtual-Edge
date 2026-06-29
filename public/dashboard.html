@@ -591,9 +591,17 @@ async function scanWithGemini(dataUrl){
 /* All matches found in the current screenshot, and the one currently selected */
 let detectedMatches = [];
 let currentMatch = null;
+/* Matches already predicted from this screenshot — they won't be offered again
+   and the same teams can't be predicted twice. */
+const predictedKeys = new Set();
+const matchKey = (home, away) => normTeam(home) + '|' + normTeam(away);
+function removeDetectedMatch(home, away){
+  detectedMatches = detectedMatches.filter(m => !(teamMatch(m.home, home) && teamMatch(m.away, away)));
+}
 
 /* ---- Apply the scan result: store matches + pick one at random ---- */
 function applyScanResult(matches){
+  predictedKeys.clear();
   detectedMatches = Array.isArray(matches) ? matches : [];
   const shuffleBtn = document.getElementById('shuffle-btn');
 
@@ -663,6 +671,7 @@ function resetUpload(){
   document.getElementById('ti-label').textContent = 'Enter the teams you see in the screenshot';
   detectedMatches = [];
   currentMatch = null;
+  predictedKeys.clear();
 }
 
 /* ============================================================
@@ -681,6 +690,7 @@ function startAnalysis(){
   const away = document.getElementById('inp-away').value.trim();
   if(!home || !away){ toast('Please enter both team names from your screenshot.', 'error'); return; }
   if(home.toLowerCase() === away.toLowerCase()){ toast('Home and away teams must be different.', 'error'); return; }
+  if(predictedKeys.has(matchKey(home, away))){ toast('You already got a prediction for this match — pick another.', 'error'); return; }
 
   if(getCredits() <= 0){
     document.getElementById('no-credits-msg').style.display = 'block';
@@ -742,6 +752,8 @@ function startAnalysis(){
       document.getElementById('scan-img').style.display = 'none';
       document.getElementById('scan-placeholder').style.display = 'grid';
       showResult(generatePrediction(home, away, matchOdds));
+      predictedKeys.add(matchKey(home, away));   // lock this match
+      removeDetectedMatch(home, away);           // drop it from "pick another match"
     }, 500);
   }
 }
@@ -915,8 +927,18 @@ function getAnother(){
   document.getElementById('result-section').style.display = 'none';
   document.getElementById('result-section').innerHTML = '';
   document.getElementById('preview-section').style.display = 'block';
-  /* Offer a fresh random match as a starting point; the user can shuffle/edit */
-  if(detectedMatches.length > 1) pickRandomMatch(false);
+  const sb = document.getElementById('shuffle-btn');
+  /* Move to a not-yet-predicted match; if none remain, clear for a new entry */
+  if(detectedMatches.length){
+    pickRandomMatch(false);
+    if(sb) sb.style.display = detectedMatches.length > 1 ? 'block' : 'none';
+  } else {
+    document.getElementById('inp-home').value = '';
+    document.getElementById('inp-away').value = '';
+    currentMatch = null;
+    if(sb) sb.style.display = 'none';
+    setScanStatus('warn', 'All detected matches used — upload a new screenshot or type a match.');
+  }
   document.getElementById('preview-section').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
