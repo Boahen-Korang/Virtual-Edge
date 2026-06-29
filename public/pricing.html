@@ -302,6 +302,15 @@
   <p>Buy predictions · No expiry · Use anytime</p>
 </div>
 
+<!-- Current balance (so returning users aren't pushed to pay again) -->
+<div id="balance-banner" style="display:none;max-width:560px;margin:0 auto 24px;padding:14px 18px;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,rgba(255,30,60,.09),transparent);align-items:center;gap:14px;flex-wrap:wrap">
+  <div style="flex:1;min-width:0">
+    <div id="balance-text" style="font-weight:800;font-size:15px;color:var(--chalk)"></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:3px">You already have predictions — no need to buy again.</div>
+  </div>
+  <a href="dashboard.html" style="text-decoration:none;white-space:nowrap;flex:0 0 auto;background:var(--green);color:#0A0506;font-weight:800;font-size:13px;padding:11px 18px;border-radius:9px">Go to dashboard →</a>
+</div>
+
 <!-- Package cards -->
 <div class="packages" id="packages-list">
   <!-- rendered by JS -->
@@ -346,6 +355,26 @@ if(!SESSION) throw new Error('redirect');
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
     }
+  } catch(e){}
+})();
+
+/* Show the member's current balance so returning users aren't pushed to pay again */
+(async function loadBalance(){
+  try {
+    const me = await VE.me();
+    const credits = me.credits || 0;
+    const uu = (me.user && me.user.unlimitedUntil) || 0;
+    const unlimited = uu && Date.now() < uu;
+    if(!credits && !unlimited) return;
+    const txt = document.getElementById('balance-text');
+    if(unlimited){
+      const ms = uu - Date.now();
+      const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+      txt.textContent = '✦ Unlimited predictions — ' + (h >= 1 ? h + 'h left' : (m >= 1 ? m + 'm left' : 'expiring soon'));
+    } else {
+      txt.textContent = '⚡ ' + credits + ' prediction' + (credits === 1 ? '' : 's') + ' available';
+    }
+    document.getElementById('balance-banner').style.display = 'flex';
   } catch(e){}
 })();
 
