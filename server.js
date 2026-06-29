@@ -520,9 +520,11 @@ const SCAN_PROMPT =
   'Also read the EXACT 1X2 odds for each match from the three columns headed "1", "X", "2" ' +
   '(column 1 = Home-win, column X = Draw, column 2 = Away-win). They are decimals between 1.01 and 51.00. ' +
   'Transcribe every digit exactly — do not round or estimate. If unsure about a team use "", about an odd use null. ' +
-  'Respond with ONLY compact JSON: {"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}],"instant":true}. ' +
-  'Always return EVERY match you can read in "matches" — that is the main task. In the SAME JSON, set "instant" to true ' +
-  'only if the image clearly shows "Instant Virtuals", "Instant Football" or "Instant" branding/header (usually near the top), otherwise false.';
+  'ALSO transcribe into "header" any title, tab, logo, league name or branding text visible near the TOP of the screenshot, ' +
+  'EXACTLY as written — for example "Instant Virtuals", "Instant Football", "Premier League", "Bundesliga", "La Liga". ' +
+  'If you see no such text, use an empty string. Do NOT put the word "Instant" in "header" unless it is genuinely printed in the image. ' +
+  'Respond with ONLY compact JSON: {"header":"Instant Virtuals","matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}. ' +
+  'Returning EVERY match in "matches" and the exact "header" text are both required.';
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
@@ -532,7 +534,7 @@ const SCAN_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    instant: { type: 'boolean' },
+    header: { type: 'string' },
     matches: {
       type: 'array',
       items: {
@@ -547,7 +549,7 @@ const SCAN_SCHEMA = {
       },
     },
   },
-  required: ['instant', 'matches'],
+  required: ['header', 'matches'],
 };
 
 app.post('/api/scan', auth(), wrap(async (req, res) => {
@@ -597,8 +599,10 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     odds: { home: num(mm.oddsHome), draw: num(mm.oddsDraw), away: num(mm.oddsAway) },
   })).filter((mm) => mm.home || mm.away);
 
-  // whether the screenshot is a SportyBet Instant Virtuals / Instant Football slip
-  const instant = parsed.instant === true || /instant\s*(virtual|football)/i.test(text);
+  // Decide deterministically from the transcribed header text (reliable OCR),
+  // not the model's judgment: it's an Instant slip only if the header says "Instant".
+  const headerText = String(parsed.header || '');
+  const instant = /\binstant\b/i.test(headerText);
 
   res.json({ matches, instant });
 }));
