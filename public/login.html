@@ -158,7 +158,7 @@
         <div id="sporty-done" style="display:none">
           <div class="success-check">
             <div class="check">✅</div>
-            <h3>Sporty account created successfully</h3>
+            <h3>Sporty account connected successfully</h3>
             <p>Your SportyBet account has been connected. A confirmation email is on its way.</p>
           </div>
         </div>
@@ -295,7 +295,7 @@ async function connectSporty(){
     setTimeout(() => {
       document.getElementById('sporty-loading').style.display = 'none';
       document.getElementById('sporty-done').style.display = '';
-      toast('Sporty account created successfully', 'success');
+      toast('Sporty account connected successfully', 'success');
       setTimeout(() => { window.location.href = 'pricing.html'; }, 2000);
     }, 1200);
   } catch(e){
