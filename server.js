@@ -553,7 +553,7 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     // SDK auto-retries 429/5xx; if it still surfaces, tell the client it's busy
     if (e && e.status === 429) return res.status(429).json({ error: 'The scanner is busy (rate limit). Please wait a moment and try again.' });
     console.warn('[scan] Claude error', e && e.status, e && e.message);
-    return res.status(502).json({ error: 'Scan failed', _status: e && e.status, _detail: (e && e.message || '').slice(0, 300) });
+    return res.status(502).json({ error: 'Scan failed' });
   }
 
   let parsed;
