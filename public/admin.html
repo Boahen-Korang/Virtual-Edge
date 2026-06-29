@@ -565,12 +565,20 @@
               <div id="scan-used" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--bone)">—</div>
             </div>
             <div class="field full">
-              <label>Add scans you've funded</label>
+              <label>Estimate from your Anthropic $ balance</label>
+              <div style="display:flex;gap:8px">
+                <input id="scan-usd" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 4.94" style="flex:1;min-width:0">
+                <button class="mini" type="button" onclick="setScansFromUsd()" style="flex:0 0 auto">Set</button>
+              </div>
+              <div class="hint">≈ <span id="scan-per-usd">—</span> scans per $1 on Haiku (~$0.0055 each). Enter your current Anthropic credit and this sets "remaining" to the estimate.</div>
+            </div>
+            <div class="field full">
+              <label>Or add scans manually</label>
               <div style="display:flex;gap:8px">
                 <input id="scan-add" type="number" inputmode="numeric" placeholder="e.g. 1000" style="flex:1;min-width:0">
-                <button class="mini" type="button" onclick="topupScans()" style="flex:0 0 auto">Add</button>
+                <button class="mini ghost" type="button" onclick="topupScans()" style="flex:0 0 auto">Add</button>
               </div>
-              <div class="hint">Each scan costs a fraction of a cent (≈ a few hundred scans per $1 on Haiku). When you top up your Anthropic credits, enter how many scans that covers so this counter stays accurate.</div>
+              <div class="hint">Adds (or, with a negative number, subtracts) from the remaining count.</div>
             </div>
           </div>
         </div>
@@ -707,15 +715,32 @@ async function loadAll(){
 }
 
 /* ---- Screenshot scan meter ---- */
+const SCAN_COST_USD = 0.0055;                 // ~per-scan cost on Haiku (image + prompt in, JSON out)
+const SCANS_PER_USD = Math.round(1 / SCAN_COST_USD);
+let _scanRemaining = 0;
 async function loadScanMeter(){
   try {
     const m = await VE.adminScanUsage();
     const rem = m.remaining || 0, used = m.used || 0;
+    _scanRemaining = rem;
     const remEl = document.getElementById('scan-remaining'); if(remEl) remEl.textContent = rem.toLocaleString();
     const usedEl = document.getElementById('scan-used'); if(usedEl) usedEl.textContent = used.toLocaleString();
     const pill = document.getElementById('scan-pill'); if(pill) pill.textContent = rem.toLocaleString() + ' left';
     const low = document.getElementById('scan-low'); if(low) low.style.display = rem <= 50 ? '' : 'none';
+    const per = document.getElementById('scan-per-usd'); if(per) per.textContent = SCANS_PER_USD.toLocaleString();
   } catch(e){ /* admin-only; ignore if not loaded */ }
+}
+async function setScansFromUsd(){
+  const el = document.getElementById('scan-usd');
+  const usd = parseFloat(el.value);
+  if(isNaN(usd) || usd < 0){ toast('Enter your Anthropic credit balance in $.'); return; }
+  const target = Math.floor(usd / SCAN_COST_USD);
+  try {
+    await VE.adminScanTopup(target - _scanRemaining);   // set remaining to the estimate
+    el.value = '';
+    toast('Scans set to ≈ ' + target.toLocaleString() + ' (for $' + usd.toFixed(2) + ')', 'success');
+    loadScanMeter();
+  } catch(e){ toast(e.message || 'Could not update scans.', 'error'); }
 }
 async function topupScans(){
   const el = document.getElementById('scan-add');
