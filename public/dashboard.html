@@ -328,6 +328,27 @@
   .no-credits .nc-icon { font-size: 38px; margin-bottom: 12px; }
   .no-credits h3 { margin: 0 0 8px; font-size: 18px; }
   .no-credits p  { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+
+  /* Predictions sent to you (admin/partner pushed picks) */
+  .sent-picks {
+    background: linear-gradient(180deg, var(--surface2), var(--surface));
+    border: 1px solid var(--border2); border-radius: var(--r);
+    padding: 16px 18px; margin-bottom: 22px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 14px 34px -18px rgba(0,0,0,.85);
+  }
+  .sent-picks .sp-head {
+    font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--green); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .sp-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-bottom: 1px solid rgba(58,22,32,.45);
+  }
+  .sp-item:last-child { border-bottom: none; }
+  .sp-teams { flex: 1; min-width: 0; }
+  .sp-match { font-size: 14px; font-weight: 700; color: var(--chalk); }
+  .sp-pick  { font-size: 12px; color: var(--amber); margin-top: 3px; font-weight: 600; }
+  .sp-odds  { font-family: var(--mono); font-size: 15px; color: var(--green); font-weight: 700; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -370,6 +391,12 @@
 
 <!-- Page -->
 <div class="page-wrap">
+
+  <!-- Predictions sent to you (from admin / partner) -->
+  <div class="sent-picks" id="sent-picks" style="display:none">
+    <div class="sp-head">★ Predictions sent to you</div>
+    <div id="sent-picks-list"></div>
+  </div>
 
   <!-- Upload section -->
   <div id="upload-section">
@@ -468,6 +495,27 @@ function updateCreditsLabel(){
    entered teams it overrides the random pick.
    ============================================================ */
 let myPushedPicks = [];   // cache of this member's unused pushed picks
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+  { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+function renderSentPicks(){
+  const wrap = document.getElementById('sent-picks');
+  const list = document.getElementById('sent-picks-list');
+  if(!wrap || !list) return;
+  const picks = (myPushedPicks || []).filter(p => !p.used);
+  if(!picks.length){ wrap.style.display = 'none'; list.innerHTML = ''; return; }
+  wrap.style.display = '';
+  list.innerHTML = picks.map(p => {
+    const outTxt = p.out === 'home' ? (p.home + ' Win') : p.out === 'away' ? (p.away + ' Win') : 'Draw';
+    const odds = (p.odds != null) ? ('@ ' + Number(p.odds).toFixed(2)) : '';
+    return `<div class="sp-item">
+      <div class="sp-teams">
+        <div class="sp-match">${esc(p.home)} <span style="color:var(--muted);font-weight:400">vs</span> ${esc(p.away)}</div>
+        <div class="sp-pick">→ ${esc(p.label || outTxt)}</div>
+      </div>
+      <div class="sp-odds">${odds}</div>
+    </div>`;
+  }).join('');
+}
 function getPushedPickCtx(home, away){
   const idx = myPushedPicks.findIndex(p => !p.used &&
     (p.home || '').toLowerCase() === home.toLowerCase() &&
@@ -479,6 +527,7 @@ function consumePushed(ctx){
   ctx.pick.used = true;
   myPushedPicks.splice(ctx.idx, 1);
   if(ctx.pick.id != null) VE.consumePick(ctx.pick.id).catch(()=>{});
+  renderSentPicks();
 }
 
 /* Pull fresh credits + pending picks from the server */
@@ -490,6 +539,7 @@ async function refreshAccount(){
     showUserEmail();
   } catch(e){}
   try { myPushedPicks = await VE.myPicks(true); } catch(e){ myPushedPicks = []; }
+  renderSentPicks();
   updateCreditsLabel();
 }
 refreshAccount();
