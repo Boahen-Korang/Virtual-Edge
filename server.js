@@ -482,7 +482,10 @@ const SCAN_PROMPT =
   'Also read the EXACT 1X2 odds for each match from the three columns headed "1", "X", "2" ' +
   '(column 1 = Home-win, column X = Draw, column 2 = Away-win). They are decimals between 1.01 and 51.00. ' +
   'Transcribe every digit exactly — do not round or estimate. If unsure about a team use "", about an odd use null. ' +
-  'Respond with ONLY compact JSON: {"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}.';
+  'ALSO decide whether this screenshot is from SportyBet INSTANT VIRTUALS / INSTANT FOOTBALL: look for the words ' +
+  '"Instant Virtuals", "Instant Football", or "Instant" as a header/title/logo (usually near the top), or unmistakable ' +
+  'instant-virtual-league branding. Set "instant" to true ONLY if you can see such an indication, otherwise false. ' +
+  'Respond with ONLY compact JSON: {"instant":true,"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}.';
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
@@ -526,7 +529,10 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     odds: { home: num(mm.oddsHome), draw: num(mm.oddsDraw), away: num(mm.oddsAway) },
   })).filter((mm) => mm.home || mm.away);
 
-  res.json({ matches });
+  // whether the screenshot is a SportyBet Instant Virtuals / Instant Football slip
+  const instant = parsed.instant === true || /instant\s*(virtual|football)/i.test(text);
+
+  res.json({ matches, instant });
 }));
 
 /* ===================== PUBLIC payment config ===================== */

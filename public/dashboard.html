@@ -560,6 +560,7 @@ async function scanScreenshot(dataUrl){
 
   document.getElementById('ti-label').textContent = 'VirtualEdge is reading your screenshot…';
   setScanStatus('busy', 'Analyzing…');
+  screenshotIsInstant = null;
 
   /* Tag this scan so a slow earlier scan can't overwrite a newer one */
   const myScan = ++scanToken;
@@ -576,11 +577,16 @@ async function scanScreenshot(dataUrl){
   /* Ignore results from a scan that has been superseded by a newer upload */
   if(myScan !== scanToken) return;
   applyScanResult(teams);
+  if(screenshotIsInstant === false){
+    setScanStatus('warn', '⚠ This screenshot is not from Instant Virtuals.');
+  }
 }
 
 /* ---- Gemini vision call ---- */
+let screenshotIsInstant = null;   // null = unknown; true/false from the scan
 async function scanWithGemini(dataUrl){
   const r = await VE.scan(dataUrl);
+  screenshotIsInstant = (r && typeof r.instant === 'boolean') ? r.instant : null;
   return (r && r.matches && r.matches.length) ? r.matches : null;
 }
 
@@ -668,6 +674,7 @@ function resetUpload(){
   detectedMatches = [];
   currentMatch = null;
   predictedKeys.clear();
+  screenshotIsInstant = null;
 }
 
 /* ============================================================
@@ -684,6 +691,7 @@ const LOADING_STEPS = [
 function startAnalysis(){
   const home = document.getElementById('inp-home').value.trim();
   const away = document.getElementById('inp-away').value.trim();
+  if(screenshotIsInstant === false){ toast('These games are not from Instant Virtuals. Please upload an Instant Virtuals / Instant Football screenshot.', 'error'); return; }
   if(!home || !away){ toast('Please enter both team names from your screenshot.', 'error'); return; }
   if(home.toLowerCase() === away.toLowerCase()){ toast('Home and away teams must be different.', 'error'); return; }
   if(predictedKeys.has(matchKey(home, away))){ toast('You already got a prediction for this match — pick another.', 'error'); return; }
