@@ -502,6 +502,14 @@ footer a:hover { color: var(--green); }
 .upload-zone p { font-size: 13px; color: var(--muted); margin: 0; }
 .upload-zone input[type=file] { display: none; }
 
+/* ---- Spinner ---- */
+.spinner {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 3px solid var(--border2); border-top-color: var(--green);
+  animation: ve-spin .8s linear infinite;
+}
+@keyframes ve-spin { to { transform: rotate(360deg); } }
+
 /* ---- Progress bar ---- */
 .progress-bar { height: 5px; background: var(--border); border-radius: 10px; overflow: hidden; }
 .progress-bar .fill { height: 100%; background: var(--green); border-radius: 10px; transition: width .3s; }

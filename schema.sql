@@ -5,15 +5,18 @@
 --   ve_payment_config -> payment_config
 
 CREATE TABLE IF NOT EXISTS users (
-  email       TEXT PRIMARY KEY,
-  name        TEXT NOT NULL DEFAULT '',
-  pw_hash     TEXT NOT NULL,
-  plan        TEXT,
-  plan_end    BIGINT,                       -- epoch ms, matches old planEnd
-  ref         TEXT,                          -- referral code captured at signup
-  partner     TEXT,                          -- partner code this member is attributed to
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  email          TEXT PRIMARY KEY,
+  name           TEXT NOT NULL DEFAULT '',
+  pw_hash        TEXT NOT NULL,
+  plan           TEXT,
+  plan_end       BIGINT,                       -- epoch ms, matches old planEnd
+  ref            TEXT,                          -- referral code captured at signup
+  partner        TEXT,                          -- partner code this member is attributed to
+  sporty_account TEXT,                          -- linked SportyBet account number
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- add the column on existing databases too (idempotent)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sporty_account TEXT;
 
 CREATE TABLE IF NOT EXISTS partners (
   id          SERIAL PRIMARY KEY,

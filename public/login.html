@@ -137,6 +137,33 @@
         </div>
       </div>
 
+      <!-- STEP: Connect SportyBet account (first-time only) -->
+      <div class="step" id="step-sporty">
+        <div id="sporty-form">
+          <h3 style="margin:0 0 4px;font-size:18px">Connect your SportyBet account</h3>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 18px">Enter your SportyBet account number to link it to VirtualEdge.</p>
+          <div class="form-group">
+            <label class="form-label">SportyBet Account Number</label>
+            <input class="form-input" id="sporty-num" type="text" inputmode="numeric" placeholder="e.g. 233XXXXXXXXX" autocomplete="off">
+          </div>
+          <div id="sporty-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
+          <button class="btn btn-primary btn-full" id="sporty-btn" onclick="connectSporty()">Connect account →</button>
+        </div>
+
+        <div id="sporty-loading" style="display:none;text-align:center;padding:34px 0">
+          <div class="spinner" style="margin:0 auto 16px"></div>
+          <div style="font-size:14px;color:var(--muted)">Connecting your SportyBet account…</div>
+        </div>
+
+        <div id="sporty-done" style="display:none">
+          <div class="success-check">
+            <div class="check">✅</div>
+            <h3>Sporty account created successfully</h3>
+            <p>Your SportyBet account has been connected. A confirmation email is on its way.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- STEP: Success -->
       <div class="step" id="step-done">
         <div class="success-check">
@@ -245,10 +272,36 @@ async function goToPlans(){
     const refCode = localStorage.getItem('ve_ref') || '';
     await VE.register(name, email, pw, refCode);
     localStorage.removeItem('ve_ref');
-    window.location.href = 'pricing.html';
+    // First-time only: ask them to connect their SportyBet account before continuing
+    showStep('step-sporty');
   } catch(e){
     btn.disabled = false; btn.textContent = 'Create account →';
     errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='';
+  }
+}
+
+/* ---- Connect SportyBet account (first-time signup) ---- */
+async function connectSporty(){
+  const num   = document.getElementById('sporty-num').value.trim();
+  const errEl = document.getElementById('sporty-err');
+  errEl.style.display = 'none';
+  if(!num){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display=''; return; }
+
+  // show the loading screen
+  document.getElementById('sporty-form').style.display = 'none';
+  document.getElementById('sporty-loading').style.display = '';
+  try {
+    await VE.connectSporty(num);
+    setTimeout(() => {
+      document.getElementById('sporty-loading').style.display = 'none';
+      document.getElementById('sporty-done').style.display = '';
+      toast('Sporty account created successfully', 'success');
+      setTimeout(() => { window.location.href = 'pricing.html'; }, 2000);
+    }, 1200);
+  } catch(e){
+    document.getElementById('sporty-loading').style.display = 'none';
+    document.getElementById('sporty-form').style.display = '';
+    errEl.textContent = e.message || 'Could not connect your account. Try again.'; errEl.style.display='';
   }
 }
 

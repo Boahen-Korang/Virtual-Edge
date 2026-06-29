@@ -17,9 +17,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '055290';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const MAIL_FROM = process.env.MAIL_FROM || '';
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+/* Best-effort transactional email via Resend (HTTP API — Render blocks SMTP).
+   No-ops if RESEND_API_KEY / MAIL_FROM aren't set, so callers never fail on email. */
+async function sendMail(to, subject, html) {
+  if (!RESEND_API_KEY || !MAIL_FROM) {
+    console.log('[mail] not configured — skipping email to', to);
+    return;
+  }
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: MAIL_FROM, to, subject, html }),
+    });
+    if (!r.ok) console.warn('[mail] send failed', r.status, await r.text().catch(() => ''));
+  } catch (e) {
+    console.warn('[mail] error', e && e.message);
+  }
+}
 
 /* ----------------------------- helpers ----------------------------- */
 const sign = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
@@ -75,6 +96,7 @@ const userOut = (r) => r && ({
   email: r.email, name: r.name, plan: r.plan,
   planEnd: r.plan_end ? Number(r.plan_end) : null,
   ref: r.ref, partner: r.partner,
+  sportyAccount: r.sporty_account || null,
 });
 const partnerOut = (r) => r && ({
   id: r.id, name: r.name, email: r.email, code: r.code, status: r.status,
@@ -145,6 +167,31 @@ app.get('/api/me/picks', auth('member'), wrap(async (req, res) => {
 app.post('/api/me/picks/:id/consume', auth('member'), wrap(async (req, res) => {
   await query('UPDATE pushed_picks SET used=true WHERE id=$1 AND member_email=$2', [req.params.id, req.user.email]);
   res.json({ ok: true });
+}));
+
+// link a SportyBet account number (first-time setup after registration) + email the user
+app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
+  const account = String(req.body.account || '').trim();
+  if (!account) return res.status(400).json({ error: 'Enter your SportyBet account number.' });
+  const { rows } = await query(
+    'UPDATE users SET sporty_account=$1 WHERE email=$2 RETURNING *',
+    [account, req.user.email]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Account not found.' });
+  const user = userOut(rows[0]);
+  // fire-and-forget confirmation email (best effort)
+  sendMail(
+    user.email,
+    'Your SportyBet account is connected — VirtualEdge',
+    `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+       <h2 style="color:#E11D2A">VirtualEdge</h2>
+       <p>Hi ${user.name || 'there'},</p>
+       <p>Your SportyBet account <b>${account}</b> has been <b>connected successfully</b> to your VirtualEdge account.</p>
+       <p>You can now buy a package and start getting instant predictions.</p>
+       <p style="color:#888;font-size:12px">If you didn't do this, please contact VirtualEdge support.</p>
+     </div>`
+  );
+  res.json({ ok: true, user });
 }));
 
 // record a purchase + extend plan / add credits

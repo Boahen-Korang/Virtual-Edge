@@ -55,6 +55,11 @@
       return r.user;
     },
     me: () => req('GET', '/me', null, 'member'),
+    async connectSporty(account) {
+      const r = await req('POST', '/me/sporty', { account }, 'member');
+      if (r && r.user) localStorage.setItem('ve_me', JSON.stringify(r.user));
+      return r;
+    },
     myPicks: (pendingOnly) => req('GET', '/me/picks' + (pendingOnly ? '?pending=1' : ''), null, 'member'),
     consumePick: (id) => req('POST', '/me/picks/' + id + '/consume', {}, 'member'),
     recordPurchase: (p) => req('POST', '/me/purchases', p, 'member'),
