@@ -253,11 +253,16 @@ async function doLogin(){
   }
 
   try {
-    const user = await VE.login(email, pw);
-    if(user.planEnd && Date.now() > user.planEnd){
-      toast('Your subscription expired. Please renew.', 'error');
-    }
-    window.location.href = 'pricing.html';
+    await VE.login(email, pw);
+    // If they still have predictions left (credits or an active unlimited day-pass),
+    // skip the payment page and go straight to the dashboard.
+    let credits = 0, unlimited = false;
+    try {
+      const me = await VE.me();
+      credits = me.credits || 0;
+      unlimited = !!(me.user && me.user.unlimitedUntil && Date.now() < me.user.unlimitedUntil);
+    } catch(e){}
+    window.location.href = (credits > 0 || unlimited) ? 'dashboard.html' : 'pricing.html';
   } catch(e){
     errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='';
   }
