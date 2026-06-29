@@ -47,6 +47,7 @@ const sign = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
 const norm = (e) => String(e || '').trim().toLowerCase();
 const hash = (pw) => bcrypt.hashSync(pw, 10);
 const check = (pw, h) => { try { return bcrypt.compareSync(pw, h); } catch { return false; } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function auth(role) {
   return (req, res, next) => {
@@ -496,19 +497,32 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   const mimeType = m[1], base64 = m[2];
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  let json;
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SCAN_PROMPT }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json' },
-      }),
-    });
-    if (!r.ok) return res.status(502).json({ error: 'Scan failed (' + r.status + ')' });
-    json = await r.json();
-  } catch (e) {
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: SCAN_PROMPT }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+    generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+  });
+  let json, lastStatus = 0;
+  for (let attempt = 0; attempt < 3 && !json; attempt++) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+        body,
+      });
+      if (r.ok) { json = await r.json(); break; }
+      lastStatus = r.status;
+      // transient: rate-limited / overloaded — back off and retry
+      if (r.status === 429 || r.status === 503) { await sleep(1200 * (attempt + 1)); continue; }
+      return res.status(502).json({ error: 'Scan failed (' + r.status + ')' });
+    } catch (e) {
+      lastStatus = 0;
+      await sleep(700);
+    }
+  }
+  if (!json) {
+    if (lastStatus === 429) {
+      return res.status(429).json({ error: 'The scanner is busy (rate limit). Please wait a moment and try again.' });
+    }
     return res.status(502).json({ error: 'Scan failed' });
   }
 

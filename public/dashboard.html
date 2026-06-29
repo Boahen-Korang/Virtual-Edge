@@ -567,15 +567,28 @@ async function scanScreenshot(dataUrl){
   let teams = null;
 
   /* Gemini is the only scanner */
+  let scanErr = null;
   try {
     teams = await scanWithGemini(dataUrl);
   } catch(err){
     console.warn('Gemini scan failed:', err);
-    teams = null;
+    teams = null; scanErr = err;
   }
 
   /* Ignore results from a scan that has been superseded by a newer upload */
   if(myScan !== scanToken) return;
+
+  if(scanErr){
+    // The scanner itself failed (e.g. rate limit) — be honest, don't say "couldn't read teams"
+    detectedMatches = []; currentMatch = null;
+    document.getElementById('shuffle-btn').style.display = 'none';
+    document.getElementById('ti-label').textContent = 'Type the teams from your screenshot below';
+    setScanStatus('warn', scanErr.status === 429
+      ? '⏳ Scanner is busy right now — wait a moment and re-upload, or type the teams in.'
+      : 'Scanner is unavailable right now — type the teams in below.');
+    return;
+  }
+
   applyScanResult(teams);
   if(screenshotIsInstant === false){
     setScanStatus('warn', '⚠ This screenshot is not from Instant Virtuals.');
