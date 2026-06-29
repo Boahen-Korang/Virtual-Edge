@@ -1240,12 +1240,12 @@ function exportTx(){
 /* ================= Refresh / gate ================= */
 /* ================================================================
    SEND A PREDICTION (admin)
-   Upload a screenshot → Gemini reads the matches & odds → choose a
+   Upload a screenshot → Claude reads the matches & odds → choose a
    winner per match → push into a member's ve_pushed[email] queue.
    Picks are attributed to "Admin" and surface in that member's
    dashboard the next time they get a prediction for those teams.
    ================================================================ */
-/* Screenshot scanning runs server-side (/api/scan); the Gemini key stays on the server. */
+/* Screenshot scanning runs server-side (/api/scan); the Claude key stays on the server. */
 
 let sendShot = '', detected = [], picks = {}, scanToken = 0;
 
@@ -1291,13 +1291,13 @@ async function scanShot(dataUrl){
   setScan('busy', 'Reading screenshot…');
   const my = ++scanToken;
   let teams = null;
-  try { teams = await scanWithGemini(dataUrl); }
+  try { teams = await scanScreenshot(dataUrl); }
   catch(err){ console.warn('scan failed', err); teams = null; }
   if(my !== scanToken) return;
   applyScan(teams);
 }
 
-async function scanWithGemini(dataUrl){
+async function scanScreenshot(dataUrl){
   const r = await VE.scan(dataUrl);
   return (r && r.matches && r.matches.length) ? r.matches : null;
 }

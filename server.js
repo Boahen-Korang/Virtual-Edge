@@ -9,7 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { query, initSchema } = require('./db');
+const { pool, query, initSchema } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,21 +112,41 @@ const userOut = (r) => r && ({
   unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
 });
 
-/* Apply what a purchase grants: the unlimited tier (>=9999) gives 24h of unlimited
-   predictions (stacking from any existing window); otherwise add prediction credits. */
+/* Credit a purchase exactly once, atomically. The browser poll and the Cowrie
+   webhook can both fire for the same payment; a per-reference advisory lock plus
+   a dup-check inside one transaction guarantees a single credit. The unlimited
+   tier (>=9999) grants 24h of unlimited predictions (stacking); otherwise it adds
+   prediction credits. Returns { credited, duplicate }. */
 const DAY_MS = 24 * 60 * 60 * 1000;
-async function applyEntitlement(email, predictions) {
-  if (predictions >= 9999) {
-    await query(
-      'UPDATE users SET unlimited_until = GREATEST(COALESCE(unlimited_until, 0), $2) + $3 WHERE email=$1',
-      [email, Date.now(), DAY_MS]
-    );
-  } else if (predictions > 0) {
-    await query(
-      `INSERT INTO credits (email,amount) VALUES ($1,$2)
-       ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
-      [email, predictions]
-    );
+async function creditPurchaseOnce(email, pkg, reference, predictions) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (reference) {
+      // serialize concurrent crediters for the same reference
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [reference]);
+      const dup = await client.query('SELECT 1 FROM purchases WHERE reference=$1', [reference]);
+      if (dup.rows.length) { await client.query('COMMIT'); return { credited: false, duplicate: true }; }
+    }
+    await client.query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
+      [email, pkg, reference, predictions]);
+    if (predictions >= 9999) {
+      await client.query(
+        'UPDATE users SET unlimited_until = GREATEST(COALESCE(unlimited_until, 0), $2) + $3 WHERE email=$1',
+        [email, Date.now(), DAY_MS]);
+    } else if (predictions > 0) {
+      await client.query(
+        `INSERT INTO credits (email,amount) VALUES ($1,$2)
+         ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
+        [email, predictions]);
+    }
+    await client.query('COMMIT');
+    return { credited: true, duplicate: false };
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
 }
 const partnerOut = (r) => r && ({
@@ -233,24 +253,14 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   const planEnd = req.body.planEnd ? Number(req.body.planEnd) : null;
   const plan = req.body.plan != null ? String(req.body.plan) : null;
 
-  // Idempotency: if this reference was already credited (e.g. by the webhook), don't credit twice.
-  if (reference) {
-    const dup = await query('SELECT 1 FROM purchases WHERE reference=$1', [reference]);
-    if (dup.rows.length) {
-      const c0 = await query('SELECT amount FROM credits WHERE email=$1', [req.user.email]);
-      return res.json({ ok: true, duplicate: true, credits: c0.rows[0] ? c0.rows[0].amount : 0 });
-    }
-  }
-
-  await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
-    [req.user.email, pkg, reference, predictions]);
-  await applyEntitlement(req.user.email, predictions);
-  if (plan != null || planEnd != null) {
+  // Credit exactly once (atomic; safe against the webhook racing this).
+  const r = await creditPurchaseOnce(req.user.email, pkg, reference, predictions);
+  if (!r.duplicate && (plan != null || planEnd != null)) {
     await query('UPDATE users SET plan=COALESCE($2,plan), plan_end=COALESCE($3,plan_end) WHERE email=$1',
       [req.user.email, plan, planEnd]);
   }
   const c = await query('SELECT amount FROM credits WHERE email=$1', [req.user.email]);
-  res.json({ ok: true, credits: c.rows[0] ? c.rows[0].amount : 0 });
+  res.json({ ok: true, duplicate: r.duplicate, credits: c.rows[0] ? c.rows[0].amount : 0 });
 }));
 
 // spend a credit (when generating a prediction)
@@ -736,18 +746,13 @@ app.post('/api/pay/cowrie/webhook', wrap(async (req, res) => {
   const pkg = String(meta.package || ('Cowrie ' + (charge.amount != null ? charge.amount : '')));
   if (!email) return res.status(200).json({ ok: true, ignored: 'no email on charge' });
 
-  // idempotency: credit a given charge only once
-  const dup = await query('SELECT 1 FROM purchases WHERE reference=$1', [reference]);
-  if (dup.rows.length) return res.status(200).json({ ok: true, duplicate: true });
-
   // only credit a real, existing member
   const u = await query('SELECT 1 FROM users WHERE email=$1', [email]);
   if (!u.rows.length) return res.status(200).json({ ok: true, ignored: 'no matching member' });
 
-  await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
-    [email, pkg, reference, credits]);
-  await applyEntitlement(email, credits);
-  res.status(200).json({ ok: true, credited: credits });
+  // credit exactly once (atomic; safe against the browser poll racing this)
+  const r = await creditPurchaseOnce(email, pkg, reference, credits);
+  res.status(200).json({ ok: true, credited: r.duplicate ? 0 : credits, duplicate: r.duplicate });
 }));
 
 /* ============================ static site ============================ */

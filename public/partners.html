@@ -437,12 +437,12 @@ function copyLink(){
 
 /* ================================================================
    SEND A PREDICTION
-   Partner uploads a screenshot, it's scanned by Gemini, the partner
+   Partner uploads a screenshot, it's scanned by Claude, the partner
    chooses the winning outcome and a target member account. The pick
    is stored in ve_pushed[email] and surfaces in that member's
    dashboard the next time they get a prediction for those teams.
    ================================================================ */
-/* Screenshot scanning runs server-side (/api/scan) so the Gemini key
+/* Screenshot scanning runs server-side (/api/scan) so the Claude key
    is never exposed in client code. */
 
 let sendShot = '', detected = [], picks = {}, scanToken = 0;
@@ -496,13 +496,13 @@ async function scanShot(dataUrl){
   setScan('busy', 'Reading screenshot…');
   const my = ++scanToken;
   let teams = null;
-  try { teams = await scanWithGemini(dataUrl); }
+  try { teams = await scanScreenshot(dataUrl); }
   catch(err){ console.warn('scan failed', err); teams = null; }
   if(my !== scanToken) return;
   applyScan(teams);
 }
 
-async function scanWithGemini(dataUrl){
+async function scanScreenshot(dataUrl){
   const r = await VE.scan(dataUrl);
   return (r && r.matches && r.matches.length) ? r.matches : null;
 }

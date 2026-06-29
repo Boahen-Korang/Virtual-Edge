@@ -522,7 +522,6 @@ let scanToken = 0;
    Runs server-side via POST /api/scan — the API key lives only in
    the server's GEMINI_API_KEY env var and never reaches the browser.
    ============================================================ */
-const geminiEnabled  = () => true;
 
 /* ---- File select ---- */
 function onFileSelect(e){
@@ -544,8 +543,8 @@ function onFileSelect(e){
 }
 
 /* ============================================================
-   SCREENSHOT SCANNER (Gemini vision)
-   Sends the image to Gemini, which extracts the matches + odds
+   SCREENSHOT SCANNER (Claude vision)
+   Sends the image to Claude, which extracts the matches + odds
    and pre-fills the inputs. User can still correct them.
    ============================================================ */
 function setScanStatus(state, text){
@@ -574,12 +573,12 @@ async function scanScreenshot(dataUrl){
   const myScan = ++scanToken;
   let teams = null;
 
-  /* Gemini is the only scanner */
+  /* Claude is the only scanner */
   let scanErr = null;
   try {
-    teams = await scanWithGemini(dataUrl);
+    teams = await scanScreenshot(dataUrl);
   } catch(err){
-    console.warn('Gemini scan failed:', err);
+    console.warn('Claude scan failed:', err);
     teams = null; scanErr = err;
   }
 
@@ -603,9 +602,9 @@ async function scanScreenshot(dataUrl){
   }
 }
 
-/* ---- Gemini vision call ---- */
+/* ---- Claude vision call ---- */
 let screenshotIsInstant = null;   // null = unknown; true/false from the scan
-async function scanWithGemini(dataUrl){
+async function scanScreenshot(dataUrl){
   const r = await VE.scan(dataUrl);
   screenshotIsInstant = (r && typeof r.instant === 'boolean') ? r.instant : null;
   return (r && r.matches && r.matches.length) ? r.matches : null;
