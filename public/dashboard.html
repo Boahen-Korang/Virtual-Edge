@@ -446,15 +446,23 @@ showUserEmail();
 
 /* ---- Credits (mirrored from the server, refreshed at init) ---- */
 let creditsCount = 0;
+let unlimitedUntil = 0;                       // epoch ms; unlimited while now < this
+function isUnlimited(){ return unlimitedUntil > Date.now(); }
 function getCredits(){ return creditsCount; }
 function deductCredit(){
-  if(creditsCount >= 9999) return;          // unlimited — don't burn down
+  if(isUnlimited()) return;                   // 24h unlimited — don't burn credits
   creditsCount = Math.max(0, creditsCount - 1);
-  VE.spendCredit(1).catch(()=>{});          // best-effort server sync
+  VE.spendCredit(1).catch(()=>{});            // best-effort server sync
+}
+function fmtRemaining(ms){
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return h >= 1 ? h + 'h left' : (m >= 1 ? m + 'm left' : '<1m left');
 }
 function updateCreditsLabel(){
+  const el = document.getElementById('credits-label');
+  if(isUnlimited()){ el.textContent = 'Unlimited · ' + fmtRemaining(unlimitedUntil - Date.now()); return; }
   const n = getCredits();
-  document.getElementById('credits-label').textContent = n >= 9999 ? 'Unlimited' : `${n} credit${n===1?'':'s'}`;
+  el.textContent = `${n} credit${n===1?'':'s'}`;
 }
 
 /* ============================================================
@@ -496,7 +504,7 @@ async function refreshAccount(){
   try {
     const me = await VE.me();
     creditsCount = me.credits || 0;
-    if(me.user){ SESSION.name = me.user.name; SESSION.email = me.user.email || SESSION.email; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; }
+    if(me.user){ SESSION.name = me.user.name; SESSION.email = me.user.email || SESSION.email; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; unlimitedUntil = me.user.unlimitedUntil || 0; }
     showUserEmail();
   } catch(e){}
   try { myPushedPicks = await VE.myPicks(true); } catch(e){ myPushedPicks = []; }
@@ -709,7 +717,7 @@ function startAnalysis(){
   if(home.toLowerCase() === away.toLowerCase()){ toast('Home and away teams must be different.', 'error'); return; }
   if(predictedKeys.has(matchKey(home, away))){ toast('You already got a prediction for this match — pick another.', 'error'); return; }
 
-  if(getCredits() <= 0){
+  if(!isUnlimited() && getCredits() <= 0){
     document.getElementById('no-credits-msg').style.display = 'block';
     document.getElementById('preview-section').style.display = 'none';
     return;
@@ -911,7 +919,7 @@ function showResult(pred){
 
       <div class="result-footer">
         <div class="rf-note">Based on historical SportyBet virtual data. Bet responsibly.</div>
-        <div class="rf-cred">⚡ ${credLeft === 9999 ? '∞' : credLeft} left</div>
+        <div class="rf-cred">⚡ ${isUnlimited() ? '∞' : credLeft} left</div>
       </div>
     </div>
 
@@ -919,7 +927,7 @@ function showResult(pred){
       ? `<div style="margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--amber)">⚽ ${detectedMatches.length} match${detectedMatches.length === 1 ? '' : 'es'} left to predict in this screenshot</div>`
       : `<div style="margin-top:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted)">✓ All matches in this screenshot predicted — upload a new one for more</div>`}
 
-    ${credLeft > 0
+    ${(isUnlimited() || credLeft > 0)
       ? `<button class="another-btn" onclick="getAnother()">⚡ Get another prediction</button>`
       : `<div class="no-credits" style="margin-top:12px">
            <div class="nc-icon">⚡</div>
@@ -932,7 +940,7 @@ function showResult(pred){
 
 function getAnother(){
   /* Out of predictions → send the customer to the payment page */
-  if(getCredits() <= 0){ window.location.href = 'pricing.html'; return; }
+  if(!isUnlimited() && getCredits() <= 0){ window.location.href = 'pricing.html'; return; }
   /* Still has predictions left → back to the team-selection screen
      so the user can choose/edit the teams, then hit Get Prediction */
   document.getElementById('result-section').style.display = 'none';

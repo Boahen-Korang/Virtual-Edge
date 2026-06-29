@@ -109,7 +109,26 @@ const userOut = (r) => r && ({
   planEnd: r.plan_end ? Number(r.plan_end) : null,
   ref: r.ref, partner: r.partner,
   sportyAccount: r.sporty_account || null,
+  unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
 });
+
+/* Apply what a purchase grants: the unlimited tier (>=9999) gives 24h of unlimited
+   predictions (stacking from any existing window); otherwise add prediction credits. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+async function applyEntitlement(email, predictions) {
+  if (predictions >= 9999) {
+    await query(
+      'UPDATE users SET unlimited_until = GREATEST(COALESCE(unlimited_until, 0), $2) + $3 WHERE email=$1',
+      [email, Date.now(), DAY_MS]
+    );
+  } else if (predictions > 0) {
+    await query(
+      `INSERT INTO credits (email,amount) VALUES ($1,$2)
+       ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
+      [email, predictions]
+    );
+  }
+}
 const partnerOut = (r) => r && ({
   id: r.id, name: r.name, email: r.email, code: r.code, status: r.status,
   locked: r.locked, created: r.created_at, approvedAt: r.approved_at, lockedAt: r.locked_at,
@@ -225,13 +244,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
 
   await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
     [req.user.email, pkg, reference, predictions]);
-  if (predictions > 0) {
-    await query(
-      `INSERT INTO credits (email,amount) VALUES ($1,$2)
-       ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
-      [req.user.email, predictions]
-    );
-  }
+  await applyEntitlement(req.user.email, predictions);
   if (plan != null || planEnd != null) {
     await query('UPDATE users SET plan=COALESCE($2,plan), plan_end=COALESCE($3,plan_end) WHERE email=$1',
       [req.user.email, plan, planEnd]);
@@ -694,13 +707,7 @@ app.post('/api/pay/cowrie/webhook', wrap(async (req, res) => {
 
   await query('INSERT INTO purchases (email,pkg,reference,predictions) VALUES ($1,$2,$3,$4)',
     [email, pkg, reference, credits]);
-  if (credits > 0) {
-    await query(
-      `INSERT INTO credits (email,amount) VALUES ($1,$2)
-       ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
-      [email, credits]
-    );
-  }
+  await applyEntitlement(email, credits);
   res.status(200).json({ ok: true, credited: credits });
 }));
 

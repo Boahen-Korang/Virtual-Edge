@@ -13,10 +13,12 @@ CREATE TABLE IF NOT EXISTS users (
   ref            TEXT,                          -- referral code captured at signup
   partner        TEXT,                          -- partner code this member is attributed to
   sporty_account TEXT,                          -- linked SportyBet account number
+  unlimited_until BIGINT,                        -- epoch ms; unlimited predictions while now < this
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- add the column on existing databases too (idempotent)
+-- add the columns on existing databases too (idempotent)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS sporty_account TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS unlimited_until BIGINT;
 
 CREATE TABLE IF NOT EXISTS partners (
   id          SERIAL PRIMARY KEY,
