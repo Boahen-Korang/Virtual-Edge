@@ -344,6 +344,7 @@
     VirtualEdge
   </div>
   <div class="spacer"></div>
+  <div id="user-email" title="Signed in" style="font-size:13px;color:var(--muted);margin-right:14px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
   <div class="credits-chip"><span class="ci">⚡</span><span id="credits-label">0 credits</span></div>
   <button class="logout-btn" onclick="logout()">Log out</button>
 </div>
@@ -440,6 +441,13 @@ const SESSION = (()=>{
 })();
 if(!SESSION) throw new Error('redirect');
 
+/* Show the signed-in user's email in the top bar */
+function showUserEmail(){
+  const el = document.getElementById('user-email');
+  if(el && SESSION.email) el.textContent = SESSION.email;
+}
+showUserEmail();
+
 /* ---- Credits (mirrored from the server, refreshed at init) ---- */
 let creditsCount = 0;
 function getCredits(){ return creditsCount; }
@@ -478,7 +486,8 @@ async function refreshAccount(){
   try {
     const me = await VE.me();
     creditsCount = me.credits || 0;
-    if(me.user){ SESSION.name = me.user.name; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; }
+    if(me.user){ SESSION.name = me.user.name; SESSION.email = me.user.email || SESSION.email; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; }
+    showUserEmail();
   } catch(e){}
   try { myPushedPicks = await VE.myPicks(true); } catch(e){ myPushedPicks = []; }
   updateCreditsLabel();
