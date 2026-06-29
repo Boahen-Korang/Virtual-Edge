@@ -419,9 +419,9 @@
   <!-- No credits message (shown when out of credits) -->
   <div class="no-credits" id="no-credits-msg" style="display:none">
     <div class="nc-icon">⚡</div>
-    <h3>Out of credits</h3>
-    <p>You've used all your predictions. Buy a new package to continue.</p>
-    <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy more predictions →</a>
+    <h3>No predictions left</h3>
+    <p>You don't have any predictions yet. Buy a package to start scanning your screenshots.</p>
+    <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy a package →</a>
   </div>
 
 </div>
@@ -509,6 +509,18 @@ async function refreshAccount(){
   } catch(e){}
   try { myPushedPicks = await VE.myPicks(true); } catch(e){ myPushedPicks = []; }
   updateCreditsLabel();
+  gateOnCredits();
+}
+/* With no credits (and no active unlimited pass), don't show the uploader —
+   prompt the user to buy a package instead. */
+function gateOnCredits(){
+  const out = !isUnlimited() && getCredits() <= 0;
+  const up = document.getElementById('upload-section');
+  const nc = document.getElementById('no-credits-msg');
+  const rs = document.getElementById('result-section');
+  if(up) up.style.display = out ? 'none' : 'block';
+  if(nc) nc.style.display = out ? 'block' : 'none';
+  if(out && rs){ rs.style.display = 'none'; }
 }
 refreshAccount();
 
