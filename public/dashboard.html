@@ -576,7 +576,7 @@ async function scanScreenshot(dataUrl){
   /* Claude is the only scanner */
   let scanErr = null;
   try {
-    teams = await scanScreenshot(dataUrl);
+    teams = await callScanApi(dataUrl);
   } catch(err){
     console.warn('Claude scan failed:', err);
     teams = null; scanErr = err;
@@ -604,7 +604,7 @@ async function scanScreenshot(dataUrl){
 
 /* ---- Claude vision call ---- */
 let screenshotIsInstant = null;   // null = unknown; true/false from the scan
-async function scanScreenshot(dataUrl){
+async function callScanApi(dataUrl){
   const r = await VE.scan(dataUrl);
   screenshotIsInstant = (r && typeof r.instant === 'boolean') ? r.instant : null;
   return (r && r.matches && r.matches.length) ? r.matches : null;
