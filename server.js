@@ -15,10 +15,21 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '055290';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-opus-4-8';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || '';
+
+/* Claude client for screenshot scanning (vision). Key lives only here, server-side. */
+let anthropic = null;
+if (ANTHROPIC_API_KEY) {
+  try {
+    const { Anthropic } = require('@anthropic-ai/sdk');
+    anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+  } catch (e) {
+    console.warn('[scan] @anthropic-ai/sdk not installed:', e && e.message);
+  }
+}
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -489,44 +500,62 @@ const SCAN_PROMPT =
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
+// JSON shape Claude must return (structured outputs guarantee it parses)
+const ODD = { anyOf: [{ type: 'number' }, { type: 'null' }] };
+const SCAN_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    instant: { type: 'boolean' },
+    matches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          home: { type: 'string' },
+          away: { type: 'string' },
+          oddsHome: ODD, oddsDraw: ODD, oddsAway: ODD,
+        },
+        required: ['home', 'away', 'oddsHome', 'oddsDraw', 'oddsAway'],
+      },
+    },
+  },
+  required: ['instant', 'matches'],
+};
+
 app.post('/api/scan', auth(), wrap(async (req, res) => {
   if (!['member', 'partner', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
-  if (!GEMINI_API_KEY) return res.status(503).json({ error: 'Screenshot scanning is not configured.' });
-  const m = /^data:(image\/[a-zA-Z+]+);base64,(.*)$/.exec(String(req.body.image || ''));
+  if (!anthropic) return res.status(503).json({ error: 'Screenshot scanning is not configured.' });
+  const m = /^data:(image\/(?:png|jpe?g|gif|webp));base64,(.*)$/i.exec(String(req.body.image || ''));
   if (!m) return res.status(400).json({ error: 'Bad image data' });
-  const mimeType = m[1], base64 = m[2];
+  let mediaType = m[1].toLowerCase();
+  if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
+  const base64 = m[2];
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: SCAN_PROMPT }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
-    generationConfig: { temperature: 0, responseMimeType: 'application/json' },
-  });
-  let json, lastStatus = 0;
-  for (let attempt = 0; attempt < 3 && !json; attempt++) {
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
-        body,
-      });
-      if (r.ok) { json = await r.json(); break; }
-      lastStatus = r.status;
-      // transient: rate-limited / overloaded — back off and retry
-      if (r.status === 429 || r.status === 503) { await sleep(1200 * (attempt + 1)); continue; }
-      return res.status(502).json({ error: 'Scan failed (' + r.status + ')' });
-    } catch (e) {
-      lastStatus = 0;
-      await sleep(700);
-    }
-  }
-  if (!json) {
-    if (lastStatus === 429) {
-      return res.status(429).json({ error: 'The scanner is busy (rate limit). Please wait a moment and try again.' });
-    }
+  let text = '';
+  try {
+    const message = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2048,
+      output_config: { format: { type: 'json_schema', schema: SCAN_SCHEMA } },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: SCAN_PROMPT },
+        ],
+      }],
+    });
+    if (message.stop_reason === 'refusal') return res.status(502).json({ error: 'Scan was declined.' });
+    text = message.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  } catch (e) {
+    // SDK auto-retries 429/5xx; if it still surfaces, tell the client it's busy
+    if (e && e.status === 429) return res.status(429).json({ error: 'The scanner is busy (rate limit). Please wait a moment and try again.' });
+    console.warn('[scan] Claude error', e && e.status, e && e.message);
     return res.status(502).json({ error: 'Scan failed' });
   }
 
-  const text = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
   let parsed;
   try { parsed = JSON.parse(text); }
   catch { const j = text.match(/\{[\s\S]*\}/); parsed = j ? JSON.parse(j[0]) : {}; }

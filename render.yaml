@@ -19,8 +19,8 @@ services:
         generateValue: true          # Render generates a strong random secret
       - key: ADMIN_PASSCODE
         sync: false                  # set this yourself in the dashboard
-      - key: GEMINI_API_KEY
-        sync: false                  # set this yourself in the dashboard (screenshot scanning)
+      - key: ANTHROPIC_API_KEY
+        sync: false                  # set this yourself in the dashboard (screenshot scanning, Claude vision)
       - key: RESEND_API_KEY
         sync: false                  # set this yourself (email confirmations); blank = emails off
       - key: MAIL_FROM
