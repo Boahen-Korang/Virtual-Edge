@@ -71,6 +71,15 @@ CREATE TABLE IF NOT EXISTS credits (
   amount  INTEGER NOT NULL DEFAULT 0
 );
 
+-- Tracks screenshot-scan usage so the admin knows when to top up API credits.
+CREATE TABLE IF NOT EXISTS scan_meter (
+  id        INTEGER PRIMARY KEY DEFAULT 1,
+  used      BIGINT NOT NULL DEFAULT 0,   -- total scans performed (info)
+  remaining BIGINT NOT NULL DEFAULT 0,   -- scans left; admin tops this up
+  CONSTRAINT scan_singleton CHECK (id = 1)
+);
+INSERT INTO scan_meter (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS payment_config (
   id          INTEGER PRIMARY KEY DEFAULT 1,
   provider    TEXT DEFAULT 'paystack',

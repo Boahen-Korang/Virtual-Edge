@@ -99,6 +99,8 @@
     adminPartnerAction: (id, action) => req('PATCH', '/admin/partners/' + id, { action }, 'admin'),
     adminDeletePartner: (id) => req('DELETE', '/admin/partners/' + id, null, 'admin'),
     adminGrantCredits: (email, amount) => req('POST', '/admin/credits', { email, amount }, 'admin'),
+    adminScanUsage: () => req('GET', '/admin/scan-usage', null, 'admin'),
+    adminScanTopup: (amount) => req('POST', '/admin/scan-topup', { amount }, 'admin'),
     adminDeleteUser: (email) => req('DELETE', '/admin/users/' + encodeURIComponent(email), null, 'admin'),
     adminPurchases: () => req('GET', '/admin/purchases', null, 'admin'),
     adminPicks: () => req('GET', '/admin/picks', null, 'admin'),

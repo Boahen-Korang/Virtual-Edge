@@ -430,6 +430,25 @@ app.post('/api/admin/credits', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true, credits: rows[0] ? rows[0].amount : 0 });
 }));
 
+// scan meter — how many screenshot scans are left (so the admin tops up API credits in time)
+app.get('/api/admin/scan-usage', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query('SELECT used, remaining FROM scan_meter WHERE id=1');
+  const r = rows[0] || { used: 0, remaining: 0 };
+  res.json({ used: Number(r.used), remaining: Number(r.remaining) });
+}));
+
+// top up (or correct) the scans-remaining counter; positive adds, negative subtracts
+app.post('/api/admin/scan-topup', auth('admin'), wrap(async (req, res) => {
+  const amount = parseInt(req.body.amount, 10);
+  if (isNaN(amount)) return res.status(400).json({ error: 'Enter a number of scans.' });
+  const { rows } = await query(
+    'UPDATE scan_meter SET remaining = GREATEST(0, remaining + $1) WHERE id=1 RETURNING used, remaining',
+    [amount]
+  );
+  const r = rows[0] || { used: 0, remaining: 0 };
+  res.json({ ok: true, used: Number(r.used), remaining: Number(r.remaining) });
+}));
+
 // grant a member unlimited predictions for N days (default 1; large N = effectively permanent)
 app.post('/api/admin/unlimited', auth('admin'), wrap(async (req, res) => {
   const email = norm(req.body.email);
@@ -603,6 +622,9 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   // not the model's judgment: it's an Instant slip only if the header says "Instant".
   const headerText = String(parsed.header || '');
   const instant = /\binstant\b/i.test(headerText);
+
+  // meter a completed scan (best-effort; never block the response)
+  query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
 
   res.json({ matches, instant });
 }));

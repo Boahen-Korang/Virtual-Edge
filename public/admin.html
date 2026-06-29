@@ -545,6 +545,37 @@
 
     <!-- ===== Payment Gateway ===== -->
     <section class="view" id="view-gateway" hidden>
+
+      <!-- Screenshot scan credits -->
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-head">
+          <h2>Screenshot Scans</h2>
+          <div class="ph-spacer"></div>
+          <span id="scan-pill" class="codechip">— left</span>
+        </div>
+        <div class="panel-body">
+          <div id="scan-low" class="warn" style="display:none">⚠ Low on scans — buy more Anthropic credits at console.anthropic.com, then add the scans below.</div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Scans remaining</label>
+              <div id="scan-remaining" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--sulfur)">—</div>
+            </div>
+            <div class="field">
+              <label>Scans used (total)</label>
+              <div id="scan-used" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--bone)">—</div>
+            </div>
+            <div class="field full">
+              <label>Add scans you've funded</label>
+              <div style="display:flex;gap:8px">
+                <input id="scan-add" type="number" inputmode="numeric" placeholder="e.g. 1000" style="flex:1;min-width:0">
+                <button class="mini" type="button" onclick="topupScans()" style="flex:0 0 auto">Add</button>
+              </div>
+              <div class="hint">Each scan costs a fraction of a cent (≈ a few hundred scans per $1 on Haiku). When you top up your Anthropic credits, enter how many scans that covers so this counter stays accurate.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h2>Payment Gateway</h2>
@@ -672,6 +703,30 @@ async function loadAll(){
     toast(e.message || 'Could not load data.', 'error');
   }
   refresh();
+  loadScanMeter();
+}
+
+/* ---- Screenshot scan meter ---- */
+async function loadScanMeter(){
+  try {
+    const m = await VE.adminScanUsage();
+    const rem = m.remaining || 0, used = m.used || 0;
+    const remEl = document.getElementById('scan-remaining'); if(remEl) remEl.textContent = rem.toLocaleString();
+    const usedEl = document.getElementById('scan-used'); if(usedEl) usedEl.textContent = used.toLocaleString();
+    const pill = document.getElementById('scan-pill'); if(pill) pill.textContent = rem.toLocaleString() + ' left';
+    const low = document.getElementById('scan-low'); if(low) low.style.display = rem <= 50 ? '' : 'none';
+  } catch(e){ /* admin-only; ignore if not loaded */ }
+}
+async function topupScans(){
+  const el = document.getElementById('scan-add');
+  const amount = parseInt(el.value, 10);
+  if(isNaN(amount) || amount === 0){ toast('Enter how many scans to add.'); return; }
+  try {
+    await VE.adminScanTopup(amount);
+    el.value = '';
+    toast('Scan balance updated', 'success');
+    loadScanMeter();
+  } catch(e){ toast(e.message || 'Could not update scans.', 'error'); }
 }
 
 /* Build a full referral URL for a partner code (works on file:// and http) */
