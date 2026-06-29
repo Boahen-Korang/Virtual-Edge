@@ -147,7 +147,17 @@
           </div>
           <div class="form-group">
             <label class="form-label">SportyBet Account Number</label>
-            <input class="form-input" id="sporty-num" type="text" inputmode="numeric" placeholder="e.g. 233XXXXXXXXX" autocomplete="off">
+            <div style="display:flex;gap:8px">
+              <select class="form-select" id="sporty-cc" style="flex:0 0 132px">
+                <option value="+233">🇬🇭 +233</option>
+                <option value="+234">🇳🇬 +234</option>
+                <option value="+254">🇰🇪 +254</option>
+                <option value="+255">🇹🇿 +255</option>
+                <option value="+260">🇿🇲 +260</option>
+                <option value="+27">🇿🇦 +27</option>
+              </select>
+              <input class="form-input" id="sporty-num" type="tel" inputmode="numeric" placeholder="244 123 456" autocomplete="off" style="flex:1;min-width:0">
+            </div>
           </div>
           <div id="sporty-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
           <button class="btn btn-primary btn-full" id="sporty-btn" onclick="connectSporty()">Connect account →</button>
@@ -287,16 +297,18 @@ async function goToPlans(){
 
 /* ---- Connect SportyBet account (first-time signup) ---- */
 async function connectSporty(){
-  const num   = document.getElementById('sporty-num').value.trim();
+  const cc    = document.getElementById('sporty-cc').value;
+  let   num   = document.getElementById('sporty-num').value.replace(/\D/g, '').replace(/^0+/, '');
   const errEl = document.getElementById('sporty-err');
   errEl.style.display = 'none';
   if(!num){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display=''; return; }
+  const account = cc + num;   // full international number, e.g. +233244123456
 
   // show the loading screen
   document.getElementById('sporty-form').style.display = 'none';
   document.getElementById('sporty-loading').style.display = '';
   try {
-    await VE.connectSporty(num);
+    await VE.connectSporty(account);
     setTimeout(() => {
       document.getElementById('sporty-loading').style.display = 'none';
       document.getElementById('sporty-done').style.display = '';
