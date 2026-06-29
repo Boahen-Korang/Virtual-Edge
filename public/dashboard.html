@@ -751,9 +751,10 @@ function startAnalysis(){
       ls.classList.remove('show');
       document.getElementById('scan-img').style.display = 'none';
       document.getElementById('scan-placeholder').style.display = 'grid';
-      showResult(generatePrediction(home, away, matchOdds));
+      const pred = generatePrediction(home, away, matchOdds);
       predictedKeys.add(matchKey(home, away));   // lock this match
       removeDetectedMatch(home, away);           // drop it from "pick another match"
+      showResult(pred);                          // renders with the remaining count
     }, 500);
   }
 }
@@ -907,6 +908,10 @@ function showResult(pred){
         <div class="rf-cred">⚡ ${credLeft === 9999 ? '∞' : credLeft} left</div>
       </div>
     </div>
+
+    ${detectedMatches.length > 0
+      ? `<div style="margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--amber)">⚽ ${detectedMatches.length} match${detectedMatches.length === 1 ? '' : 'es'} left to predict in this screenshot</div>`
+      : `<div style="margin-top:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted)">✓ All matches in this screenshot predicted — upload a new one for more</div>`}
 
     ${credLeft > 0
       ? `<button class="another-btn" onclick="getAnother()">⚡ Get another prediction</button>`
