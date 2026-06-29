@@ -351,12 +351,8 @@
 
 <!-- Loading screen -->
 <div class="loading-screen" id="loading-screen">
-  <div class="scan-frame">
-    <div class="scan-placeholder" id="scan-placeholder">📸</div>
-    <img id="scan-img" class="scan-img" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;border-radius:16px;object-fit:cover">
-    <div class="scan-line"></div>
-    <div class="scan-corners"></div>
-    <div class="scan-corners-2"></div>
+  <div class="logo-spin" style="margin:0 auto 22px">
+    <img src="sporty-logo.svg" alt="SportyBet">
   </div>
   <div class="loading-msg" id="loading-msg">Reading screenshot…</div>
   <div class="loading-sub" id="loading-sub">Please wait while we analyse your matches</div>
@@ -705,15 +701,6 @@ function startAnalysis(){
   const ls = document.getElementById('loading-screen');
   ls.classList.add('show');
 
-  /* Put screenshot in scan frame */
-  if(screenshotDataUrl){
-    const si = document.getElementById('scan-img');
-    si.src = screenshotDataUrl;
-    si.style.display = 'block';
-    si.classList.add('has-img');
-    document.getElementById('scan-placeholder').style.display = 'none';
-  }
-
   /* Animate loading steps */
   let step = 0;
   const msgEl  = document.getElementById('loading-msg');
@@ -749,8 +736,6 @@ function startAnalysis(){
                       ? currentMatch.odds : null;
     setTimeout(()=>{
       ls.classList.remove('show');
-      document.getElementById('scan-img').style.display = 'none';
-      document.getElementById('scan-placeholder').style.display = 'grid';
       const pred = generatePrediction(home, away, matchOdds);
       predictedKeys.add(matchKey(home, away));   // lock this match
       removeDetectedMatch(home, away);           // drop it from "pick another match"
