@@ -511,6 +511,12 @@ app.get('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
   })));
 }));
 
+// clear transaction history (e.g. wipe test/fake purchases so revenue resets)
+app.delete('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
+  const { rowCount } = await query('DELETE FROM purchases');
+  res.json({ ok: true, deleted: rowCount });
+}));
+
 app.get('/api/admin/picks', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM pushed_picks ORDER BY created_at DESC');
   res.json(rows.map(pickOut));

@@ -103,6 +103,7 @@
     adminScanTopup: (amount) => req('POST', '/admin/scan-topup', { amount }, 'admin'),
     adminDeleteUser: (email) => req('DELETE', '/admin/users/' + encodeURIComponent(email), null, 'admin'),
     adminPurchases: () => req('GET', '/admin/purchases', null, 'admin'),
+    adminClearPurchases: () => req('DELETE', '/admin/purchases', null, 'admin'),
     adminPicks: () => req('GET', '/admin/picks', null, 'admin'),
     adminSendPicks: (email, picks) => req('POST', '/admin/picks', { email, picks }, 'admin'),
     adminCancelPick: (id) => req('DELETE', '/admin/picks/' + id, null, 'admin'),

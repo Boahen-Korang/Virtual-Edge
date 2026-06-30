@@ -534,6 +534,7 @@
           <div class="ph-spacer"></div>
           <input class="search" id="tx-search" placeholder="Search email, package, ref…" oninput="renderTx()">
           <button class="mini ghost" onclick="exportTx()">Export CSV</button>
+          <button class="mini ghost" onclick="clearTransactions()" style="color:var(--crimson)">Clear all</button>
         </div>
         <div class="tbl-scroll">
           <table>
@@ -1235,6 +1236,14 @@ function exportTx(){
   getPurchases().forEach(p => rows.push([p.date||'', p.email||'', p.pkg||'', parsePrice(p.pkg), p.preds||'', p.ref||'']));
   downloadCSV('virtualedge-transactions.csv', rows);
   toast('Transactions exported', 'success');
+}
+async function clearTransactions(){
+  if(!confirm('Delete ALL transaction history? This wipes the revenue figure and cannot be undone.\n\n(Members keep their credits — this only clears the purchase records.)')) return;
+  try {
+    const r = await VE.adminClearPurchases();
+    toast('Cleared ' + (r.deleted || 0) + ' transactions', 'success');
+    await loadAll();
+  } catch(e){ toast(e.message || 'Could not clear transactions.', 'error'); }
 }
 
 /* ================= Refresh / gate ================= */
