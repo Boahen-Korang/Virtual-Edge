@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS scan_meter (
 );
 INSERT INTO scan_meter (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
+-- Security alerts surfaced in the admin panel (e.g. unverified purchase attempts).
+CREATE TABLE IF NOT EXISTS security_alerts (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT,
+  kind       TEXT,
+  detail     TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_created ON security_alerts(created_at DESC);
+
 CREATE TABLE IF NOT EXISTS payment_config (
   id          INTEGER PRIMARY KEY DEFAULT 1,
   provider    TEXT DEFAULT 'paystack',

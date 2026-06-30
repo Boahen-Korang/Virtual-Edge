@@ -15,7 +15,7 @@ const { pool, query, initSchema } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '055290';
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '0552905815';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -269,6 +269,10 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   // starts with "cwr_"; anything else (demo refs, forged client values, etc.)
   // is rejected so nobody gets free credits.
   if (!/^cwr_/i.test(reference)) {
+    // flag the attempt for the admin (best-effort)
+    query('INSERT INTO security_alerts (email,kind,detail) VALUES ($1,$2,$3)',
+      [req.user.email, 'unverified_purchase',
+       'Tried to claim ' + predictions + ' predictions (' + pkg + ') with ref "' + reference.slice(0, 40) + '"']).catch(() => {});
     return res.status(400).json({ error: 'Payment could not be verified.' });
   }
   const v = await verifyCowrieCharge(reference);
@@ -516,6 +520,16 @@ app.get('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
 // clear transaction history (e.g. wipe test/fake purchases so revenue resets)
 app.delete('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
   const { rowCount } = await query('DELETE FROM purchases');
+  res.json({ ok: true, deleted: rowCount });
+}));
+
+// security alerts (e.g. unverified purchase attempts)
+app.get('/api/admin/alerts', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query('SELECT id,email,kind,detail,created_at FROM security_alerts ORDER BY created_at DESC LIMIT 100');
+  res.json(rows.map((r) => ({ id: r.id, email: r.email, kind: r.kind, detail: r.detail, date: r.created_at })));
+}));
+app.delete('/api/admin/alerts', auth('admin'), wrap(async (req, res) => {
+  const { rowCount } = await query('DELETE FROM security_alerts');
   res.json({ ok: true, deleted: rowCount });
 }));
 

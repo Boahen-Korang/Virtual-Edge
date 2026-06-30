@@ -342,7 +342,7 @@
   <aside class="sidebar">
     <div class="side-brand"><span class="di">◆</span>VirtualEdge<span class="tag">Admin</span></div>
     <nav class="nav">
-      <a class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="ico">▦</span>Overview</a>
+      <a class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="ico">▦</span>Overview<span class="badge" id="nav-alerts-badge" style="display:none;background:rgba(255,59,34,.18);color:var(--ember,#FF3B22)">0</span></a>
       <a class="nav-item" data-view="members" onclick="showView('members')"><span class="ico">☷</span>Members</a>
       <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">⊕</span>Send Prediction</a>
       <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">✦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
@@ -368,6 +368,17 @@
 
     <!-- ===== Overview ===== -->
     <section class="view" id="view-overview">
+      <!-- Security alerts -->
+      <div class="panel" id="alerts-panel" style="display:none;margin-bottom:18px;border-color:rgba(255,59,34,.4)">
+        <div class="panel-head">
+          <h2>⚠ Security Alerts</h2>
+          <span class="count" id="alerts-count" style="background:rgba(255,59,34,.15);color:var(--ember,#FF3B22)">0</span>
+          <div class="ph-spacer"></div>
+          <button class="mini ghost" onclick="clearAlerts()">Dismiss all</button>
+        </div>
+        <div class="mini-list" id="alerts-list"></div>
+      </div>
+
       <div class="section-lead">
         <h2>At a glance</h2>
         <p>Live snapshot of members, revenue and recent activity.</p>
@@ -717,6 +728,35 @@ async function loadAll(){
   }
   refresh();
   loadScanMeter();
+  loadAlerts();
+}
+
+/* ---- Security alerts ---- */
+async function loadAlerts(){
+  try {
+    const a = await VE.adminAlerts();
+    const panel = document.getElementById('alerts-panel');
+    const list  = document.getElementById('alerts-list');
+    const cnt   = document.getElementById('alerts-count');
+    const navb  = document.getElementById('nav-alerts-badge');
+    if(!a.length){ if(panel) panel.style.display = 'none'; if(navb) navb.style.display='none'; return; }
+    if(cnt) cnt.textContent = a.length;
+    if(navb){ navb.textContent = a.length; navb.style.display = 'inline-block'; }
+    if(list) list.innerHTML = a.map(x => `
+      <div class="mini-row">
+        <div class="mini-avatar" style="background:rgba(255,59,34,.15);color:var(--ember,#FF3B22)">⚠</div>
+        <div class="mini-main">
+          <div class="mini-title">${esc(x.email || '—')}</div>
+          <div class="mini-sub">${esc(x.detail || x.kind || '')} · ${esc(fmtDateTime(x.date))}</div>
+        </div>
+      </div>`).join('');
+    if(panel) panel.style.display = '';
+  } catch(e){ /* admin-only */ }
+}
+async function clearAlerts(){
+  if(!confirm('Dismiss all security alerts?')) return;
+  try { await VE.adminClearAlerts(); toast('Alerts dismissed', 'success'); loadAlerts(); }
+  catch(e){ toast(e.message || 'Could not clear alerts.', 'error'); }
 }
 
 /* ---- Screenshot scan meter ---- */
