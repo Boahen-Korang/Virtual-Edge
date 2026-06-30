@@ -547,12 +547,34 @@ let scanToken = 0;
    ============================================================ */
 
 /* ---- File select ---- */
+/* Shrink big phone screenshots before upload — keeps the request small (no 413)
+   and the scan cheaper, while staying sharp enough to read the teams. */
+function downscaleImage(dataUrl, maxDim, quality){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if(Math.max(w, h) > maxDim){
+        const s = maxDim / Math.max(w, h);
+        w = Math.round(w * s); h = Math.round(h * s);
+      }
+      try {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', quality));
+      } catch(e){ resolve(dataUrl); }   // canvas blocked → use original
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 function onFileSelect(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
-    screenshotDataUrl = ev.target.result;
+  reader.onload = async ev => {
+    screenshotDataUrl = await downscaleImage(ev.target.result, 1600, 0.85);
     document.getElementById('preview-img').src = screenshotDataUrl;
     document.getElementById('preview-section').style.display = 'block';
     /* Wipe any result/teams from the previous screenshot so nothing carries over */
