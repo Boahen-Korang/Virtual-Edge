@@ -438,9 +438,20 @@ const SESSION = (()=>{
 if(!SESSION) throw new Error('redirect');
 
 /* Show the signed-in user's email in the top bar */
+function maskEmail(email){
+  email = String(email || '');
+  const at = email.indexOf('@');
+  if(at < 1) return email;
+  const local = email.slice(0, at), domain = email.slice(at);   // keeps "@gmail.com"
+  const keep = Math.min(2, local.length);
+  return local.slice(0, keep) + '•'.repeat(Math.max(3, local.length - keep)) + domain;
+}
 function showUserEmail(){
   const el = document.getElementById('user-email');
-  if(el && SESSION.email) el.textContent = SESSION.email;
+  if(el && SESSION.email){
+    el.textContent = maskEmail(SESSION.email);   // privacy: hide most of the address
+    el.title = 'Signed in';                       // don't expose the full email in the DOM
+  }
 }
 showUserEmail();
 
