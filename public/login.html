@@ -382,15 +382,10 @@ function startPayment(){
 
   const ref = 'VE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
 
-  // Safety: if a key-based gateway has no key configured, simulate for demo
+  // No real gateway key loaded → fail safe, never simulate a payment.
   if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
     btn.disabled = false; btn.textContent = 'Pay with Paystack →';
-    const proceed = confirm(
-      '⚠️ Demo mode: payment gateway key not configured.\n\n' +
-      `Plan: ${selectedPlan.label}\nAmount: ${PAY_CURRENCY} ${selectedPlan.price}\n\n` +
-      'Click OK to simulate a successful payment.'
-    );
-    if(proceed) onPaymentSuccess(ref);
+    toast('Payment is temporarily unavailable. Please refresh and try again.', 'error');
     return;
   }
 

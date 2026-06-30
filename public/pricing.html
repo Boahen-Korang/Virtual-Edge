@@ -438,14 +438,9 @@ function buyPackage(e, i){
   selectPackage(i);
   const pkg = PACKAGES[i];
 
-  // Demo mode if a key-based gateway has no key configured
+  // No real gateway key loaded → fail safe, never simulate a payment.
   if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
-    const ok = confirm(
-      `⚠️ Demo mode — payment gateway key not configured.\n\n` +
-      `Package: ${pkg.label}\nPredictions: ${pkg.tag}\n\n` +
-      `Click OK to simulate a successful payment.`
-    );
-    if(ok) onPaymentSuccess(pkg, 'DEMO_REF_' + Date.now());
+    toast('Payment is temporarily unavailable. Please refresh and try again.', 'error');
     return;
   }
 

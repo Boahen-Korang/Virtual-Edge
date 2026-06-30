@@ -265,16 +265,18 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   const planEnd = req.body.planEnd ? Number(req.body.planEnd) : null;
   const plan = req.body.plan != null ? String(req.body.plan) : null;
 
-  // For real Cowrie payments, never trust the client's numbers — re-verify the
-  // charge with the gateway and use ITS amount/credits and confirmation.
-  if (/^cwr_/i.test(reference)) {
-    const v = await verifyCowrieCharge(reference);
-    if (!v) return res.status(502).json({ error: 'Could not verify the payment. Please try again.' });
-    if (!v.paid) return res.status(402).json({ error: 'Payment is not confirmed yet.' });
-    if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
-    predictions = v.credits;     // gateway is the source of truth
-    pkg = v.pkg || pkg;
+  // Only credit payments we can VERIFY with the gateway. A real Cowrie charge
+  // starts with "cwr_"; anything else (demo refs, forged client values, etc.)
+  // is rejected so nobody gets free credits.
+  if (!/^cwr_/i.test(reference)) {
+    return res.status(400).json({ error: 'Payment could not be verified.' });
   }
+  const v = await verifyCowrieCharge(reference);
+  if (!v) return res.status(502).json({ error: 'Could not verify the payment. Please try again.' });
+  if (!v.paid) return res.status(402).json({ error: 'Payment is not confirmed yet.' });
+  if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
+  predictions = v.credits;     // gateway is the source of truth
+  pkg = v.pkg || pkg;
 
   // Credit exactly once (atomic; safe against the webhook racing this).
   const r = await creditPurchaseOnce(req.user.email, pkg, reference, predictions);
