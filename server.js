@@ -759,6 +759,16 @@ app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
   if (!key) return res.status(503).json({ error: 'Payment gateway is not configured.' });
   const { amount, currency, email, metadata, callbackUrl } = req.body || {};
   if (!amount || isNaN(amount)) return res.status(400).json({ error: 'A valid amount is required.' });
+  // Always send Cowrie a return URL so the buyer comes back to our pricing page
+  // (which then confirms and forwards to the dashboard). Never depend on the
+  // client to supply it — a cached old page wouldn't, and Cowrie would then
+  // fall back to the landing page.
+  const origin = (typeof req.headers.origin === 'string' && /^https?:\/\//.test(req.headers.origin))
+    ? req.headers.origin
+    : (req.protocol + '://' + req.get('host'));
+  const returnUrl = (typeof callbackUrl === 'string' && /^https?:\/\//.test(callbackUrl))
+    ? callbackUrl
+    : (origin + '/pricing.html');
   let charge;
   try {
     const r = await fetch(COWRIE_BASE + '/api/charges', {
@@ -768,7 +778,7 @@ app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
       body: JSON.stringify({
         amount: Math.round(Number(amount) * 100), currency: currency || 'GHS', email: email || '',
         metadata: metadata || {},
-        callbackUrl: (typeof callbackUrl === 'string' && /^https?:\/\//.test(callbackUrl)) ? callbackUrl : undefined,
+        callbackUrl: returnUrl,
       }),
     });
     const data = await r.json().catch(() => null);
@@ -852,7 +862,17 @@ app.post('/api/pay/cowrie/webhook', wrap(async (req, res) => {
 }));
 
 /* ============================ static site ============================ */
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  extensions: ['html'],
+  setHeaders(res, filePath) {
+    // Never let browsers serve a stale page/script — always revalidate so fixes
+    // (like the payment-return flow) take effect immediately. Static assets are
+    // small here, so the revalidation cost is negligible.
+    if (/\.(html|js)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  },
+}));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 /* ============================ boot ============================ */
