@@ -87,47 +87,21 @@
       label: 'Cowrie',
       sdk: null,
       async pay(cfg, o, h) {
-        // open the popup synchronously (inside the click) so mobile doesn't block it
-        const win = window.open('', 'cowrie_pay', 'width=480,height=720');
+        // Full-page redirect in the SAME tab (no popup → no stray second tab).
+        // Cowrie sends the buyer back to pricing.html (callbackUrl), which then
+        // confirms the charge with the server and forwards to the dashboard.
         let init;
         try {
           init = await window.VE.cowrieInit({
             amount: o.amount, currency: o.currency, email: o.email, metadata: o.metadata,
-            // where Cowrie sends the buyer after paying (mobile does a full redirect)
             callbackUrl: window.location.origin + '/pricing.html',
           });
         } catch (e) {
-          try { win && win.close(); } catch (_) {}
           return h.onError((e && e.message) || 'Could not start payment.');
         }
         // remember the charge so the return page can confirm it and go to the dashboard
         try { localStorage.setItem('ve_pending_ref', init.reference); } catch (_) {}
-        if (win) win.location = init.checkoutUrl;
-        else window.location.href = init.checkoutUrl; // popup blocked → full redirect
-
-        const ref = init.reference;
-        let stopped = false;
-        const stop = (fn, arg) => {
-          if (stopped) return; stopped = true;
-          clearInterval(timer); clearTimeout(killer);
-          document.removeEventListener('visibilitychange', onVis);
-          try { win && !win.closed && win.close(); } catch (_) {}
-          fn(arg);
-        };
-        async function check() {
-          try {
-            const s = await window.VE.cowrieStatus(ref);
-            if (s.paid) stop(h.onSuccess, ref);
-            else if (s.failed) stop(h.onError, 'Payment failed.');
-          } catch (_) { /* keep polling */ }
-        }
-        const onVis = () => { if (!document.hidden) check(); };
-        document.addEventListener('visibilitychange', onVis);
-        const timer = setInterval(() => {
-          if (win && win.closed) check().then(() => { if (!stopped) stop(h.onCancel); });
-          else check();
-        }, 3000);
-        const killer = setTimeout(() => { if (!stopped) stop(h.onCancel); }, 10 * 60 * 1000);
+        window.location.href = init.checkoutUrl;   // leave this tab for Cowrie's checkout
       },
     },
 
