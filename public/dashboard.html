@@ -562,7 +562,9 @@ function downscaleImage(dataUrl, maxDim, quality){
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', quality));
+        const out = c.toDataURL('image/jpeg', quality);
+        // some phones (iOS canvas limits) return an empty/broken data URL — keep the original then
+        resolve((out && out.length > 100 && /^data:image\/jpe?g/i.test(out)) ? out : dataUrl);
       } catch(e){ resolve(dataUrl); }   // canvas blocked → use original
     };
     img.onerror = () => resolve(dataUrl);
@@ -631,13 +633,19 @@ async function scanScreenshot(dataUrl){
   if(myScan !== scanToken) return;
 
   if(scanErr){
-    // The scanner itself failed (e.g. rate limit) — be honest, don't say "couldn't read teams"
+    // The scanner itself failed — say WHY, so the user (and support) can tell what's wrong
     detectedMatches = []; currentMatch = null;
     document.getElementById('shuffle-btn').style.display = 'none';
     document.getElementById('ti-label').textContent = 'Type the teams from your screenshot below';
-    setScanStatus('warn', scanErr.status === 429
-      ? '⏳ Scanner is busy right now — wait a moment and re-upload, or type the teams in.'
-      : 'Scanner is unavailable right now — type the teams in below.');
+    const st = scanErr.status;
+    let msg;
+    if(st === 429)      msg = '⏳ Scanner is busy right now — wait a moment and re-upload, or type the teams in.';
+    else if(st === 401) msg = '🔒 Your session expired — sign out and sign back in, then re-upload.';
+    else if(st === 400) msg = '🖼 That image couldn’t be read (unsupported or corrupt). Use a normal PNG/JPG screenshot, or type the teams in.';
+    else if(st === 413) msg = '📦 That image is too large — re-upload; it should shrink automatically.';
+    else if(st === 503) msg = '⚙️ Scanner is temporarily offline. Type the teams in for now.';
+    else                msg = 'Scanner couldn’t read this one (' + (scanErr.message || ('error ' + (st || '?'))) + '). Type the teams in below.';
+    setScanStatus('warn', msg);
     return;
   }
 
@@ -650,7 +658,16 @@ async function scanScreenshot(dataUrl){
 /* ---- Claude vision call ---- */
 let screenshotIsInstant = null;   // null = unknown; true/false from the scan
 async function callScanApi(dataUrl){
-  const r = await VE.scan(dataUrl);
+  let r;
+  try {
+    r = await VE.scan(dataUrl);
+  } catch(err){
+    // one automatic retry for transient upstream blips (502/500 from the AI, or a dropped connection)
+    const transient = !err.status || err.status >= 500;
+    if(!transient) throw err;
+    await new Promise(res => setTimeout(res, 1400));
+    r = await VE.scan(dataUrl);   // if this throws too, let it bubble up to the error message
+  }
   screenshotIsInstant = (r && typeof r.instant === 'boolean') ? r.instant : null;
   return (r && r.matches && r.matches.length) ? r.matches : null;
 }
