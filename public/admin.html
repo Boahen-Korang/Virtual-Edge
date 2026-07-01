@@ -1050,7 +1050,10 @@ function renderTx(){
         <td><span class="credits-num">${esc(p.pkg)}</span></td>
         <td>${esc(fmtMoney(parsePrice(p.pkg)))}</td>
         <td>${esc(p.preds || '—')}</td>
-        <td><span class="ref">${esc(p.ref || '—')}</span></td>
+        <td><span class="ref">${esc(p.ref || '—')}</span>
+          <button class="act danger" title="Remove this transaction from revenue"
+            onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}')"
+            style="margin-left:8px">✕</button></td>
       </tr>`;
   }).join('');
   renderPager('tx-pager', 'tx', total);
@@ -1321,6 +1324,16 @@ async function clearTransactions(){
     toast('Cleared ' + (r.deleted || 0) + ' transactions', 'success');
     await loadAll();
   } catch(e){ toast(e.message || 'Could not clear transactions.', 'error'); }
+}
+
+async function deleteTransaction(key, who){
+  if(!key || key === 'undefined'){ toast('This transaction has no reference to delete.', 'error'); return; }
+  if(!confirm('Remove ' + (who || 'this') + '’s transaction from revenue?\n\nThis deletes only the purchase record; the member keeps their credits.')) return;
+  try {
+    const r = await VE.adminDeletePurchase(key);
+    toast(r.deleted ? 'Transaction removed from revenue.' : 'Transaction not found.', r.deleted ? 'success' : 'error');
+    await loadAll();
+  } catch(e){ toast(e.message || 'Could not delete transaction.', 'error'); }
 }
 
 /* ================= Refresh / gate ================= */

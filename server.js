@@ -523,6 +523,16 @@ app.delete('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true, deleted: rowCount });
 }));
 
+// delete a single transaction (remove one entry from revenue), by id or reference
+app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => {
+  const key = String(req.params.key || '');
+  const byId = /^\d+$/.test(key);
+  const { rowCount } = await query(
+    byId ? 'DELETE FROM purchases WHERE id=$1' : 'DELETE FROM purchases WHERE reference=$1',
+    [key]);
+  res.json({ ok: true, deleted: rowCount });
+}));
+
 // security alerts (e.g. unverified purchase attempts)
 app.get('/api/admin/alerts', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT id,email,kind,detail,created_at FROM security_alerts ORDER BY created_at DESC LIMIT 100');

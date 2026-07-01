@@ -104,6 +104,7 @@
     adminDeleteUser: (email) => req('DELETE', '/admin/users/' + encodeURIComponent(email), null, 'admin'),
     adminPurchases: () => req('GET', '/admin/purchases', null, 'admin'),
     adminClearPurchases: () => req('DELETE', '/admin/purchases', null, 'admin'),
+    adminDeletePurchase: (key) => req('DELETE', '/admin/purchases/' + encodeURIComponent(key), null, 'admin'),
     adminAlerts: () => req('GET', '/admin/alerts', null, 'admin'),
     adminClearAlerts: () => req('DELETE', '/admin/alerts', null, 'admin'),
     adminPicks: () => req('GET', '/admin/picks', null, 'admin'),
