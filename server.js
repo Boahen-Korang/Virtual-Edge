@@ -687,6 +687,28 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   res.json({ matches, instant });
 }));
 
+/* ===================== FX rates (GHS → local; display only) ===================== */
+const FX_CODES = ['NGN', 'KES', 'TZS', 'ZMW', 'ZAR'];
+app.get('/api/fx-rates', wrap(async (req, res) => {
+  const { rows } = await query('SELECT code, rate FROM fx_rates');
+  const out = {};
+  rows.forEach((r) => { out[r.code] = Number(r.rate); });
+  res.json(out);
+}));
+app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
+  const body = req.body || {};
+  for (const code of FX_CODES) {
+    const rate = Number(body[code]);
+    if (!isNaN(rate) && rate > 0) {
+      await query('INSERT INTO fx_rates (code,rate) VALUES ($1,$2) ON CONFLICT (code) DO UPDATE SET rate = EXCLUDED.rate', [code, rate]);
+    }
+  }
+  const { rows } = await query('SELECT code, rate FROM fx_rates');
+  const out = {};
+  rows.forEach((r) => { out[r.code] = Number(r.rate); });
+  res.json({ ok: true, rates: out });
+}));
+
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {

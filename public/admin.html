@@ -600,6 +600,26 @@
         </div>
       </div>
 
+      <!-- Exchange rates (GHS → local, display only) -->
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-head">
+          <h2>Exchange Rates</h2>
+          <div class="ph-spacer"></div>
+          <span class="codechip" style="color:var(--ash);background:none;border-color:rgba(242,233,230,.16)">GHS → local</span>
+        </div>
+        <div class="panel-body">
+          <div class="hint" style="margin-bottom:12px">How many local units equal <b>1 GHS</b>. Shown as an estimate on the packages page for users from that country — checkout still charges GHS.</div>
+          <div class="form-grid">
+            <div class="field"><label>🇳🇬 Nigeria — ₦ per GHS</label><input id="fx-NGN" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇰🇪 Kenya — KSh per GHS</label><input id="fx-KES" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇹🇿 Tanzania — TSh per GHS</label><input id="fx-TZS" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇿🇲 Zambia — ZK per GHS</label><input id="fx-ZMW" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇿🇦 South Africa — R per GHS</label><input id="fx-ZAR" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+          <div class="save-row"><button class="mini" type="button" onclick="saveFxRates()">Save rates</button></div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h2>Payment Gateway</h2>
@@ -729,6 +749,23 @@ async function loadAll(){
   refresh();
   loadScanMeter();
   loadAlerts();
+  loadFxRates();
+}
+
+/* ---- Exchange rates (GHS → local) ---- */
+const FX_CODES = ['NGN','KES','TZS','ZMW','ZAR'];
+async function loadFxRates(){
+  try {
+    const r = await VE.fxRates();
+    FX_CODES.forEach(c => { const el = document.getElementById('fx-'+c); if(el && r && r[c] != null) el.value = r[c]; });
+  } catch(e){}
+}
+async function saveFxRates(){
+  const body = {};
+  FX_CODES.forEach(c => { const v = parseFloat(document.getElementById('fx-'+c).value); if(!isNaN(v) && v > 0) body[c] = v; });
+  if(!Object.keys(body).length){ toast('Enter at least one valid rate.'); return; }
+  try { await VE.adminSaveFxRates(body); toast('Exchange rates saved', 'success'); }
+  catch(e){ toast(e.message || 'Could not save rates.', 'error'); }
 }
 
 /* ---- Security alerts ---- */

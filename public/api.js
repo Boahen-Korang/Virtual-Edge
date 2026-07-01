@@ -116,6 +116,8 @@
 
     /* ---- public ---- */
     paymentConfigPublic: () => req('GET', '/payment-config/public'),
+    fxRates: () => req('GET', '/fx-rates'),
+    adminSaveFxRates: (rates) => req('PUT', '/admin/fx-rates', rates, 'admin'),
 
     /* ---- Cowrie gateway (proxied server-side; no CORS, secret stays on server) ---- */
     cowrieInit: (body) => req('POST', '/pay/cowrie/init', body),

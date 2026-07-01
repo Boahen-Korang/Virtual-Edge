@@ -381,6 +381,12 @@ function applyLocalCurrency(sportyAccount){
 
 /* Load the member's balance + show local-currency prices (from their country) */
 (async function initPricing(){
+  // pull admin-set exchange rates (fall back to the defaults above)
+  try {
+    const rates = await VE.fxRates();
+    Object.values(CURRENCIES).forEach(c => { if(rates && rates[c.code] > 0) c.rate = rates[c.code]; });
+  } catch(e){}
+
   let me;
   try { me = await VE.me(); } catch(e){ return; }
   applyLocalCurrency(me.user && me.user.sportyAccount);

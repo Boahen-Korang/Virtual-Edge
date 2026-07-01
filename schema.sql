@@ -90,6 +90,15 @@ CREATE TABLE IF NOT EXISTS security_alerts (
 );
 CREATE INDEX IF NOT EXISTS idx_alerts_created ON security_alerts(created_at DESC);
 
+-- Editable GHS → local exchange rates (display-only on the packages page).
+CREATE TABLE IF NOT EXISTS fx_rates (
+  code TEXT PRIMARY KEY,
+  rate NUMERIC NOT NULL
+);
+INSERT INTO fx_rates (code, rate) VALUES
+  ('NGN', 140), ('KES', 12.5), ('TZS', 240), ('ZMW', 2.5), ('ZAR', 1.8)
+ON CONFLICT (code) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS payment_config (
   id          INTEGER PRIMARY KEY DEFAULT 1,
   provider    TEXT DEFAULT 'paystack',
