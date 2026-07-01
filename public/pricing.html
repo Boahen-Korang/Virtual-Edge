@@ -318,8 +318,12 @@
 
 <!-- Payment overlay -->
 <div class="paying-overlay" id="paying-overlay">
-  <div class="spinner"></div>
-  <p>Opening payment…</p>
+  <div class="spinner" id="paying-spinner"></div>
+  <p class="paying-text" id="paying-text">Opening payment…</p>
+  <div id="paying-actions" style="display:none;gap:10px;margin-top:14px;flex-direction:column;align-items:center">
+    <button id="paying-check" style="min-width:200px;padding:12px 20px;border:none;border-radius:10px;background:#b8123a;color:#fff;font-weight:700;font-size:15px;cursor:pointer">I've paid — check again</button>
+    <a id="paying-dash" href="dashboard.html" style="color:#fff;opacity:.8;font-size:14px;text-decoration:underline">Go to my dashboard</a>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -524,32 +528,65 @@ async function onPaymentSuccess(pkg, ref){
   }
 }
 
-/* When Cowrie redirects the buyer back here after paying, confirm the charge
-   and send them to the dashboard (works even on mobile full-page redirects). */
+/* When the buyer taps "I've made the payment" on Cowrie, it redirects them
+   back here (our callbackUrl = pricing.html). We then confirm the charge with
+   the server (which re-checks Cowrie) and, once it's paid, send them to the
+   upload/dashboard page. Works on mobile full-page redirects. */
+function setPayingText(msg){ const t = document.getElementById('paying-text'); if(t) t.textContent = msg; }
+function showPayingActions(show){
+  const a = document.getElementById('paying-actions'); const sp = document.getElementById('paying-spinner');
+  if(a) a.style.display = show ? 'flex' : 'none';
+  if(sp) sp.style.display = show ? 'none' : 'block';
+}
+
+/* Poll the server until the payment is confirmed, then go to the dashboard.
+   Returns true if confirmed (and redirected), false if it timed out. */
+async function confirmPending(ref, deadlineMs){
+  while(Date.now() < deadlineMs){
+    try {
+      const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
+      if(r && r.ok){                                           // paid (or already credited by the webhook)
+        try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
+        setPayingText('Payment confirmed! Opening your dashboard…');
+        window.location.href = 'dashboard.html';
+        return true;
+      }
+    } catch(err){
+      const st = err && err.status;
+      if(st === 402 || st === 502){ /* not confirmed yet / transient — keep waiting */ }
+      else if(st === 403){ setPayingText('This payment belongs to another account. Please sign in with the account you paid from.'); return false; }
+      else { setPayingText((err && err.message) || 'We couldn’t confirm this payment.'); return false; }
+    }
+    await new Promise(res => setTimeout(res, 3000));
+  }
+  return false;   // timed out
+}
+
 (async function handlePaymentReturn(){
   let ref = '';
   try { ref = localStorage.getItem('ve_pending_ref') || ''; } catch(e){}
   if(!ref) return;
   const overlay = document.getElementById('paying-overlay');
-  if(overlay){ const t = overlay.querySelector('.paying-text'); if(t) t.textContent = 'Confirming your payment…'; overlay.classList.add('show'); }
-  // Cowrie can take a few seconds to mark the charge paid — retry a few times.
-  for(let i=0; i<8; i++){
-    try {
-      const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
-      if(r && r.ok){
-        try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
-        window.location.href = 'dashboard.html';
-        return;
-      }
-    } catch(err){
-      if(err && err.status === 402){ await new Promise(res => setTimeout(res, 2500)); continue; }  // not confirmed yet
-      break;   // any other error → stop retrying
-    }
-  }
-  // Couldn't confirm within the window — the webhook will still credit it if it went through.
-  try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
-  if(overlay) overlay.classList.remove('show');
-  toast('If your payment went through, your predictions will appear shortly. Refresh the dashboard.', 'error');
+  showPayingActions(false);
+  setPayingText('Confirming your payment…');
+  if(overlay) overlay.classList.add('show');
+
+  // Mobile-money can take up to a minute or so — wait patiently before giving up.
+  const done = await confirmPending(ref, Date.now() + 150000);
+  if(done) return;   // confirmed → already redirecting
+
+  // Timed out: keep the reference so the webhook (or a manual re-check) can still
+  // finish it, and let the buyer either check again or head to the dashboard.
+  setPayingText('Still waiting for your payment to confirm. This can take a minute — tap below to check again.');
+  showPayingActions(true);
+  const btn = document.getElementById('paying-check');
+  if(btn) btn.onclick = async () => {
+    let r2 = ''; try { r2 = localStorage.getItem('ve_pending_ref') || ref; } catch(e){ r2 = ref; }
+    showPayingActions(false);
+    setPayingText('Checking…');
+    const ok = await confirmPending(r2, Date.now() + 60000);
+    if(!ok){ setPayingText('Not confirmed yet. If you’ve paid, your predictions will appear shortly.'); showPayingActions(true); }
+  };
 })();
 
 /* ---- Toast ---- */
