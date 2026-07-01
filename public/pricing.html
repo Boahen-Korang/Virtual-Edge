@@ -368,14 +368,16 @@ const CURRENCIES = {
   '+27':  { code:'ZAR', sym:'R ',   rate:1.8  },  // South Africa
   // +233 Ghana = base GHS, no conversion shown
 };
+let LOCAL = null;   // the buyer's local currency (null = Ghana/GHS → charge GHS)
 function applyLocalCurrency(sportyAccount){
   const acct = String(sportyAccount || '');
   const prefix = Object.keys(CURRENCIES).sort((a,b)=>b.length-a.length).find(p => acct.startsWith(p));
   if(!prefix) return;                       // Ghana or unknown → GHS only
   const cur = CURRENCIES[prefix];
+  LOCAL = cur;                              // charge this currency (Cowrie supports it)
   PACKAGES.forEach((p, i) => {
     const el = document.getElementById('pkg-local-' + i);
-    if(el) el.textContent = '≈ ' + cur.sym + Math.round(p.price * cur.rate).toLocaleString() + ' ' + cur.code;
+    if(el) el.textContent = cur.sym + Math.round(p.price * cur.rate).toLocaleString() + ' ' + cur.code;
   });
 }
 
@@ -478,14 +480,19 @@ function buyPackage(e, i){
   document.getElementById('paying-overlay').classList.add('show');
   const ref = 'VE_' + Date.now() + '_' + Math.random().toString(36).slice(2,6).toUpperCase();
 
+  // Charge in the buyer's own currency (Nigeria → NGN, etc.) so Cowrie shows
+  // their national payment methods. Ghana / unknown → GHS.
+  const chargeCurrency = LOCAL ? LOCAL.code : PAY_CURRENCY;
+  const chargeAmount   = LOCAL ? Math.round(pkg.price * LOCAL.rate) : pkg.price;
+
   VEPay.checkout(
     PAY_PROVIDER,
     { key: PAYSTACK_PUBLIC_KEY, business: PAY_BUSINESS },
     {
       email: SESSION.email,
       name: SESSION.name,
-      amount: pkg.price,
-      currency: PAY_CURRENCY,
+      amount: chargeAmount,
+      currency: chargeCurrency,
       reference: ref,
       metadata: { name: SESSION.name, business: PAY_BUSINESS, package: pkg.label, predictions: pkg.tag, credits: (pkg.preds === 999 ? 9999 : pkg.preds), email: SESSION.email },
     },
