@@ -358,24 +358,46 @@ if(!SESSION) throw new Error('redirect');
   } catch(e){}
 })();
 
-/* Show the member's current balance so returning users aren't pushed to pay again */
-(async function loadBalance(){
-  try {
-    const me = await VE.me();
-    const credits = me.credits || 0;
-    const uu = (me.user && me.user.unlimitedUntil) || 0;
-    const unlimited = uu && Date.now() < uu;
-    if(!credits && !unlimited) return;
-    const txt = document.getElementById('balance-text');
-    if(unlimited){
-      const ms = uu - Date.now();
-      const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
-      txt.textContent = '✦ Unlimited predictions — ' + (h >= 1 ? h + 'h left' : (m >= 1 ? m + 'm left' : 'expiring soon'));
-    } else {
-      txt.textContent = '⚡ ' + credits + ' prediction' + (credits === 1 ? '' : 's') + ' available';
-    }
-    document.getElementById('balance-banner').style.display = 'flex';
-  } catch(e){}
+/* Local-currency prices (display only — checkout still charges GHS).
+   Rates are GHS → local; approximate, edit as the market moves. */
+const CURRENCIES = {
+  '+234': { code:'NGN', sym:'₦',    rate:140  },  // Nigeria
+  '+254': { code:'KES', sym:'KSh ', rate:12.5 },  // Kenya
+  '+255': { code:'TZS', sym:'TSh ', rate:240  },  // Tanzania
+  '+260': { code:'ZMW', sym:'ZK ',  rate:2.5  },  // Zambia
+  '+27':  { code:'ZAR', sym:'R ',   rate:1.8  },  // South Africa
+  // +233 Ghana = base GHS, no conversion shown
+};
+function applyLocalCurrency(sportyAccount){
+  const acct = String(sportyAccount || '');
+  const prefix = Object.keys(CURRENCIES).sort((a,b)=>b.length-a.length).find(p => acct.startsWith(p));
+  if(!prefix) return;                       // Ghana or unknown → GHS only
+  const cur = CURRENCIES[prefix];
+  PACKAGES.forEach((p, i) => {
+    const el = document.getElementById('pkg-local-' + i);
+    if(el) el.textContent = '≈ ' + cur.sym + Math.round(p.price * cur.rate).toLocaleString() + ' ' + cur.code;
+  });
+}
+
+/* Load the member's balance + show local-currency prices (from their country) */
+(async function initPricing(){
+  let me;
+  try { me = await VE.me(); } catch(e){ return; }
+  applyLocalCurrency(me.user && me.user.sportyAccount);
+
+  const credits = me.credits || 0;
+  const uu = (me.user && me.user.unlimitedUntil) || 0;
+  const unlimited = uu && Date.now() < uu;
+  if(!credits && !unlimited) return;
+  const txt = document.getElementById('balance-text');
+  if(unlimited){
+    const ms = uu - Date.now();
+    const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    txt.textContent = '✦ Unlimited predictions — ' + (h >= 1 ? h + 'h left' : (m >= 1 ? m + 'm left' : 'expiring soon'));
+  } else {
+    txt.textContent = '⚡ ' + credits + ' prediction' + (credits === 1 ? '' : 's') + ' available';
+  }
+  document.getElementById('balance-banner').style.display = 'flex';
 })();
 
 /* ---- Packages ---- */
@@ -403,7 +425,10 @@ PACKAGES.forEach((p, i) => {
   list.innerHTML += `
     <div class="pkg-card" id="pc-${i}" onclick="selectPackage(${i})">
       <div class="pkg-top">
-        <div class="pkg-price">${p.label}</div>
+        <div>
+          <div class="pkg-price">${p.label}</div>
+          <div class="pkg-local" id="pkg-local-${i}" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+        </div>
         <span class="pkg-avail">Available</span>
         <div class="pkg-icon">${p.icon}</div>
       </div>
