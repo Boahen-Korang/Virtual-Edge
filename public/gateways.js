@@ -93,11 +93,15 @@
         try {
           init = await window.VE.cowrieInit({
             amount: o.amount, currency: o.currency, email: o.email, metadata: o.metadata,
+            // where Cowrie sends the buyer after paying (mobile does a full redirect)
+            callbackUrl: window.location.origin + '/pricing.html',
           });
         } catch (e) {
           try { win && win.close(); } catch (_) {}
           return h.onError((e && e.message) || 'Could not start payment.');
         }
+        // remember the charge so the return page can confirm it and go to the dashboard
+        try { localStorage.setItem('ve_pending_ref', init.reference); } catch (_) {}
         if (win) win.location = init.checkoutUrl;
         else window.location.href = init.checkoutUrl; // popup blocked → full redirect
 

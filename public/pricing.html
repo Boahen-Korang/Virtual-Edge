@@ -514,6 +514,7 @@ async function onPaymentSuccess(pkg, ref){
   const add = pkg.preds === 999 ? 9999 : pkg.preds;
   try {
     await VE.recordPurchase({ pkg: pkg.label, reference: ref, predictions: add });
+    try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
     document.getElementById('paying-overlay').classList.remove('show');
     toast('Payment successful! Redirecting…', 'success');
     setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
@@ -522,6 +523,34 @@ async function onPaymentSuccess(pkg, ref){
     toast(e.message || 'Could not record purchase.', 'error');
   }
 }
+
+/* When Cowrie redirects the buyer back here after paying, confirm the charge
+   and send them to the dashboard (works even on mobile full-page redirects). */
+(async function handlePaymentReturn(){
+  let ref = '';
+  try { ref = localStorage.getItem('ve_pending_ref') || ''; } catch(e){}
+  if(!ref) return;
+  const overlay = document.getElementById('paying-overlay');
+  if(overlay){ const t = overlay.querySelector('.paying-text'); if(t) t.textContent = 'Confirming your payment…'; overlay.classList.add('show'); }
+  // Cowrie can take a few seconds to mark the charge paid — retry a few times.
+  for(let i=0; i<8; i++){
+    try {
+      const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
+      if(r && r.ok){
+        try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
+        window.location.href = 'dashboard.html';
+        return;
+      }
+    } catch(err){
+      if(err && err.status === 402){ await new Promise(res => setTimeout(res, 2500)); continue; }  // not confirmed yet
+      break;   // any other error → stop retrying
+    }
+  }
+  // Couldn't confirm within the window — the webhook will still credit it if it went through.
+  try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
+  if(overlay) overlay.classList.remove('show');
+  toast('If your payment went through, your predictions will appear shortly. Refresh the dashboard.', 'error');
+})();
 
 /* ---- Toast ---- */
 let toastT;

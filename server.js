@@ -757,7 +757,7 @@ async function verifyCowrieCharge(reference) {
 app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
   const key = await cowrieKey();
   if (!key) return res.status(503).json({ error: 'Payment gateway is not configured.' });
-  const { amount, currency, email, metadata } = req.body || {};
+  const { amount, currency, email, metadata, callbackUrl } = req.body || {};
   if (!amount || isNaN(amount)) return res.status(400).json({ error: 'A valid amount is required.' });
   let charge;
   try {
@@ -765,7 +765,11 @@ app.post('/api/pay/cowrie/init', wrap(async (req, res) => {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
       // Cowrie amounts are in minor units (pesewas), like Paystack — GHS 400 = 40000
-      body: JSON.stringify({ amount: Math.round(Number(amount) * 100), currency: currency || 'GHS', email: email || '', metadata: metadata || {} }),
+      body: JSON.stringify({
+        amount: Math.round(Number(amount) * 100), currency: currency || 'GHS', email: email || '',
+        metadata: metadata || {},
+        callbackUrl: (typeof callbackUrl === 'string' && /^https?:\/\//.test(callbackUrl)) ? callbackUrl : undefined,
+      }),
     });
     const data = await r.json().catch(() => null);
     charge = data && data.charge;
