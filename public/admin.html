@@ -1051,9 +1051,12 @@ function renderTx(){
         <td>${esc(fmtMoney(parsePrice(p.pkg)))}</td>
         <td>${esc(p.preds || '—')}</td>
         <td><span class="ref">${esc(p.ref || '—')}</span>
-          <button class="act danger" title="Remove this transaction from revenue"
-            onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}')"
-            style="margin-left:8px">✕</button></td>
+          <button class="act" title="Remove from revenue only (member keeps their credits)"
+            onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}',false)"
+            style="margin-left:8px">✕ revenue</button>
+          <button class="act danger" title="Remove AND take back the credits this purchase granted"
+            onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}',true)"
+            style="margin-left:6px">✕ + credits</button></td>
       </tr>`;
   }).join('');
   renderPager('tx-pager', 'tx', total);
@@ -1326,12 +1329,17 @@ async function clearTransactions(){
   } catch(e){ toast(e.message || 'Could not clear transactions.', 'error'); }
 }
 
-async function deleteTransaction(key, who){
+async function deleteTransaction(key, who, revoke){
   if(!key || key === 'undefined'){ toast('This transaction has no reference to delete.', 'error'); return; }
-  if(!confirm('Remove ' + (who || 'this') + '’s transaction from revenue?\n\nThis deletes only the purchase record; the member keeps their credits.')) return;
+  const msg = revoke
+    ? 'Remove ' + (who || 'this') + '’s transaction AND take back the credits it granted?\n\nThis reverses the purchase completely (use for refunds / fraud).'
+    : 'Remove ' + (who || 'this') + '’s transaction from revenue?\n\nThis deletes only the purchase record; the member keeps their credits.';
+  if(!confirm(msg)) return;
   try {
-    const r = await VE.adminDeletePurchase(key);
-    toast(r.deleted ? 'Transaction removed from revenue.' : 'Transaction not found.', r.deleted ? 'success' : 'error');
+    const r = await VE.adminDeletePurchase(key, revoke);
+    if(!r.deleted){ toast('Transaction not found.', 'error'); }
+    else if(revoke){ toast(r.revoked === -1 ? 'Removed; 24h unlimited pass revoked.' : 'Removed; ' + (r.revoked||0) + ' credits taken back.', 'success'); }
+    else { toast('Transaction removed from revenue.', 'success'); }
     await loadAll();
   } catch(e){ toast(e.message || 'Could not delete transaction.', 'error'); }
 }

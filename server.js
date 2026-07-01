@@ -523,14 +523,33 @@ app.delete('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true, deleted: rowCount });
 }));
 
-// delete a single transaction (remove one entry from revenue), by id or reference
+// delete a single transaction (remove one entry from revenue), by id or reference.
+// ?revoke=1 also takes back the credits (or the 24h unlimited pass) it granted —
+// use it to fully reverse a refunded or fraudulent purchase.
 app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => {
   const key = String(req.params.key || '');
   const byId = /^\d+$/.test(key);
-  const { rowCount } = await query(
-    byId ? 'DELETE FROM purchases WHERE id=$1' : 'DELETE FROM purchases WHERE reference=$1',
-    [key]);
-  res.json({ ok: true, deleted: rowCount });
+  const revoke = String(req.query.revoke || '') === '1';
+  const where = byId ? 'id=$1' : 'reference=$1';
+
+  const sel = await query('SELECT email, predictions FROM purchases WHERE ' + where, [key]);
+  const row = sel.rows[0];
+  if (!row) return res.json({ ok: true, deleted: 0, revoked: 0 });
+
+  let revoked = 0;   // credits taken back; -1 means a 24h unlimited pass was removed
+  if (revoke) {
+    const preds = Number(row.predictions) || 0;
+    if (preds >= 9999) {
+      await query('UPDATE users SET unlimited_until = GREATEST(0, COALESCE(unlimited_until,0) - $2) WHERE email=$1',
+        [row.email, DAY_MS]);
+      revoked = -1;
+    } else if (preds > 0) {
+      await query('UPDATE credits SET amount = GREATEST(0, amount - $2) WHERE email=$1', [row.email, preds]);
+      revoked = preds;
+    }
+  }
+  await query('DELETE FROM purchases WHERE ' + where, [key]);
+  res.json({ ok: true, deleted: 1, revoked });
 }));
 
 // security alerts (e.g. unverified purchase attempts)
