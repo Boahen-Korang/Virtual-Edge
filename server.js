@@ -69,7 +69,9 @@ if (SMTP_USER && SMTP_PASS) {
 const mailConfigured = () => !!(mailer || (RESEND_API_KEY && MAIL_FROM));
 
 async function sendMail(to, subject, html) {
-  const from = MAIL_FROM || SMTP_USER;
+  // Gmail forces the authenticated address as the sender, but honors a display
+  // name — so recipients see "VirtualEdge" instead of a bare Gmail address.
+  const from = MAIL_FROM || ('"VirtualEdge" <' + SMTP_USER + '>');
   if (mailer) {
     try { await mailer.sendMail({ from, to, subject, html }); return true; }
     catch (e) { console.warn('[mail] smtp send failed', e && e.message); return false; }
