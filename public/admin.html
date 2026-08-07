@@ -347,7 +347,7 @@
       <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">⊕</span>Send Prediction</a>
       <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">✦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
       <a class="nav-item" data-view="partners" onclick="showView('partners')"><span class="ico">⬡</span>Partners</a>
-      <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">⇄</span>Transactions</a>
+      <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">⇄</span>Transactions<span class="badge" id="nav-claims-badge" style="display:none">0</span></a>
       <a class="nav-item" data-view="gateway" onclick="showView('gateway')"><span class="ico">▤</span>Payment Gateway</a>
     </nav>
     <div class="side-foot">
@@ -538,6 +538,24 @@
 
     <!-- ===== Transactions ===== -->
     <section class="view" id="view-transactions" hidden>
+
+      <!-- Direct MoMo claims awaiting a decision -->
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-head">
+          <h2>MoMo Payments — Confirm</h2>
+          <span class="count" id="claims-count">0</span>
+          <div class="ph-spacer"></div>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>Member</th><th>Package</th><th>Transaction ID</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="claims-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h2>Transaction History</h2>
@@ -677,6 +695,16 @@
               <input id="pg-business" type="text" placeholder="VirtualEdge" autocomplete="off">
               <div class="hint">Shown to customers on the checkout popup.</div>
             </div>
+            <div class="field">
+              <label>MoMo Number <span style="color:var(--sulfur)">· direct payments</span></label>
+              <input id="pg-momo" type="text" inputmode="tel" placeholder="e.g. 024 123 4567" autocomplete="off">
+              <div class="hint">Used when Provider is <b>Manual / Mobile Money</b> — buyers send money straight to this number.</div>
+            </div>
+            <div class="field">
+              <label>MoMo Account Name</label>
+              <input id="pg-momo-name" type="text" placeholder="Name on the wallet" autocomplete="off">
+              <div class="hint">Shown so buyers can verify they're sending to the right person.</div>
+            </div>
           </div>
 
           <div class="save-row">
@@ -722,26 +750,30 @@ const PACKAGES = [
 
 /* ---- Data access (cached from the API; loadAll() refreshes them) ---- */
 const read = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || fb); } catch(e){ return JSON.parse(fb); } };
-let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {};
+let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [];
 const getUsers     = () => _users;
 const getCredits   = () => _credits;
 const getPurchases = () => _purchases;
 const getResults   = () => read('ve_results', '[]');   // reference data only
 const getPayConfig = () => _paycfg;
 const getPartners  = () => _partners;
+const getClaims    = () => _claims;
 
 /* Fetch everything the dashboard needs, then re-render */
 async function loadAll(){
   try {
-    const [users, partners, purchases, picks, cfg] = await Promise.all([
-      VE.adminUsers(), VE.adminPartners(), VE.adminPurchases(), VE.adminPicks(), VE.adminPaymentConfig()
+    const [users, partners, purchases, picks, cfg, claims] = await Promise.all([
+      VE.adminUsers(), VE.adminPartners(), VE.adminPurchases(), VE.adminPicks(), VE.adminPaymentConfig(),
+      VE.adminManualClaims().catch(() => [])
     ]);
     _users = {}; _credits = {};
     users.forEach(u => { _users[u.email] = u; _credits[u.email] = u.credits || 0; });
     _partners = partners;
     _purchases = purchases.map(p => ({ ...p, preds: p.predictions, ref: p.reference }));
     _picks = picks;
-    _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret, business: cfg.business };
+    _claims = claims;
+    _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret,
+      business: cfg.business, momoNumber: cfg.momoNumber, momoName: cfg.momoName };
   } catch(e){
     console.error(e);
     toast(e.message || 'Could not load data.', 'error');
@@ -1062,6 +1094,55 @@ function renderTx(){
   renderPager('tx-pager', 'tx', total);
 }
 
+/* ================= Direct MoMo claims ================= */
+function renderClaims(){
+  const claims = getClaims();
+  const users = getUsers();
+  const pending = claims.filter(c => c.status === 'pending').length;
+
+  document.getElementById('claims-count').textContent = claims.length + (pending ? ' · ' + pending + ' pending' : '');
+  const badge = document.getElementById('nav-claims-badge');
+  if(badge){ badge.textContent = pending; badge.style.display = pending ? '' : 'none'; }
+
+  const body = document.getElementById('claims-body');
+  if(!claims.length){
+    body.innerHTML = `<tr><td colspan="6"><div class="empty">No MoMo payment claims yet. When a buyer says "I've sent the money", it appears here for you to confirm.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = claims.map(c => {
+    const name = users[c.email] ? users[c.email].name : '';
+    const pill = c.status === 'pending'  ? `<span class="pill pending">Pending</span>`
+               : c.status === 'approved' ? `<span class="pill active">Approved</span>`
+               :                           `<span class="pill expired">Rejected</span>`;
+    const actions = c.status === 'pending'
+      ? `<div class="row-actions">
+           <button class="act approve" onclick="claimAction(${c.id},'approve')">✓ Money received</button>
+           <button class="act danger" onclick="claimAction(${c.id},'reject')">✕ Reject</button>
+         </div>`
+      : '';
+    return `
+      <tr>
+        <td><span class="ref">${esc(fmtDate(c.created))}</span></td>
+        <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(c.email)}</div></td>
+        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits||0) + ' predictions'}</div></td>
+        <td><span class="ref">${esc(c.txid||'—')}</span></td>
+        <td>${pill}</td>
+        <td>${actions}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function claimAction(id, action){
+  const c = getClaims().find(x => x.id === id) || {};
+  if(action === 'approve' && !confirm('Confirm you RECEIVED ' + (c.pkg || 'this payment') + ' from ' + (c.email || 'this member') + '?\n\nApproving grants their predictions immediately.')) return;
+  if(action === 'reject' && !confirm('Reject this payment claim from ' + (c.email || 'this member') + '? No credits will be granted.')) return;
+  try {
+    await VE.adminManualClaimDecide(id, action);
+    toast(action === 'approve' ? 'Payment confirmed — credits granted.' : 'Claim rejected.', action === 'approve' ? 'success' : '');
+    await loadAll(); refresh();
+  } catch(e){ toast(e.message || 'Could not update the claim.', 'error'); }
+}
+
 /* ================= Partners ================= */
 function renderPartners(){
   let partners = getPartners().slice();
@@ -1223,6 +1304,8 @@ function loadGateway(){
   document.getElementById('pg-key').value = c.publicKey || '';
   document.getElementById('pg-secret').value = c.secretKey || '';
   document.getElementById('pg-business').value = c.business || '';
+  document.getElementById('pg-momo').value = c.momoNumber || '';
+  document.getElementById('pg-momo-name').value = c.momoName || '';
   renderGatewayStatus();
 }
 async function saveGateway(){
@@ -1232,12 +1315,18 @@ async function saveGateway(){
     publicKey: document.getElementById('pg-key').value.trim(),
     secretKey: document.getElementById('pg-secret').value.trim(),
     business:  document.getElementById('pg-business').value.trim(),
+    momoNumber: document.getElementById('pg-momo').value.trim(),
+    momoName:  document.getElementById('pg-momo-name').value.trim(),
   };
+  if(cfg.provider === 'manual' && !cfg.momoNumber){
+    toast('Enter the MoMo number buyers should send money to.', 'error'); return;
+  }
   // Any key is accepted — no format validation.
   try {
     await VE.adminSavePaymentConfig({
       provider: cfg.provider, currency: cfg.currency,
-      key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business
+      key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business,
+      momoNumber: cfg.momoNumber, momoName: cfg.momoName
     });
     _paycfg = cfg;
     toast('Payment settings saved', 'success');
@@ -1260,7 +1349,12 @@ function renderGatewayStatus(){
              : provider === 'manual'      ? 'Manual / MoMo'
              : 'Paystack';
   const el = document.getElementById('pg-status');
-  if(provider === 'manual')   el.innerHTML = `<span class="pill live">${name} · active</span>`;
+  if(provider === 'manual'){
+    const n = (document.getElementById('pg-momo') || {}).value || c.momoNumber || '';
+    el.innerHTML = n ? `<span class="pill live">${name} · ${esc(n)}</span>`
+                     : `<span class="pill none">${name} · add your MoMo number</span>`;
+    return;
+  }
   else if(!k)                 el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
   else if(/_live_/i.test(k))  el.innerHTML = `<span class="pill live">${name} · Live · receiving payments</span>`;
   else if(/_test_/i.test(k))  el.innerHTML = `<span class="pill expired">${name} · Test mode</span>`;
@@ -1275,7 +1369,7 @@ function onProviderChange(){
       : provider === 'cowrie'
       ? 'Cowrie checkout (via your server). Paste your <b>cowrie_pk_…</b> / <b>cowrie_sk_…</b> keys below.'
       : provider === 'manual'
-      ? 'No gateway. The buyer sees your <b>Business / Display Name</b> as payment instructions, then enters a transaction ID you confirm manually.'
+      ? 'No gateway. Buyers send money straight to your <b>MoMo Number</b> below, enter their transaction ID, and you confirm each payment under <b>Transactions</b>.'
       : 'Paystack checkout. Paste your <b>pk_…</b> / <b>sk_…</b> keys below.';
   }
   renderGatewayStatus();
@@ -1606,7 +1700,7 @@ async function cancelPick(id){
   });
 })();
 
-function refresh(){ renderStats(); renderUsers(); renderTx(); renderPartners(); renderSentPicks(); }
+function refresh(){ renderStats(); renderUsers(); renderTx(); renderClaims(); renderPartners(); renderSentPicks(); }
 
 async function tryUnlock(){
   const v = document.getElementById('gate-input').value;

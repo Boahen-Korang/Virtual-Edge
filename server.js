@@ -292,6 +292,35 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   res.json({ ok: true, duplicate: r.duplicate, credits: c.rows[0] ? c.rows[0].amount : 0 });
 }));
 
+/* ---- Direct MoMo payment claim: "I've sent the money to your number" ----
+   No credits are granted here — the buyer's pkg/credits are just a display aid
+   for the admin, who checks the money actually arrived and approves the claim
+   (that approval is what credits the account). */
+app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
+  const pkg = String(req.body.pkg || '').slice(0, 40);
+  const credits = parseInt(req.body.credits, 10) || 0;
+  const amount = String(req.body.amount || '').slice(0, 40);
+  const txid = String(req.body.txid || '').trim().slice(0, 80);
+  if (txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
+  const dup = await query(
+    "SELECT COUNT(*)::int AS n FROM manual_claims WHERE email=$1 AND status='pending'", [req.user.email]);
+  if (dup.rows[0].n >= 3) {
+    return res.status(429).json({ error: 'You already have payments awaiting confirmation. Please wait for those first.' });
+  }
+  const { rows } = await query(
+    'INSERT INTO manual_claims (email,pkg,credits,amount,txid) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+    [req.user.email, pkg, credits, amount, txid]);
+  res.json({ ok: true, id: rows[0].id });
+}));
+
+// poll one's own claim so the pricing page can auto-continue once approved
+app.get('/api/me/manual-claims/:id', auth('member'), wrap(async (req, res) => {
+  const { rows } = await query(
+    'SELECT id, status FROM manual_claims WHERE id=$1 AND email=$2', [req.params.id, req.user.email]);
+  if (!rows.length) return res.status(404).json({ error: 'Claim not found.' });
+  res.json({ id: rows[0].id, status: rows[0].status });
+}));
+
 // spend a credit (when generating a prediction)
 app.post('/api/me/credits/spend', auth('member'), wrap(async (req, res) => {
   const n = parseInt(req.body.amount, 10) || 1;
@@ -586,16 +615,43 @@ app.delete('/api/admin/picks/:id', auth('admin'), wrap(async (req, res) => {
 app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
-  res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key, business: r.business });
+  res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
+    business: r.business, momoNumber: r.momo_number, momoName: r.momo_name });
 }));
 
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
-  const { provider, currency, key, secret, business } = req.body;
+  const { provider, currency, key, secret, business, momoNumber, momoName } = req.body;
   await query(
-    `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5 WHERE id=1`,
-    [provider || 'paystack', currency || 'GHS', key || '', secret || '', business || 'VirtualEdge']
+    `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
+       momo_number=$6, momo_name=$7 WHERE id=1`,
+    [provider || 'paystack', currency || 'GHS', key || '', secret || '', business || 'VirtualEdge',
+     momoNumber || '', momoName || '']
   );
   res.json({ ok: true });
+}));
+
+/* ---- Direct MoMo payment claims (provider = 'manual') ---- */
+app.get('/api/admin/manual-claims', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query(
+    `SELECT * FROM manual_claims ORDER BY (status='pending') DESC, created_at DESC LIMIT 300`);
+  res.json(rows.map((r) => ({ id: r.id, email: r.email, pkg: r.pkg, credits: r.credits,
+    amount: r.amount, txid: r.txid, status: r.status, created: r.created_at })));
+}));
+
+// Approve = grant the credits (exactly once — the status flip guards re-clicks);
+// reject just marks it. Check the money actually landed before approving.
+app.post('/api/admin/manual-claims/:id/:action', auth('admin'), wrap(async (req, res) => {
+  const action = req.params.action;
+  if (action !== 'approve' && action !== 'reject') return res.status(400).json({ error: 'Unknown action.' });
+  const { rows } = await query(
+    `UPDATE manual_claims SET status=$2, decided_at=now() WHERE id=$1 AND status='pending' RETURNING *`,
+    [req.params.id, action === 'approve' ? 'approved' : 'rejected']);
+  if (!rows.length) return res.status(409).json({ error: 'This claim was already handled.' });
+  const c = rows[0];
+  if (action === 'approve') {
+    await creditPurchaseOnce(c.email, c.pkg, 'MOMO_' + c.id + '_' + String(c.txid || '').slice(0, 40), c.credits);
+  }
+  res.json({ ok: true, status: c.status });
 }));
 
 app.get('/api/admin/stats', auth('admin'), wrap(async (req, res) => {
@@ -741,9 +797,10 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name FROM payment_config WHERE id=1');
   const r = rows[0] || {};
-  res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business });
+  res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
+    momoNumber: r.momo_number, momoName: r.momo_name });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

@@ -273,6 +273,72 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.success { border-color: var(--sulfur); color: var(--sulfur); }
+
+  /* ---- Direct MoMo payment modal ---- */
+  .momo-overlay {
+    display: none; position: fixed; inset: 0; z-index: 55;
+    background: rgba(5,2,3,.9); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; padding: 18px;
+  }
+  .momo-overlay.show { display: flex; }
+  .momo-card {
+    width: min(94vw, 430px); max-height: 92vh; overflow-y: auto;
+    background: linear-gradient(180deg, var(--panel2), var(--panel));
+    border: 1px solid rgba(225,29,42,.35); border-radius: 8px;
+    padding: 24px 22px; position: relative;
+    box-shadow: 0 24px 70px rgba(0,0,0,.7), 0 0 30px rgba(225,29,42,.12);
+  }
+  .momo-close {
+    position: absolute; top: 12px; right: 12px;
+    background: none; border: 1px solid rgba(242,233,230,.16); border-radius: 3px;
+    color: var(--ash); font-size: 13px; cursor: pointer; padding: 5px 9px; transition: .15s;
+  }
+  .momo-close:hover { color: var(--bone); border-color: var(--crimson); }
+  .momo-eyebrow {
+    font-family: var(--ui); text-transform: uppercase; letter-spacing: .26em;
+    font-size: 10px; color: var(--crimson); margin-bottom: 6px;
+  }
+  .momo-title { font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--bone); margin: 0 0 4px; }
+  .momo-amt { font-family: var(--display); font-weight: 900; font-size: 32px; color: var(--sulfur); margin: 10px 0 14px; }
+  .momo-box {
+    background: rgba(10,5,6,.55); border: 1px solid rgba(242,233,230,.14);
+    border-radius: 6px; padding: 4px 14px; margin-bottom: 14px;
+  }
+  .momo-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 0; border-bottom: 1px solid rgba(242,233,230,.08);
+  }
+  .momo-row:last-child { border-bottom: none; }
+  .momo-row .k { font-family: var(--ui); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash-dim); }
+  .momo-row .v { font-family: var(--ui); font-weight: 600; font-size: 16px; letter-spacing: .06em; color: var(--bone); display: flex; align-items: center; gap: 9px; }
+  .momo-copy {
+    background: rgba(225,29,42,.12); border: 1px solid rgba(225,29,42,.4); border-radius: 3px;
+    color: var(--crimson); font-family: var(--ui); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 4px 8px; cursor: pointer; transition: .15s;
+  }
+  .momo-copy:hover { background: rgba(225,29,42,.25); color: var(--bone); }
+  .momo-steps { font-size: 13.5px; color: var(--ash); margin: 0 0 14px; padding-left: 18px; }
+  .momo-steps li { margin-bottom: 5px; }
+  .momo-steps b { color: var(--bone); }
+  .momo-label { font-family: var(--ui); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ash); display: block; margin-bottom: 7px; }
+  .momo-input {
+    width: 100%; background: rgba(10,5,6,.6); border: 1px solid rgba(242,233,230,.18);
+    border-radius: 4px; color: var(--bone); font-family: var(--ui); letter-spacing: .05em;
+    font-size: 15px; padding: 13px 14px; outline: none; transition: .15s; margin-bottom: 14px;
+  }
+  .momo-input:focus { border-color: var(--crimson); box-shadow: 0 0 0 3px rgba(225,29,42,.15); }
+  .momo-btn {
+    width: 100%; background: linear-gradient(180deg, var(--crimson), var(--blood));
+    color: #FCEFEC; border: 1px solid #FF4736; border-radius: 3px; padding: 14px;
+    font-family: var(--ui); font-size: 13px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; cursor: pointer; transition: .16s;
+  }
+  .momo-btn:hover { filter: brightness(1.08); }
+  .momo-btn:disabled { opacity: .5; pointer-events: none; }
+  .momo-wait { text-align: center; padding: 12px 4px 6px; }
+  .momo-wait .spinner { margin: 0 auto 18px; }
+  .momo-wait h3 { font-family: var(--display); font-weight: 700; font-size: 19px; color: var(--bone); margin: 0 0 8px; }
+  .momo-wait p { font-size: 13.5px; color: var(--ash); margin: 0 0 6px; }
 </style>
 </head>
 <body>
@@ -326,6 +392,14 @@
   </div>
 </div>
 
+<!-- Direct MoMo payment modal (provider = manual) -->
+<div class="momo-overlay" id="momo-overlay">
+  <div class="momo-card">
+    <button class="momo-close" onclick="closeMomoModal()">✕</button>
+    <div id="momo-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="gateways.js"></script>
@@ -339,6 +413,7 @@ let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
 let PAY_PROVIDER = 'paystack';
+let PAY_MOMO = { number: '', name: '' };   // direct-MoMo details (provider = manual)
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
@@ -355,6 +430,8 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
+      if(cfg.momoNumber) PAY_MOMO.number = cfg.momoNumber;
+      if(cfg.momoName) PAY_MOMO.name = cfg.momoName;
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
@@ -475,6 +552,14 @@ function buyPackage(e, i){
   selectPackage(i);
   const pkg = PACKAGES[i];
 
+  // Direct MoMo: no gateway — show our number, the buyer sends the money
+  // from their wallet, and the admin confirms before credits are granted.
+  if(PAY_PROVIDER === 'manual'){
+    if(!PAY_MOMO.number){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
+    openMomoModal(pkg);
+    return;
+  }
+
   // No real gateway key loaded → fail safe, never simulate a payment.
   if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
     toast('Payment is temporarily unavailable. Please refresh and try again.', 'error');
@@ -527,6 +612,109 @@ async function onPaymentSuccess(pkg, ref){
     toast(e.message || 'Could not record purchase.', 'error');
   }
 }
+
+/* ================= Direct MoMo payment (manual provider) =================
+   The buyer sends the money straight to the admin's MoMo number, submits the
+   transaction ID from their SMS, and we poll until the admin approves the
+   claim (which is when the server grants the credits). */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let momoPollTimer = null;
+function momoStopPoll(){ if(momoPollTimer){ clearInterval(momoPollTimer); momoPollTimer = null; } }
+
+/* Hide the modal only — any active poll keeps running so the buyer is still
+   redirected when the admin confirms while they browse. */
+function closeMomoModal(){ document.getElementById('momo-overlay').classList.remove('show'); }
+
+function openMomoModal(pkg){
+  const b = document.getElementById('momo-body');
+  b.innerHTML = `
+    <div class="momo-eyebrow">Mobile Money</div>
+    <h3 class="momo-title">Pay by MoMo transfer</h3>
+    <div class="momo-amt">${esc(pkg.label)}</div>
+    <div class="momo-box">
+      <div class="momo-row"><span class="k">Send to</span>
+        <span class="v">${esc(PAY_MOMO.number)} <button class="momo-copy" onclick="momoCopy(this)">Copy</button></span></div>
+      ${PAY_MOMO.name ? `<div class="momo-row"><span class="k">Account name</span><span class="v">${esc(PAY_MOMO.name)}</span></div>` : ''}
+      <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(pkg.label)}</span></div>
+    </div>
+    <ol class="momo-steps">
+      <li>Send <b>${esc(pkg.label)}</b> to the number above from your mobile money wallet.</li>
+      <li>Copy the <b>Transaction ID</b> from the confirmation SMS you receive.</li>
+      <li>Paste it below — your predictions are added once the payment is confirmed.</li>
+    </ol>
+    <label class="momo-label" for="momo-txid">Transaction ID</label>
+    <input class="momo-input" id="momo-txid" placeholder="e.g. 8412345678" autocomplete="off" spellcheck="false">
+    <button class="momo-btn" id="momo-send">I've sent the money</button>`;
+  document.getElementById('momo-overlay').classList.add('show');
+  document.getElementById('momo-send').onclick = () => momoSubmit(pkg);
+}
+
+function momoCopy(btn){
+  try { navigator.clipboard && navigator.clipboard.writeText(PAY_MOMO.number).catch(()=>{}); } catch(e){}
+  btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+}
+
+async function momoSubmit(pkg){
+  const inp = document.getElementById('momo-txid');
+  const txid = (inp.value || '').trim();
+  if(txid.length < 4){ toast('Enter the transaction ID from your MoMo SMS.', 'error'); inp.focus(); return; }
+  const btn = document.getElementById('momo-send');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const r = await VE.manualClaim({
+      pkg: pkg.label,
+      credits: pkg.preds === 999 ? 9999 : pkg.preds,
+      amount: pkg.label,
+      txid,
+    });
+    try { localStorage.setItem('ve_momo_claim', String(r.id)); } catch(e){}
+    momoWait(r.id);
+  } catch(e){
+    btn.disabled = false; btn.textContent = "I've sent the money";
+    toast(e.message || 'Could not submit. Please try again.', 'error');
+  }
+}
+
+function momoWait(id){
+  const b = document.getElementById('momo-body');
+  b.innerHTML = `
+    <div class="momo-wait">
+      <div class="spinner"></div>
+      <h3>Waiting for confirmation</h3>
+      <p>We're checking that your payment arrived. Your predictions are added the moment it's confirmed — usually within a few minutes.</p>
+      <p style="color:var(--ash-dim);font-size:12.5px">You can close this window — we'll bring you to your dashboard once it's confirmed.</p>
+    </div>`;
+  document.getElementById('momo-overlay').classList.add('show');
+  momoStopPoll();
+  momoPollTimer = setInterval(async () => {
+    try {
+      const s = await VE.manualClaimStatus(id);
+      if(s.status === 'approved'){
+        momoStopPoll();
+        try { localStorage.removeItem('ve_momo_claim'); } catch(e){}
+        toast('Payment confirmed! Redirecting…', 'success');
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+      } else if(s.status === 'rejected'){
+        momoStopPoll();
+        try { localStorage.removeItem('ve_momo_claim'); } catch(e){}
+        b.innerHTML = `<div class="momo-wait"><h3>Payment not confirmed</h3>
+          <p>We couldn't match this transaction. If you did send the money, please contact support with your transaction ID.</p></div>`;
+        document.getElementById('momo-overlay').classList.add('show');
+      }
+    } catch(e){
+      // stale claim id (e.g. cleared server-side) → stop; anything else is transient
+      if(e && e.status === 404){ momoStopPoll(); try { localStorage.removeItem('ve_momo_claim'); } catch(_){} }
+    }
+  }, 5000);
+}
+
+/* Resume a pending claim if the buyer left and came back */
+(function resumeMomoClaim(){
+  let id = '';
+  try { id = localStorage.getItem('ve_momo_claim') || ''; } catch(e){}
+  if(id) momoWait(id);
+})();
 
 /* When the buyer taps "I've made the payment" on Cowrie, it redirects them
    back here (our callbackUrl = pricing.html). We then confirm the charge with

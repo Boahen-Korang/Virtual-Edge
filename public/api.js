@@ -63,6 +63,8 @@
     myPicks: (pendingOnly) => req('GET', '/me/picks' + (pendingOnly ? '?pending=1' : ''), null, 'member'),
     consumePick: (id) => req('POST', '/me/picks/' + id + '/consume', {}, 'member'),
     recordPurchase: (p) => req('POST', '/me/purchases', p, 'member'),
+    manualClaim: (p) => req('POST', '/me/manual-claims', p, 'member'),
+    manualClaimStatus: (id) => req('GET', '/me/manual-claims/' + id, null, 'member'),
     spendCredit: (amount) => req('POST', '/me/credits/spend', { amount: amount || 1 }, 'member'),
     cachedMe: () => { try { return JSON.parse(localStorage.getItem('ve_me') || 'null'); } catch { return null; } },
     signOutMember() { setTok('member', null); localStorage.removeItem('ve_me'); },
@@ -113,6 +115,8 @@
     adminStats: () => req('GET', '/admin/stats', null, 'admin'),
     adminPaymentConfig: () => req('GET', '/admin/payment-config', null, 'admin'),
     adminSavePaymentConfig: (c) => req('PUT', '/admin/payment-config', c, 'admin'),
+    adminManualClaims: () => req('GET', '/admin/manual-claims', null, 'admin'),
+    adminManualClaimDecide: (id, action) => req('POST', '/admin/manual-claims/' + id + '/' + action, {}, 'admin'),
     signOutAdmin() { setTok('admin', null); },
 
     /* ---- public ---- */

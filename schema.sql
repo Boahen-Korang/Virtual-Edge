@@ -106,6 +106,27 @@ CREATE TABLE IF NOT EXISTS payment_config (
   public_key  TEXT DEFAULT '',
   secret_key  TEXT DEFAULT '',
   business    TEXT DEFAULT 'VirtualEdge',
+  momo_number TEXT DEFAULT '',
+  momo_name   TEXT DEFAULT '',
   CONSTRAINT singleton CHECK (id = 1)
 );
 INSERT INTO payment_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+-- direct-MoMo fields on existing databases too (idempotent)
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_number TEXT DEFAULT '';
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_name   TEXT DEFAULT '';
+
+-- Direct mobile-money payments (provider = 'manual'): the buyer sends money
+-- straight to the admin's MoMo number, then submits the transaction ID here.
+-- Credits are granted ONLY when the admin approves the claim.
+CREATE TABLE IF NOT EXISTS manual_claims (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT NOT NULL,
+  pkg        TEXT,                              -- package label e.g. "GHS 385"
+  credits    INTEGER NOT NULL DEFAULT 0,        -- 9999 = 24h unlimited
+  amount     TEXT,                              -- what the buyer was told to send
+  txid       TEXT NOT NULL,                     -- MoMo transaction ID they entered
+  status     TEXT NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  decided_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_claims_status ON manual_claims(status);
