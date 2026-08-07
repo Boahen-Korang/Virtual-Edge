@@ -616,16 +616,16 @@ app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
-    business: r.business, momoNumber: r.momo_number, momoName: r.momo_name });
+    business: r.business, momoNumber: r.momo_number, momoName: r.momo_name, momoNetwork: r.momo_network });
 }));
 
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
-  const { provider, currency, key, secret, business, momoNumber, momoName } = req.body;
+  const { provider, currency, key, secret, business, momoNumber, momoName, momoNetwork } = req.body;
   await query(
     `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
-       momo_number=$6, momo_name=$7 WHERE id=1`,
+       momo_number=$6, momo_name=$7, momo_network=$8 WHERE id=1`,
     [provider || 'paystack', currency || 'GHS', key || '', secret || '', business || 'VirtualEdge',
-     momoNumber || '', momoName || '']
+     momoNumber || '', momoName || '', momoNetwork || '']
   );
   res.json({ ok: true });
 }));
@@ -797,10 +797,10 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
-    momoNumber: r.momo_number, momoName: r.momo_name });
+    momoNumber: r.momo_number, momoName: r.momo_name, momoNetwork: r.momo_network });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

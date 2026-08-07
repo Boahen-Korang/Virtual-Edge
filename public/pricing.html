@@ -413,7 +413,7 @@ let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
 let PAY_PROVIDER = 'paystack';
-let PAY_MOMO = { number: '', name: '' };   // direct-MoMo details (provider = manual)
+let PAY_MOMO = { number: '', name: '', network: '' };   // direct-MoMo details (provider = manual)
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
@@ -432,6 +432,7 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.business) PAY_BUSINESS = cfg.business;
       if(cfg.momoNumber) PAY_MOMO.number = cfg.momoNumber;
       if(cfg.momoName) PAY_MOMO.name = cfg.momoName;
+      if(cfg.momoNetwork) PAY_MOMO.network = cfg.momoNetwork;
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
@@ -631,13 +632,14 @@ function openMomoModal(pkg){
     <h3 class="momo-title">Pay by MoMo transfer</h3>
     <div class="momo-amt">${esc(pkg.label)}</div>
     <div class="momo-box">
+      ${PAY_MOMO.network ? `<div class="momo-row"><span class="k">Network</span><span class="v">${esc(PAY_MOMO.network)}</span></div>` : ''}
       <div class="momo-row"><span class="k">Send to</span>
         <span class="v">${esc(PAY_MOMO.number)} <button class="momo-copy" onclick="momoCopy(this)">Copy</button></span></div>
-      ${PAY_MOMO.name ? `<div class="momo-row"><span class="k">Account name</span><span class="v">${esc(PAY_MOMO.name)}</span></div>` : ''}
+      ${PAY_MOMO.name ? `<div class="momo-row"><span class="k">Name on number</span><span class="v">${esc(PAY_MOMO.name)}</span></div>` : ''}
       <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(pkg.label)}</span></div>
     </div>
     <ol class="momo-steps">
-      <li>Send <b>${esc(pkg.label)}</b> to the number above from your mobile money wallet.</li>
+      <li>Send <b>${esc(pkg.label)}</b> to the ${PAY_MOMO.network ? `<b>${esc(PAY_MOMO.network)}</b>` : 'mobile money'} number above from your wallet.</li>
       <li>Copy the <b>Transaction ID</b> from the confirmation SMS you receive.</li>
       <li>Paste it below — your predictions are added once the payment is confirmed.</li>
     </ol>

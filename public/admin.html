@@ -696,13 +696,23 @@
               <div class="hint">Shown to customers on the checkout popup.</div>
             </div>
             <div class="field">
-              <label>MoMo Number <span style="color:var(--sulfur)">· direct payments</span></label>
+              <label>MoMo Network <span style="color:var(--sulfur)">· direct payments</span></label>
+              <select id="pg-momo-network">
+                <option value="">— Select network —</option>
+                <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Telecel Cash">Telecel Cash (Vodafone)</option>
+                <option value="AT Money">AT Money (AirtelTigo)</option>
+              </select>
+              <div class="hint">The telco your wallet is on — shown to buyers with the number.</div>
+            </div>
+            <div class="field">
+              <label>MoMo Number</label>
               <input id="pg-momo" type="text" inputmode="tel" placeholder="e.g. 024 123 4567" autocomplete="off">
               <div class="hint">Used when Provider is <b>Manual / Mobile Money</b> — buyers send money straight to this number.</div>
             </div>
             <div class="field">
-              <label>MoMo Account Name</label>
-              <input id="pg-momo-name" type="text" placeholder="Name on the wallet" autocomplete="off">
+              <label>Name on the Number</label>
+              <input id="pg-momo-name" type="text" placeholder="Registered wallet name" autocomplete="off">
               <div class="hint">Shown so buyers can verify they're sending to the right person.</div>
             </div>
           </div>
@@ -773,7 +783,7 @@ async function loadAll(){
     _picks = picks;
     _claims = claims;
     _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret,
-      business: cfg.business, momoNumber: cfg.momoNumber, momoName: cfg.momoName };
+      business: cfg.business, momoNumber: cfg.momoNumber, momoName: cfg.momoName, momoNetwork: cfg.momoNetwork };
   } catch(e){
     console.error(e);
     toast(e.message || 'Could not load data.', 'error');
@@ -1306,6 +1316,7 @@ function loadGateway(){
   document.getElementById('pg-business').value = c.business || '';
   document.getElementById('pg-momo').value = c.momoNumber || '';
   document.getElementById('pg-momo-name').value = c.momoName || '';
+  document.getElementById('pg-momo-network').value = c.momoNetwork || '';
   renderGatewayStatus();
 }
 async function saveGateway(){
@@ -1317,6 +1328,7 @@ async function saveGateway(){
     business:  document.getElementById('pg-business').value.trim(),
     momoNumber: document.getElementById('pg-momo').value.trim(),
     momoName:  document.getElementById('pg-momo-name').value.trim(),
+    momoNetwork: document.getElementById('pg-momo-network').value,
   };
   if(cfg.provider === 'manual' && !cfg.momoNumber){
     toast('Enter the MoMo number buyers should send money to.', 'error'); return;
@@ -1326,7 +1338,7 @@ async function saveGateway(){
     await VE.adminSavePaymentConfig({
       provider: cfg.provider, currency: cfg.currency,
       key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business,
-      momoNumber: cfg.momoNumber, momoName: cfg.momoName
+      momoNumber: cfg.momoNumber, momoName: cfg.momoName, momoNetwork: cfg.momoNetwork
     });
     _paycfg = cfg;
     toast('Payment settings saved', 'success');

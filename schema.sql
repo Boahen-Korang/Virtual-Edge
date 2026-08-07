@@ -106,14 +106,16 @@ CREATE TABLE IF NOT EXISTS payment_config (
   public_key  TEXT DEFAULT '',
   secret_key  TEXT DEFAULT '',
   business    TEXT DEFAULT 'VirtualEdge',
-  momo_number TEXT DEFAULT '',
-  momo_name   TEXT DEFAULT '',
+  momo_number  TEXT DEFAULT '',
+  momo_name    TEXT DEFAULT '',
+  momo_network TEXT DEFAULT '',
   CONSTRAINT singleton CHECK (id = 1)
 );
 INSERT INTO payment_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 -- direct-MoMo fields on existing databases too (idempotent)
-ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_number TEXT DEFAULT '';
-ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_name   TEXT DEFAULT '';
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_number  TEXT DEFAULT '';
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_name    TEXT DEFAULT '';
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_network TEXT DEFAULT '';
 
 -- Direct mobile-money payments (provider = 'manual'): the buyer sends money
 -- straight to the admin's MoMo number, then submits the transaction ID here.
