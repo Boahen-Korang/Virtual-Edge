@@ -316,6 +316,22 @@
   .ocm:hover{border-color:rgba(225,29,42,.5);color:var(--bone)}
   .ocm.on{border-color:var(--crimson);background:rgba(225,29,42,.14);color:var(--crimson)}
   .ocm.on small{color:var(--crimson)}
+/* ---- Payment method cards + toggles ---- */
+.pm-card{border:1px solid rgba(242,233,230,.12);border-radius:8px;background:rgba(10,5,6,.35);margin-bottom:10px;overflow:hidden}
+.pm-head{display:flex;align-items:center;gap:12px;padding:13px 14px}
+.pm-name{font-weight:700;font-size:14px;color:var(--bone)}
+.pm-sub{font-size:11.5px;color:var(--ash-dim);margin-top:2px}
+.pm-head .sp{flex:1}
+.pm-body{padding:0 14px 13px;display:none;flex-direction:column;gap:8px}
+.pm-card.on .pm-body{display:flex}
+.pm-card.on{border-color:rgba(217,164,65,.4)}
+.pm-body input{width:100%}
+.switch{position:relative;display:inline-block;width:44px;height:24px;flex:0 0 auto;cursor:pointer}
+.switch input{opacity:0;width:0;height:0}
+.switch .sl{position:absolute;inset:0;background:rgba(242,233,230,.14);border:1px solid rgba(242,233,230,.2);border-radius:24px;transition:.18s}
+.switch .sl::before{content:"";position:absolute;height:16px;width:16px;left:3px;top:3px;background:var(--ash);border-radius:50%;transition:.18s}
+.switch input:checked + .sl{background:rgba(217,164,65,.25);border-color:var(--sulfur)}
+.switch input:checked + .sl::before{transform:translateX(20px);background:var(--sulfur)}
 </style>
 </head>
 <body>
@@ -654,16 +670,6 @@
 
           <div class="form-grid">
             <div class="field">
-              <label>Provider</label>
-              <select id="pg-provider" onchange="onProviderChange()">
-                <option value="paystack">Paystack</option>
-                <option value="flutterwave">Flutterwave</option>
-                <option value="cowrie">Cowrie</option>
-                <option value="manual">Manual / Mobile Money</option>
-              </select>
-              <div class="hint" id="pg-provider-hint">The gateway that powers checkout. It's also auto-detected from your key prefix.</div>
-            </div>
-            <div class="field">
               <label>Currency</label>
               <select id="pg-currency">
                 <option value="GHS">GHS — Ghana Cedi</option>
@@ -673,33 +679,64 @@
                 <option value="ZAR">ZAR — South African Rand</option>
               </select>
             </div>
-            <div class="field full">
-              <label>Public Key</label>
-              <div style="position:relative">
-                <input id="pg-key" type="text" placeholder="Paste your payment public/API key" autocomplete="off" spellcheck="false" style="width:100%;padding-right:62px">
-                <button type="button" onclick="copyField('pg-key','Public key')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
-              </div>
-              <div class="hint">The public/API key from your payment provider. This key powers the checkout popup. Any key is accepted.</div>
-            </div>
-            <div class="field full">
-              <label>Secret Key <span style="color:var(--crimson)">· keep private</span></label>
-              <div style="position:relative">
-                <input id="pg-secret" type="password" placeholder="Paste your payment secret key" autocomplete="off" spellcheck="false" style="width:100%;padding-right:112px">
-                <button type="button" onclick="copyField('pg-secret','Secret key')" style="position:absolute;right:58px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Copy</button>
-                <button type="button" onclick="toggleSecret()" id="pg-secret-toggle" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--ash);font-family:var(--ui);text-transform:uppercase;letter-spacing:.1em;font-size:10px;cursor:pointer;padding:5px 7px">Show</button>
-              </div>
-              <div class="hint">Used to <b>verify</b> payments and issue refunds — this belongs on a <b>server/backend</b>, never in a public page. Stored here only for your reference; the checkout does <b>not</b> send it to the browser.</div>
-            </div>
-            <div class="field full">
+            <div class="field">
               <label>Business / Display Name</label>
               <input id="pg-business" type="text" placeholder="VirtualEdge" autocomplete="off">
-              <div class="hint">Shown to customers on the checkout popup.</div>
+              <div class="hint">Shown to customers at checkout.</div>
             </div>
+
             <div class="field full">
-              <label>MoMo Numbers <span style="color:var(--sulfur)">· direct payments</span></label>
-              <div id="momo-list"></div>
-              <button class="mini ghost" type="button" onclick="addMomoRow()">+ Add another number</button>
-              <div class="hint">Used when Provider is <b>Manual / Mobile Money</b>. Add one wallet per telco you use — buyers pick a network and send money straight to that number.</div>
+              <label>Payment Methods</label>
+              <div class="hint" style="margin-bottom:10px">Toggle each method on or off. Buyers see every enabled method and pick one at checkout.</div>
+
+              <div class="pm-card" id="pmc-paystack">
+                <div class="pm-head">
+                  <div><div class="pm-name">Paystack</div><div class="pm-sub">Card &amp; mobile money · inline popup</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-paystack" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <input id="pm-paystack-key" type="text" placeholder="Public key (pk_…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-paystack-secret" type="password" placeholder="Secret key (sk_…) — kept on the server" autocomplete="off">
+                </div>
+              </div>
+
+              <div class="pm-card" id="pmc-flutterwave">
+                <div class="pm-head">
+                  <div><div class="pm-name">Flutterwave</div><div class="pm-sub">Card, MoMo, USSD &amp; bank · inline popup</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-flutterwave" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <input id="pm-flutterwave-key" type="text" placeholder="Public key (FLWPUBK-…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-flutterwave-secret" type="password" placeholder="Secret key (FLWSECK-…) — kept on the server" autocomplete="off">
+                </div>
+              </div>
+
+              <div class="pm-card" id="pmc-cowrie">
+                <div class="pm-head">
+                  <div><div class="pm-name">Cowrie</div><div class="pm-sub">Hosted checkout via your server proxy</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-cowrie" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <input id="pm-cowrie-key" type="text" placeholder="Public key (cowrie_pk_…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-cowrie-secret" type="password" placeholder="Secret key (cowrie_sk_…) — kept on the server" autocomplete="off">
+                </div>
+              </div>
+
+              <div class="pm-card" id="pmc-manual">
+                <div class="pm-head">
+                  <div><div class="pm-name">Direct Mobile Money</div><div class="pm-sub">Buyers send straight to your wallet; you confirm each payment under Transactions</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-manual" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <div id="momo-list" style="width:100%"></div>
+                  <button class="mini ghost" type="button" onclick="addMomoRow()" style="align-self:flex-start">+ Add another number</button>
+                  <div class="hint">One wallet per telco you use — buyers pick a network and send money straight to that number.</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -768,8 +805,8 @@ async function loadAll(){
     _purchases = purchases.map(p => ({ ...p, preds: p.predictions, ref: p.reference }));
     _picks = picks;
     _claims = claims;
-    _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret,
-      business: cfg.business, momoAccounts: cfg.momoAccounts || [] };
+    _paycfg = { currency: cfg.currency, business: cfg.business,
+      momoAccounts: cfg.momoAccounts || [], providers: cfg.providers || {} };
   } catch(e){
     console.error(e);
     if(authGuard(e)) return;
@@ -1294,15 +1331,43 @@ function renderPackages(){
 }
 
 /* ================= Payment gateway ================= */
+const PM_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual'];
+const PM_NAMES = { paystack: 'Paystack', flutterwave: 'Flutterwave', cowrie: 'Cowrie', manual: 'Direct MoMo' };
+
 function loadGateway(){
   const c = getPayConfig();
-  document.getElementById('pg-provider').value = c.provider || 'paystack';
   document.getElementById('pg-currency').value = c.currency || 'GHS';
-  document.getElementById('pg-key').value = c.publicKey || '';
-  document.getElementById('pg-secret').value = c.secretKey || '';
   document.getElementById('pg-business').value = c.business || '';
+  const provs = c.providers || {};
+  PM_IDS.forEach(id => {
+    const p = provs[id] || {};
+    document.getElementById('pm-' + id).checked = !!p.enabled;
+    if(id !== 'manual'){
+      document.getElementById('pm-' + id + '-key').value = p.key || '';
+      document.getElementById('pm-' + id + '-secret').value = p.secret || '';
+    }
+  });
   renderMomoRows(c.momoAccounts || []);
+  pmToggled();
+}
+
+/* show/hide each method's settings with its toggle */
+function pmToggled(){
+  PM_IDS.forEach(id => {
+    document.getElementById('pmc-' + id).classList.toggle('on', document.getElementById('pm-' + id).checked);
+  });
   renderGatewayStatus();
+}
+function collectProviders(){
+  const out = {};
+  PM_IDS.forEach(id => {
+    out[id] = {
+      enabled: document.getElementById('pm-' + id).checked,
+      key: id === 'manual' ? '' : document.getElementById('pm-' + id + '-key').value.trim(),
+      secret: id === 'manual' ? '' : document.getElementById('pm-' + id + '-secret').value.trim(),
+    };
+  });
+  return out;
 }
 
 /* --- MoMo wallet list editor (network / number / name per row) --- */
@@ -1338,70 +1403,40 @@ function collectMomoRows(){
   })).filter(a => a.number);
 }
 async function saveGateway(){
-  const cfg = {
-    provider:  document.getElementById('pg-provider').value,
-    currency:  document.getElementById('pg-currency').value,
-    publicKey: document.getElementById('pg-key').value.trim(),
-    secretKey: document.getElementById('pg-secret').value.trim(),
-    business:  document.getElementById('pg-business').value.trim(),
-    momoAccounts: collectMomoRows(),
-  };
-  if(cfg.provider === 'manual' && !cfg.momoAccounts.length){
-    toast('Add at least one MoMo number buyers should send money to.', 'error'); return;
+  const providers = collectProviders();
+  const momoAccounts = collectMomoRows();
+  // A method that's on must actually be usable.
+  for(const id of PM_IDS){
+    if(!providers[id].enabled) continue;
+    if(id === 'manual' && !momoAccounts.length){
+      toast('Direct MoMo is on — add at least one MoMo number.', 'error'); return;
+    }
+    if(id !== 'manual' && !providers[id].key){
+      toast(PM_NAMES[id] + ' is on — paste its public key (or turn it off).', 'error'); return;
+    }
   }
-  // Any key is accepted — no format validation.
+  const cfg = {
+    currency: document.getElementById('pg-currency').value,
+    business: document.getElementById('pg-business').value.trim(),
+    momoAccounts, providers,
+  };
   try {
-    await VE.adminSavePaymentConfig({
-      provider: cfg.provider, currency: cfg.currency,
-      key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business,
-      momoAccounts: cfg.momoAccounts
-    });
-    _paycfg = cfg;
+    await VE.adminSavePaymentConfig(cfg);
+    _paycfg = Object.assign({}, _paycfg, cfg);
     toast('Payment settings saved', 'success');
     renderGatewayStatus();
   } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not save.', 'error'); }
 }
-function toggleSecret(){
-  const inp = document.getElementById('pg-secret');
-  const btn = document.getElementById('pg-secret-toggle');
-  const show = inp.type === 'password';
-  inp.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Hide' : 'Show';
-}
 function renderGatewayStatus(){
-  const c = getPayConfig();
-  const k = (c.publicKey || '');
-  const provider = (document.getElementById('pg-provider') || {}).value || c.provider || 'paystack';
-  const name = provider === 'flutterwave' ? 'Flutterwave'
-             : provider === 'cowrie'      ? 'Cowrie'
-             : provider === 'manual'      ? 'Manual / MoMo'
-             : 'Paystack';
   const el = document.getElementById('pg-status');
-  if(provider === 'manual'){
-    const n = (typeof collectMomoRows === 'function' && document.getElementById('momo-list'))
-      ? collectMomoRows().length : ((c.momoAccounts || []).length);
-    el.innerHTML = n ? `<span class="pill live">${name} · ${n} number${n === 1 ? '' : 's'}</span>`
-                     : `<span class="pill none">${name} · add your MoMo numbers</span>`;
-    return;
-  }
-  else if(!k)                 el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
-  else if(/_live_/i.test(k))  el.innerHTML = `<span class="pill live">${name} · Live · receiving payments</span>`;
-  else if(/_test_/i.test(k))  el.innerHTML = `<span class="pill expired">${name} · Test mode</span>`;
-  else                        el.innerHTML = `<span class="pill live">${name} · key set</span>`;
-}
-function onProviderChange(){
-  const provider = document.getElementById('pg-provider').value;
-  const hint = document.getElementById('pg-provider-hint');
-  if(hint){
-    hint.innerHTML = provider === 'flutterwave'
-      ? 'Flutterwave checkout. Paste your <b>FLWPUBK-…</b> / <b>FLWSECK-…</b> keys below.'
-      : provider === 'cowrie'
-      ? 'Cowrie checkout (via your server). Paste your <b>cowrie_pk_…</b> / <b>cowrie_sk_…</b> keys below.'
-      : provider === 'manual'
-      ? 'No gateway. Buyers send money straight to your <b>MoMo Number</b> below, enter their transaction ID, and you confirm each payment under <b>Transactions</b>.'
-      : 'Paystack checkout. Paste your <b>pk_…</b> / <b>sk_…</b> keys below.';
-  }
-  renderGatewayStatus();
+  if(!el) return;
+  const on = PM_IDS.filter(id => {
+    const t = document.getElementById('pm-' + id);
+    return t && t.checked;
+  });
+  el.innerHTML = on.length
+    ? `<span class="pill live">${on.map(id => PM_NAMES[id]).join(' · ')}</span>`
+    : `<span class="pill none">No payment method enabled</span>`;
 }
 
 /* ================= Actions ================= */

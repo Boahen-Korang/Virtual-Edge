@@ -300,6 +300,15 @@
   }
   .momo-title { font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--bone); margin: 0 0 4px; }
   .momo-amt { font-family: var(--display); font-weight: 900; font-size: 32px; color: var(--sulfur); margin: 10px 0 14px; }
+  .pay-opt {
+    width: 100%; text-align: left; display: flex; align-items: center; gap: 12px;
+    background: rgba(10,5,6,.5); border: 1px solid rgba(242,233,230,.16); border-radius: 6px;
+    padding: 15px 14px; margin-bottom: 9px; cursor: pointer; transition: .15s;
+  }
+  .pay-opt:hover { border-color: var(--crimson); box-shadow: inset 0 0 22px rgba(225,29,42,.1); }
+  .pay-opt .t { font-family: var(--ui); font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--bone); }
+  .pay-opt .s { font-size: 12px; color: var(--ash-dim); margin-top: 3px; }
+  .pay-opt .go { margin-left: auto; color: var(--crimson); font-size: 16px; }
   .momo-nets { display: flex; gap: 7px; margin: 0 0 12px; flex-wrap: wrap; }
   .momo-net {
     flex: 1; min-width: 92px; background: rgba(10,5,6,.5);
@@ -423,6 +432,7 @@ let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
 let PAY_PROVIDER = 'paystack';
 let PAY_MOMO_ACCOUNTS = [];   // direct-MoMo wallets [{network,number,name}] (provider = manual)
+let PAY_METHODS = [];         // enabled methods [{id,key}] — buyer picks one when several
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
@@ -440,6 +450,10 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
       if(Array.isArray(cfg.momoAccounts)) PAY_MOMO_ACCOUNTS = cfg.momoAccounts.filter(a => a && a.number);
+      if(Array.isArray(cfg.methods)){
+        // an enabled Direct-MoMo method is only offerable if numbers exist
+        PAY_METHODS = cfg.methods.filter(m => m && m.id && (m.id !== 'manual' || PAY_MOMO_ACCOUNTS.length));
+      }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
@@ -557,17 +571,24 @@ function buyPackage(e, i){
   e.stopPropagation();
   selectPackage(i);
   const pkg = PACKAGES[i];
+  // Methods the admin has toggled on; older configs fall back to the single provider.
+  const methods = PAY_METHODS.length ? PAY_METHODS
+    : [{ id: PAY_PROVIDER, key: PAYSTACK_PUBLIC_KEY }];
+  if(methods.length > 1) return openMethodPicker(pkg, methods);
+  startPayment(pkg, methods[0]);
+}
 
+function startPayment(pkg, m){
   // Direct MoMo: no gateway — show our number, the buyer sends the money
   // from their wallet, and the admin confirms before credits are granted.
-  if(PAY_PROVIDER === 'manual'){
+  if(m.id === 'manual'){
     if(!PAY_MOMO_ACCOUNTS.length){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
     openMomoModal(pkg);
     return;
   }
 
   // No real gateway key loaded → fail safe, never simulate a payment.
-  if(PAY_PROVIDER !== 'manual' && PAYSTACK_PUBLIC_KEY.includes('REPLACE')){
+  if(!m.key || m.key.includes('REPLACE')){
     toast('Payment is temporarily unavailable. Please refresh and try again.', 'error');
     return;
   }
@@ -581,8 +602,8 @@ function buyPackage(e, i){
   const chargeAmount   = LOCAL ? Math.round(pkg.price * LOCAL.rate) : pkg.price;
 
   VEPay.checkout(
-    PAY_PROVIDER,
-    { key: PAYSTACK_PUBLIC_KEY, business: PAY_BUSINESS },
+    m.id,
+    { key: m.key, business: PAY_BUSINESS },
     {
       email: SESSION.email,
       name: SESSION.name,
@@ -603,6 +624,34 @@ function buyPackage(e, i){
       },
     }
   );
+}
+
+/* Buyer-facing chooser when more than one method is enabled (reuses the
+   MoMo modal shell). */
+const METHOD_LABELS = {
+  paystack:    ['Paystack', 'Card & mobile money'],
+  flutterwave: ['Flutterwave', 'Card, mobile money, USSD & bank'],
+  cowrie:      ['Online Checkout', 'Card & mobile money'],
+  manual:      ['Direct MoMo Transfer', 'Send to our wallet — confirmed by our team'],
+};
+function openMethodPicker(pkg, methods){
+  const b = document.getElementById('momo-body');
+  b.innerHTML = `
+    <div class="momo-eyebrow">Checkout</div>
+    <h3 class="momo-title">Choose payment method</h3>
+    <div class="momo-amt">${esc(pkg.label)}</div>
+    <div id="pay-opts"></div>`;
+  const box = b.querySelector('#pay-opts');
+  methods.forEach(m => {
+    const L = METHOD_LABELS[m.id] || [m.id, ''];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pay-opt';
+    btn.innerHTML = `<div><div class="t">${esc(L[0])}</div><div class="s">${esc(L[1])}</div></div><span class="go">→</span>`;
+    btn.addEventListener('click', () => { closeMomoModal(); startPayment(pkg, m); });
+    box.appendChild(btn);
+  });
+  document.getElementById('momo-overlay').classList.add('show');
 }
 
 async function onPaymentSuccess(pkg, ref){

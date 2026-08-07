@@ -612,11 +612,44 @@ app.delete('/api/admin/picks/:id', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+const PROVIDER_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual'];
+
+/* Per-method config {id:{enabled,key,secret}}. Falls back to the legacy
+   single-provider columns for configs saved before the toggles existed. */
+function providersOut(r) {
+  const p = (r.providers && typeof r.providers === 'object' && !Array.isArray(r.providers)) ? r.providers : {};
+  const out = {};
+  PROVIDER_IDS.forEach((id) => { out[id] = { enabled: false, key: '', secret: '' }; });
+  if (Object.keys(p).length) {
+    PROVIDER_IDS.forEach((id) => {
+      const e = p[id] || {};
+      out[id] = { enabled: !!e.enabled, key: String(e.key || ''), secret: String(e.secret || '') };
+    });
+    return out;
+  }
+  const legacy = PROVIDER_IDS.includes(r.provider) ? r.provider : 'paystack';
+  out[legacy].enabled = true;
+  if (legacy !== 'manual') { out[legacy].key = r.public_key || ''; out[legacy].secret = r.secret_key || ''; }
+  return out;
+}
+function providersIn(raw) {
+  const out = {};
+  PROVIDER_IDS.forEach((id) => {
+    const e = (raw && typeof raw === 'object' && raw[id]) || {};
+    out[id] = {
+      enabled: !!e.enabled,
+      key: String(e.key || '').trim().slice(0, 200),
+      secret: String(e.secret || '').trim().slice(0, 200),
+    };
+  });
+  return out;
+}
+
 app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
-    business: r.business, momoAccounts: momoAccountsOut(r) });
+    business: r.business, momoAccounts: momoAccountsOut(r), providers: providersOut(r) });
 }));
 
 /* The list of direct-MoMo receiving wallets. Falls back to the legacy single
@@ -641,14 +674,31 @@ function momoAccountsIn(raw) {
 }
 
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
-  const { provider, currency, key, secret, business } = req.body;
+  const { currency, business } = req.body;
   const accounts = momoAccountsIn(req.body.momoAccounts);
+  const provs = req.body.providers !== undefined ? providersIn(req.body.providers) : null;
   const first = accounts[0] || { network: '', number: '', name: '' };
+
+  // Mirror the first enabled method into the legacy single-provider columns so
+  // older cached clients (and helpers that read them) keep working.
+  let provider = String(req.body.provider || 'paystack');
+  let key = String(req.body.key || '');
+  let secret = String(req.body.secret || '');
+  if (provs) {
+    const primary = PROVIDER_IDS.find((id) => id !== 'manual' && provs[id].enabled && provs[id].key)
+      || PROVIDER_IDS.find((id) => provs[id].enabled) || 'paystack';
+    provider = primary;
+    key = primary !== 'manual' ? provs[primary].key : '';
+    secret = primary !== 'manual' ? provs[primary].secret : '';
+  }
+
   await query(
     `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
-       momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb WHERE id=1`,
-    [provider || 'paystack', currency || 'GHS', key || '', secret || '', business || 'VirtualEdge',
-     first.number, first.name, first.network, JSON.stringify(accounts)]
+       momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb,
+       providers=COALESCE($10::jsonb, providers) WHERE id=1`,
+    [provider, currency || 'GHS', key, secret, business || 'VirtualEdge',
+     first.number, first.name, first.network, JSON.stringify(accounts),
+     provs ? JSON.stringify(provs) : null]
   );
   res.json({ ok: true });
 }));
@@ -820,10 +870,13 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,providers FROM payment_config WHERE id=1');
   const r = rows[0] || {};
+  const provs = providersOut(r);   // never sent raw — secrets stay server-side
+  const methods = PROVIDER_IDS.filter((id) => provs[id].enabled)
+    .map((id) => ({ id, key: id === 'manual' ? '' : provs[id].key }));
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
-    momoAccounts: momoAccountsOut(r) });
+    momoAccounts: momoAccountsOut(r), methods });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */
@@ -835,9 +888,11 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
 const COWRIE_BASE = (process.env.COWRIE_API_BASE || 'https://cowrie-gateway.onrender.com').replace(/\/+$/, '');
 
 async function cowrieKey() {
-  const { rows } = await query('SELECT secret_key, public_key FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT secret_key, public_key, providers FROM payment_config WHERE id=1');
   const r = rows[0] || {};
-  return (r.secret_key && r.secret_key.trim()) || (r.public_key && r.public_key.trim()) || '';
+  const c = (r.providers && r.providers.cowrie) || {};   // per-method keys win over legacy columns
+  return (c.secret && c.secret.trim()) || (c.key && c.key.trim())
+    || (r.secret_key && r.secret_key.trim()) || (r.public_key && r.public_key.trim()) || '';
 }
 
 /* Re-verify a Cowrie charge server-side so crediting never trusts the client.

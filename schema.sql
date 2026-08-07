@@ -118,6 +118,9 @@ ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_number  TEXT DEFAULT ''
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_name    TEXT DEFAULT '';
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_network TEXT DEFAULT '';
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_accounts JSONB NOT NULL DEFAULT '[]'::jsonb;
+-- Per-method config: {paystack:{enabled,key,secret}, flutterwave:{...}, cowrie:{...}, manual:{enabled}}
+-- Empty object = not migrated yet; server derives it from the legacy single-provider columns.
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS providers JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Direct mobile-money payments (provider = 'manual'): the buyer sends money
 -- straight to the admin's MoMo number, then submits the transaction ID here.
