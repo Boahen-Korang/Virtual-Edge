@@ -616,16 +616,39 @@ app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
-    business: r.business, momoNumber: r.momo_number, momoName: r.momo_name, momoNetwork: r.momo_network });
+    business: r.business, momoAccounts: momoAccountsOut(r) });
 }));
 
+/* The list of direct-MoMo receiving wallets. Falls back to the legacy single
+   momo_number/momo_name/momo_network columns for configs saved before the
+   list existed. */
+function momoAccountsOut(r) {
+  const list = Array.isArray(r.momo_accounts) ? r.momo_accounts : [];
+  if (list.length) return list;
+  if (r.momo_number) return [{ network: r.momo_network || '', number: r.momo_number, name: r.momo_name || '' }];
+  return [];
+}
+function momoAccountsIn(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((a) => ({
+      network: String((a && a.network) || '').slice(0, 30),
+      number: String((a && a.number) || '').trim().slice(0, 25),
+      name: String((a && a.name) || '').trim().slice(0, 60),
+    }))
+    .filter((a) => a.number)
+    .slice(0, 10);
+}
+
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
-  const { provider, currency, key, secret, business, momoNumber, momoName, momoNetwork } = req.body;
+  const { provider, currency, key, secret, business } = req.body;
+  const accounts = momoAccountsIn(req.body.momoAccounts);
+  const first = accounts[0] || { network: '', number: '', name: '' };
   await query(
     `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
-       momo_number=$6, momo_name=$7, momo_network=$8 WHERE id=1`,
+       momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb WHERE id=1`,
     [provider || 'paystack', currency || 'GHS', key || '', secret || '', business || 'VirtualEdge',
-     momoNumber || '', momoName || '', momoNetwork || '']
+     first.number, first.name, first.network, JSON.stringify(accounts)]
   );
   res.json({ ok: true });
 }));
@@ -797,10 +820,10 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
-    momoNumber: r.momo_number, momoName: r.momo_name, momoNetwork: r.momo_network });
+    momoAccounts: momoAccountsOut(r) });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

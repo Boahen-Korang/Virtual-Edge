@@ -695,25 +695,11 @@
               <input id="pg-business" type="text" placeholder="VirtualEdge" autocomplete="off">
               <div class="hint">Shown to customers on the checkout popup.</div>
             </div>
-            <div class="field">
-              <label>MoMo Network <span style="color:var(--sulfur)">· direct payments</span></label>
-              <select id="pg-momo-network">
-                <option value="">— Select network —</option>
-                <option value="MTN MoMo">MTN MoMo</option>
-                <option value="Telecel Cash">Telecel Cash (Vodafone)</option>
-                <option value="AT Money">AT Money (AirtelTigo)</option>
-              </select>
-              <div class="hint">The telco your wallet is on — shown to buyers with the number.</div>
-            </div>
-            <div class="field">
-              <label>MoMo Number</label>
-              <input id="pg-momo" type="text" inputmode="tel" placeholder="e.g. 024 123 4567" autocomplete="off">
-              <div class="hint">Used when Provider is <b>Manual / Mobile Money</b> — buyers send money straight to this number.</div>
-            </div>
-            <div class="field">
-              <label>Name on the Number</label>
-              <input id="pg-momo-name" type="text" placeholder="Registered wallet name" autocomplete="off">
-              <div class="hint">Shown so buyers can verify they're sending to the right person.</div>
+            <div class="field full">
+              <label>MoMo Numbers <span style="color:var(--sulfur)">· direct payments</span></label>
+              <div id="momo-list"></div>
+              <button class="mini ghost" type="button" onclick="addMomoRow()">+ Add another number</button>
+              <div class="hint">Used when Provider is <b>Manual / Mobile Money</b>. Add one wallet per telco you use — buyers pick a network and send money straight to that number.</div>
             </div>
           </div>
 
@@ -783,9 +769,10 @@ async function loadAll(){
     _picks = picks;
     _claims = claims;
     _paycfg = { provider: cfg.provider, currency: cfg.currency, publicKey: cfg.key, secretKey: cfg.secret,
-      business: cfg.business, momoNumber: cfg.momoNumber, momoName: cfg.momoName, momoNetwork: cfg.momoNetwork };
+      business: cfg.business, momoAccounts: cfg.momoAccounts || [] };
   } catch(e){
     console.error(e);
+    if(authGuard(e)) return;
     toast(e.message || 'Could not load data.', 'error');
   }
   refresh();
@@ -1134,7 +1121,7 @@ function renderClaims(){
       <tr>
         <td><span class="ref">${esc(fmtDate(c.created))}</span></td>
         <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(c.email)}</div></td>
-        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits||0) + ' predictions'}</div></td>
+        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits||0) + ' predictions'}${c.amount && c.amount !== c.pkg ? ' · ' + esc(c.amount.replace((c.pkg||'') + ' · ', '')) : ''}</div></td>
         <td><span class="ref">${esc(c.txid||'—')}</span></td>
         <td>${pill}</td>
         <td>${actions}</td>
@@ -1150,7 +1137,7 @@ async function claimAction(id, action){
     await VE.adminManualClaimDecide(id, action);
     toast(action === 'approve' ? 'Payment confirmed — credits granted.' : 'Claim rejected.', action === 'approve' ? 'success' : '');
     await loadAll(); refresh();
-  } catch(e){ toast(e.message || 'Could not update the claim.', 'error'); }
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not update the claim.', 'error'); }
 }
 
 /* ================= Partners ================= */
@@ -1314,10 +1301,41 @@ function loadGateway(){
   document.getElementById('pg-key').value = c.publicKey || '';
   document.getElementById('pg-secret').value = c.secretKey || '';
   document.getElementById('pg-business').value = c.business || '';
-  document.getElementById('pg-momo').value = c.momoNumber || '';
-  document.getElementById('pg-momo-name').value = c.momoName || '';
-  document.getElementById('pg-momo-network').value = c.momoNetwork || '';
+  renderMomoRows(c.momoAccounts || []);
   renderGatewayStatus();
+}
+
+/* --- MoMo wallet list editor (network / number / name per row) --- */
+const MOMO_NETWORKS = [
+  ['MTN MoMo', 'MTN MoMo'],
+  ['Telecel Cash', 'Telecel Cash (Vodafone)'],
+  ['AT Money', 'AT Money (AirtelTigo)'],
+];
+function momoRowHtml(a){
+  a = a || {};
+  const opts = ['<option value="">Network…</option>'].concat(
+    MOMO_NETWORKS.map(n => `<option value="${n[0]}"${a.network === n[0] ? ' selected' : ''}>${n[1]}</option>`)
+  ).join('');
+  return `<div class="momo-acc" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+    <select class="ma-net" style="flex:1;min-width:140px">${opts}</select>
+    <input class="ma-num" type="text" inputmode="tel" placeholder="Number · e.g. 024 123 4567" value="${esc(a.number||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
+    <input class="ma-name" type="text" placeholder="Name on the number" value="${esc(a.name||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
+    <button class="mini ghost" type="button" title="Remove this number" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">✕</button>
+  </div>`;
+}
+function renderMomoRows(list){
+  const box = document.getElementById('momo-list');
+  box.innerHTML = (list && list.length ? list : [{}]).map(momoRowHtml).join('');
+}
+function addMomoRow(){
+  document.getElementById('momo-list').insertAdjacentHTML('beforeend', momoRowHtml());
+}
+function collectMomoRows(){
+  return [...document.querySelectorAll('#momo-list .momo-acc')].map(row => ({
+    network: row.querySelector('.ma-net').value,
+    number: row.querySelector('.ma-num').value.trim(),
+    name: row.querySelector('.ma-name').value.trim(),
+  })).filter(a => a.number);
 }
 async function saveGateway(){
   const cfg = {
@@ -1326,24 +1344,22 @@ async function saveGateway(){
     publicKey: document.getElementById('pg-key').value.trim(),
     secretKey: document.getElementById('pg-secret').value.trim(),
     business:  document.getElementById('pg-business').value.trim(),
-    momoNumber: document.getElementById('pg-momo').value.trim(),
-    momoName:  document.getElementById('pg-momo-name').value.trim(),
-    momoNetwork: document.getElementById('pg-momo-network').value,
+    momoAccounts: collectMomoRows(),
   };
-  if(cfg.provider === 'manual' && !cfg.momoNumber){
-    toast('Enter the MoMo number buyers should send money to.', 'error'); return;
+  if(cfg.provider === 'manual' && !cfg.momoAccounts.length){
+    toast('Add at least one MoMo number buyers should send money to.', 'error'); return;
   }
   // Any key is accepted — no format validation.
   try {
     await VE.adminSavePaymentConfig({
       provider: cfg.provider, currency: cfg.currency,
       key: cfg.publicKey, secret: cfg.secretKey, business: cfg.business,
-      momoNumber: cfg.momoNumber, momoName: cfg.momoName, momoNetwork: cfg.momoNetwork
+      momoAccounts: cfg.momoAccounts
     });
     _paycfg = cfg;
     toast('Payment settings saved', 'success');
     renderGatewayStatus();
-  } catch(e){ toast(e.message || 'Could not save.', 'error'); }
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not save.', 'error'); }
 }
 function toggleSecret(){
   const inp = document.getElementById('pg-secret');
@@ -1362,9 +1378,10 @@ function renderGatewayStatus(){
              : 'Paystack';
   const el = document.getElementById('pg-status');
   if(provider === 'manual'){
-    const n = (document.getElementById('pg-momo') || {}).value || c.momoNumber || '';
-    el.innerHTML = n ? `<span class="pill live">${name} · ${esc(n)}</span>`
-                     : `<span class="pill none">${name} · add your MoMo number</span>`;
+    const n = (typeof collectMomoRows === 'function' && document.getElementById('momo-list'))
+      ? collectMomoRows().length : ((c.momoAccounts || []).length);
+    el.innerHTML = n ? `<span class="pill live">${name} · ${n} number${n === 1 ? '' : 's'}</span>`
+                     : `<span class="pill none">${name} · add your MoMo numbers</span>`;
     return;
   }
   else if(!k)                 el.innerHTML = `<span class="pill none">${name} · not configured</span>`;
@@ -1713,6 +1730,18 @@ async function cancelPick(id){
 })();
 
 function refresh(){ renderStats(); renderUsers(); renderTx(); renderClaims(); renderPartners(); renderSentPicks(); }
+
+/* An admin token lasts 30 days; when it lapses the API answers 401
+   "Session expired". Re-show the passcode gate instead of dead errors. */
+function authGuard(e){
+  if(!e || e.status !== 401) return false;
+  VE.signOutAdmin();
+  document.getElementById('gate').style.display = '';
+  document.getElementById('gate-err').textContent = 'Session expired — enter the passcode again.';
+  const gi = document.getElementById('gate-input');
+  if(gi){ gi.value = ''; gi.focus(); }
+  return true;
+}
 
 async function tryUnlock(){
   const v = document.getElementById('gate-input').value;

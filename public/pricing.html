@@ -300,6 +300,15 @@
   }
   .momo-title { font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--bone); margin: 0 0 4px; }
   .momo-amt { font-family: var(--display); font-weight: 900; font-size: 32px; color: var(--sulfur); margin: 10px 0 14px; }
+  .momo-nets { display: flex; gap: 7px; margin: 0 0 12px; flex-wrap: wrap; }
+  .momo-net {
+    flex: 1; min-width: 92px; background: rgba(10,5,6,.5);
+    border: 1px solid rgba(242,233,230,.16); border-radius: 4px; color: var(--ash);
+    font-family: var(--ui); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 10px 6px; cursor: pointer; transition: .15s;
+  }
+  .momo-net:hover { border-color: rgba(225,29,42,.45); }
+  .momo-net.on { border-color: var(--crimson); color: var(--bone); background: rgba(225,29,42,.14); }
   .momo-box {
     background: rgba(10,5,6,.55); border: 1px solid rgba(242,233,230,.14);
     border-radius: 6px; padding: 4px 14px; margin-bottom: 14px;
@@ -413,7 +422,7 @@ let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
 let PAY_PROVIDER = 'paystack';
-let PAY_MOMO = { number: '', name: '', network: '' };   // direct-MoMo details (provider = manual)
+let PAY_MOMO_ACCOUNTS = [];   // direct-MoMo wallets [{network,number,name}] (provider = manual)
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
@@ -430,9 +439,7 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.key) PAYSTACK_PUBLIC_KEY = cfg.key;
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
-      if(cfg.momoNumber) PAY_MOMO.number = cfg.momoNumber;
-      if(cfg.momoName) PAY_MOMO.name = cfg.momoName;
-      if(cfg.momoNetwork) PAY_MOMO.network = cfg.momoNetwork;
+      if(Array.isArray(cfg.momoAccounts)) PAY_MOMO_ACCOUNTS = cfg.momoAccounts.filter(a => a && a.number);
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');
@@ -554,7 +561,7 @@ function buyPackage(e, i){
   // Direct MoMo: no gateway — show our number, the buyer sends the money
   // from their wallet, and the admin confirms before credits are granted.
   if(PAY_PROVIDER === 'manual'){
-    if(!PAY_MOMO.number){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
+    if(!PAY_MOMO_ACCOUNTS.length){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
     openMomoModal(pkg);
     return;
   }
@@ -625,33 +632,51 @@ function momoStopPoll(){ if(momoPollTimer){ clearInterval(momoPollTimer); momoPo
    redirected when the admin confirms while they browse. */
 function closeMomoModal(){ document.getElementById('momo-overlay').classList.remove('show'); }
 
-function openMomoModal(pkg){
+let momoSelIdx = 0;   // which wallet the buyer picked when there are several
+function openMomoModal(pkg){ momoSelIdx = 0; renderMomoForm(pkg, ''); }
+
+function renderMomoForm(pkg, keepTxid){
+  const accs = PAY_MOMO_ACCOUNTS;
+  if(momoSelIdx >= accs.length) momoSelIdx = 0;
+  const a = accs[momoSelIdx];
+  const tabs = accs.length > 1
+    ? `<div class="momo-nets">${accs.map((x, i) =>
+        `<button type="button" class="momo-net${i === momoSelIdx ? ' on' : ''}" data-i="${i}">${esc(x.network || 'Number ' + (i + 1))}</button>`
+      ).join('')}</div>`
+    : '';
   const b = document.getElementById('momo-body');
   b.innerHTML = `
     <div class="momo-eyebrow">Mobile Money</div>
     <h3 class="momo-title">Pay by MoMo transfer</h3>
     <div class="momo-amt">${esc(pkg.label)}</div>
+    ${tabs}
     <div class="momo-box">
-      ${PAY_MOMO.network ? `<div class="momo-row"><span class="k">Network</span><span class="v">${esc(PAY_MOMO.network)}</span></div>` : ''}
+      ${a.network ? `<div class="momo-row"><span class="k">Network</span><span class="v">${esc(a.network)}</span></div>` : ''}
       <div class="momo-row"><span class="k">Send to</span>
-        <span class="v">${esc(PAY_MOMO.number)} <button class="momo-copy" onclick="momoCopy(this)">Copy</button></span></div>
-      ${PAY_MOMO.name ? `<div class="momo-row"><span class="k">Name on number</span><span class="v">${esc(PAY_MOMO.name)}</span></div>` : ''}
+        <span class="v">${esc(a.number)} <button class="momo-copy" onclick="momoCopy(this)">Copy</button></span></div>
+      ${a.name ? `<div class="momo-row"><span class="k">Name on number</span><span class="v">${esc(a.name)}</span></div>` : ''}
       <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(pkg.label)}</span></div>
     </div>
     <ol class="momo-steps">
-      <li>Send <b>${esc(pkg.label)}</b> to the ${PAY_MOMO.network ? `<b>${esc(PAY_MOMO.network)}</b>` : 'mobile money'} number above from your wallet.</li>
+      <li>Send <b>${esc(pkg.label)}</b> to the ${a.network ? `<b>${esc(a.network)}</b>` : 'mobile money'} number above from your wallet.</li>
       <li>Copy the <b>Transaction ID</b> from the confirmation SMS you receive.</li>
       <li>Paste it below — your predictions are added once the payment is confirmed.</li>
     </ol>
     <label class="momo-label" for="momo-txid">Transaction ID</label>
     <input class="momo-input" id="momo-txid" placeholder="e.g. 8412345678" autocomplete="off" spellcheck="false">
     <button class="momo-btn" id="momo-send">I've sent the money</button>`;
+  if(keepTxid) document.getElementById('momo-txid').value = keepTxid;
   document.getElementById('momo-overlay').classList.add('show');
   document.getElementById('momo-send').onclick = () => momoSubmit(pkg);
+  b.querySelectorAll('.momo-net').forEach(t => t.addEventListener('click', () => {
+    momoSelIdx = +t.dataset.i;
+    renderMomoForm(pkg, (document.getElementById('momo-txid') || {}).value || '');
+  }));
 }
 
 function momoCopy(btn){
-  try { navigator.clipboard && navigator.clipboard.writeText(PAY_MOMO.number).catch(()=>{}); } catch(e){}
+  const a = PAY_MOMO_ACCOUNTS[momoSelIdx] || {};
+  try { navigator.clipboard && navigator.clipboard.writeText(a.number || '').catch(()=>{}); } catch(e){}
   btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
 }
 
@@ -661,11 +686,13 @@ async function momoSubmit(pkg){
   if(txid.length < 4){ toast('Enter the transaction ID from your MoMo SMS.', 'error'); inp.focus(); return; }
   const btn = document.getElementById('momo-send');
   btn.disabled = true; btn.textContent = 'Submitting…';
+  const acc = PAY_MOMO_ACCOUNTS[momoSelIdx] || {};
   try {
     const r = await VE.manualClaim({
       pkg: pkg.label,
       credits: pkg.preds === 999 ? 9999 : pkg.preds,
-      amount: pkg.label,
+      // tell the admin which wallet to check for the money
+      amount: pkg.label + (acc.network ? ' · ' + acc.network : ''),
       txid,
     });
     try { localStorage.setItem('ve_momo_claim', String(r.id)); } catch(e){}

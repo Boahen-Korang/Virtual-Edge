@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS payment_config (
   momo_number  TEXT DEFAULT '',
   momo_name    TEXT DEFAULT '',
   momo_network TEXT DEFAULT '',
+  momo_accounts JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{network,number,name}, …]
   CONSTRAINT singleton CHECK (id = 1)
 );
 INSERT INTO payment_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
@@ -116,6 +117,7 @@ INSERT INTO payment_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_number  TEXT DEFAULT '';
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_name    TEXT DEFAULT '';
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_network TEXT DEFAULT '';
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_accounts JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- Direct mobile-money payments (provider = 'manual'): the buyer sends money
 -- straight to the admin's MoMo number, then submits the transaction ID here.
