@@ -106,10 +106,47 @@
               <button class="pw-toggle" onclick="togglePw('l-pw')">👁</button>
             </div>
           </div>
+          <p style="text-align:right;font-size:12px;margin:-6px 0 14px">
+            <a href="#" onclick="showForgot()">Forgot password?</a>
+          </p>
           <button class="btn btn-primary btn-full" onclick="doLogin()">Log in</button>
           <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:14px">
             Don't have an account? <a href="#" onclick="showTab('register')">Register</a>
           </p>
+        </div>
+
+        <!-- Forgot password: request a reset link -->
+        <div id="forgot-form" style="display:none;margin-top:20px">
+          <div class="error-msg" id="forgot-err"></div>
+          <div id="forgot-ask">
+            <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Enter your account email and we'll send you a link to set a new password.</p>
+            <div class="form-group">
+              <label class="form-label">Email address</label>
+              <input class="form-input" id="f-email" type="email" placeholder="you@example.com" autocomplete="email">
+            </div>
+            <button class="btn btn-primary btn-full" id="forgot-btn" onclick="doForgot()">Send reset link</button>
+          </div>
+          <div id="forgot-sent" style="display:none">
+            <p style="font-size:14px;margin:0 0 6px">📬 Check your inbox</p>
+            <p style="font-size:13px;color:var(--muted);margin:0">If an account exists for that email, a reset link is on its way. It works for 30 minutes — check spam too.</p>
+          </div>
+          <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:14px">
+            <a href="#" onclick="showTab('login')">&larr; Back to log in</a>
+          </p>
+        </div>
+
+        <!-- Set a new password (arrived via the emailed link) -->
+        <div id="reset-form" style="display:none;margin-top:20px">
+          <div class="error-msg" id="reset-err"></div>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Choose a new password for your account.</p>
+          <div class="form-group">
+            <label class="form-label">New password</label>
+            <div class="pw-wrap">
+              <input class="form-input" id="n-pw" type="password" placeholder="Min. 6 characters" autocomplete="new-password">
+              <button class="pw-toggle" onclick="togglePw('n-pw')">👁</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" id="reset-btn" onclick="doReset()">Set new password</button>
         </div>
 
         <!-- Register form -->
@@ -226,7 +263,69 @@ function showTab(which){
   document.getElementById('tab-register').classList.toggle('on', which==='register');
   document.getElementById('login-form').style.display    = which==='login'    ? '' : 'none';
   document.getElementById('register-form').style.display = which==='register' ? '' : 'none';
+  document.getElementById('forgot-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
 }
+
+/* ---- Forgot / reset password ---- */
+let RESET_TOKEN = '';
+function showForgot(){
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('forgot-form').style.display = '';
+  document.getElementById('forgot-ask').style.display = '';
+  document.getElementById('forgot-sent').style.display = 'none';
+  document.getElementById('forgot-err').style.display = 'none';
+  document.getElementById('f-email').value = document.getElementById('l-email').value.trim();
+}
+async function doForgot(){
+  const email = document.getElementById('f-email').value.trim();
+  const errEl = document.getElementById('forgot-err');
+  const btn = document.getElementById('forgot-btn');
+  errEl.style.display = 'none';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    errEl.textContent = 'Please enter a valid email.'; errEl.style.display=''; return;
+  }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    await VE.forgotPassword(email);
+    document.getElementById('forgot-ask').style.display = 'none';
+    document.getElementById('forgot-sent').style.display = '';
+  } catch(e){
+    errEl.textContent = e.message || 'Could not send the reset email. Try again.'; errEl.style.display='';
+  }
+  btn.disabled = false; btn.textContent = 'Send reset link';
+}
+async function doReset(){
+  const pw = document.getElementById('n-pw').value;
+  const errEl = document.getElementById('reset-err');
+  const btn = document.getElementById('reset-btn');
+  errEl.style.display = 'none';
+  if(pw.length < 6){
+    errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display=''; return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await VE.resetPassword(RESET_TOKEN, pw);
+    history.replaceState(null, '', 'login.html');   // drop the used token from the URL
+    showTab('login');
+    const errL = document.getElementById('login-err');
+    errL.textContent = '✓ Password updated — log in with your new password.';
+    errL.style.display = '';
+  } catch(e){
+    errEl.textContent = e.message || 'Could not reset the password.'; errEl.style.display='';
+  }
+  btn.disabled = false; btn.textContent = 'Set new password';
+}
+/* Arriving from the emailed link (?reset=TOKEN) goes straight to the new-password form */
+(function(){
+  const t = new URLSearchParams(location.search).get('reset');
+  if(!t) return;
+  RESET_TOKEN = t;
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = '';
+})();
 
 /* ---- Password toggle ---- */
 function togglePw(id){

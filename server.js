@@ -20,6 +20,10 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || '';
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 465;
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
 
 /* Claude client for screenshot scanning (vision). Key lives only here, server-side. */
 let anthropic = null;
@@ -46,23 +50,46 @@ app.use('/api/admin/login', loginLimiter);       // passcode brute-force guard
 app.use('/api/partner/login', loginLimiter);
 app.use('/api/scan', scanLimiter);               // protect the paid scanner from abuse
 
-/* Best-effort transactional email via Resend (HTTP API — Render blocks SMTP).
-   No-ops if RESEND_API_KEY / MAIL_FROM aren't set, so callers never fail on email. */
-async function sendMail(to, subject, html) {
-  if (!RESEND_API_KEY || !MAIL_FROM) {
-    console.log('[mail] not configured — skipping email to', to);
-    return;
-  }
+/* Best-effort transactional email. Prefers SMTP via Nodemailer (set SMTP_USER +
+   SMTP_PASS — e.g. a Gmail address + app password; host/port default to Gmail
+   over 465). Falls back to Resend's HTTP API, and no-ops when neither is
+   configured, so callers never fail on email. Note Render blocks port 25 —
+   use 465 (default) or 587. */
+let mailer = null;
+if (SMTP_USER && SMTP_PASS) {
   try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to, subject, html }),
+    const nodemailer = require('nodemailer');
+    mailer = nodemailer.createTransport({
+      host: SMTP_HOST, port: SMTP_PORT, secure: SMTP_PORT === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
-    if (!r.ok) console.warn('[mail] send failed', r.status, await r.text().catch(() => ''));
-  } catch (e) {
-    console.warn('[mail] error', e && e.message);
+    console.log('✓ SMTP mail via', SMTP_HOST + ':' + SMTP_PORT);
+  } catch (e) { console.warn('nodemailer unavailable:', e && e.message); }
+}
+const mailConfigured = () => !!(mailer || (RESEND_API_KEY && MAIL_FROM));
+
+async function sendMail(to, subject, html) {
+  const from = MAIL_FROM || SMTP_USER;
+  if (mailer) {
+    try { await mailer.sendMail({ from, to, subject, html }); return true; }
+    catch (e) { console.warn('[mail] smtp send failed', e && e.message); return false; }
   }
+  if (RESEND_API_KEY && MAIL_FROM) {
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: MAIL_FROM, to, subject, html }),
+      });
+      if (!r.ok) console.warn('[mail] send failed', r.status, await r.text().catch(() => ''));
+      return r.ok;
+    } catch (e) {
+      console.warn('[mail] error', e && e.message);
+      return false;
+    }
+  }
+  console.log('[mail] not configured — skipping email to', to);
+  return false;
 }
 
 /* ----------------------------- helpers ----------------------------- */
@@ -206,6 +233,47 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   const u = rows[0];
   if (!u || !check(password, u.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
   res.json({ token: sign({ email, role: 'member' }), user: userOut(u) });
+}));
+
+/* ---- Forgot password: email a 30-minute reset link ---- */
+app.post('/api/auth/forgot', wrap(async (req, res) => {
+  const email = norm(req.body.email);
+  if (!email) return res.status(400).json({ error: 'Enter your email address.' });
+  if (!mailConfigured()) return res.status(503).json({ error: 'Password reset is unavailable right now. Please contact support.' });
+  const { rows } = await query('SELECT email, name FROM users WHERE email=$1', [email]);
+  if (rows.length) {
+    const token = jwt.sign({ email, role: 'pwreset' }, JWT_SECRET, { expiresIn: '30m' });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const link = proto + '://' + req.get('host') + '/login.html?reset=' + encodeURIComponent(token);
+    await sendMail(email, 'Reset your VirtualEdge password',
+      `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#222">
+         <h2 style="margin:0 0 12px">Reset your password</h2>
+         <p>Hi ${rows[0].name || 'there'},</p>
+         <p>Someone (hopefully you) asked to reset the password for this VirtualEdge account.
+            Click the button below to choose a new one. The link works for <b>30 minutes</b>.</p>
+         <p style="text-align:center;margin:26px 0">
+           <a href="${link}" style="background:#A40E1E;color:#fff;text-decoration:none;padding:13px 26px;border-radius:6px;font-weight:bold">Set a new password</a>
+         </p>
+         <p style="font-size:12px;color:#777">If the button doesn't work, copy this link into your browser:<br>
+           <a href="${link}">${link}</a></p>
+         <p style="font-size:12px;color:#777">Didn't request this? You can ignore this email — your password stays unchanged.</p>
+       </div>`);
+  }
+  // Same answer whether or not the account exists — never leak membership.
+  res.json({ ok: true });
+}));
+
+app.post('/api/auth/reset', wrap(async (req, res) => {
+  const password = String(req.body.password || '');
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  let decoded;
+  try { decoded = jwt.verify(String(req.body.token || ''), JWT_SECRET); } catch {
+    return res.status(400).json({ error: 'This reset link is invalid or has expired. Request a new one.' });
+  }
+  if (decoded.role !== 'pwreset') return res.status(400).json({ error: 'This reset link is invalid.' });
+  const { rowCount } = await query('UPDATE users SET pw_hash=$2 WHERE email=$1', [decoded.email, hash(password)]);
+  if (!rowCount) return res.status(404).json({ error: 'That account no longer exists.' });
+  res.json({ ok: true });
 }));
 
 /* ============================ MEMBER DATA ============================ */

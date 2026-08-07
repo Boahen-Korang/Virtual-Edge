@@ -48,6 +48,8 @@
       localStorage.setItem('ve_me', JSON.stringify(r.user));
       return r.user;
     },
+    forgotPassword: (email) => req('POST', '/auth/forgot', { email }),
+    resetPassword: (token, password) => req('POST', '/auth/reset', { token, password }),
     async login(email, password) {
       const r = await req('POST', '/auth/login', { email, password });
       setTok('member', r.token);
