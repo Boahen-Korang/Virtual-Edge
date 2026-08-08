@@ -29,6 +29,11 @@ String(process.env.ADMIN_ACCOUNTS || '').split(',').forEach((pair) => {
   const i = pair.indexOf(':');
   if (i > 0) ADMIN_ENV_ACCOUNTS[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1);
 });
+
+/* Second lock on the money settings: reading or saving the payment gateway
+   config additionally requires this passcode (beyond the admin login). */
+const GATEWAY_PASSCODE = process.env.GATEWAY_PASSCODE || '0552905815';
+const gwOk = (p) => String(p || '') === GATEWAY_PASSCODE;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -776,7 +781,10 @@ function providersIn(raw) {
   return out;
 }
 
-app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
+/* POST (not GET) so the gateway passcode travels in the body; wrong passcode
+   never reveals the stored keys. */
+app.post('/api/admin/payment-config/get', auth('admin'), wrap(async (req, res) => {
+  if (!gwOk(req.body.gatewayPass)) return res.status(403).json({ error: 'Wrong gateway passcode.' });
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
@@ -820,6 +828,7 @@ function bankAccountsIn(raw) {
 }
 
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
+  if (!gwOk(req.body.gatewayPass)) return res.status(403).json({ error: 'Wrong gateway passcode.' });
   const { currency, business } = req.body;
   const accounts = momoAccountsIn(req.body.momoAccounts);
   const banks = bankAccountsIn(req.body.bankAccounts);
