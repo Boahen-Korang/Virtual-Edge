@@ -369,7 +369,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
 app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const pkg = String(req.body.pkg || '').slice(0, 40);
   const credits = parseInt(req.body.credits, 10) || 0;
-  const amount = String(req.body.amount || '').slice(0, 40);
+  const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   if (txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
   const dup = await query(

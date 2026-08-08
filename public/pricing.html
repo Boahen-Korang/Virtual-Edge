@@ -476,6 +476,18 @@ const CURRENCIES = {
   // +233 Ghana = base GHS, no conversion shown
 };
 let LOCAL = null;   // the buyer's local currency (null = Ghana/GHS → charge GHS)
+/* Which direct-payment rails this buyer should see, from the phone number they
+   registered with: Ghanaian numbers get the MoMo wallets, Nigerian (+234)
+   numbers get the bank accounts. Everyone else gets gateways only. */
+let BUYER_COUNTRY = 'GH';   // local-format numbers (no + prefix) are Ghana
+function setBuyerCountry(acct){
+  acct = String(acct || '').trim();
+  if(acct.startsWith('+') && !acct.startsWith('+233')){
+    BUYER_COUNTRY = acct.startsWith('+234') ? 'NG' : 'OTHER';
+  } else {
+    BUYER_COUNTRY = 'GH';
+  }
+}
 function applyLocalCurrency(sportyAccount){
   const acct = String(sportyAccount || '');
   const prefix = Object.keys(CURRENCIES).sort((a,b)=>b.length-a.length).find(p => acct.startsWith(p));
@@ -498,6 +510,7 @@ function applyLocalCurrency(sportyAccount){
 
   let me;
   try { me = await VE.me(); } catch(e){ return; }
+  setBuyerCountry(me.user && me.user.sportyAccount);
   applyLocalCurrency(me.user && me.user.sportyAccount);
 
   const credits = me.credits || 0;
@@ -576,8 +589,13 @@ function buyPackage(e, i){
   selectPackage(i);
   const pkg = PACKAGES[i];
   // Methods the admin has toggled on; older configs fall back to the single provider.
-  const methods = PAY_METHODS.length ? PAY_METHODS
+  let methods = PAY_METHODS.length ? PAY_METHODS
     : [{ id: PAY_PROVIDER, key: PAYSTACK_PUBLIC_KEY }];
+  // Direct rails are country-routed: MoMo for Ghanaian numbers, bank for Nigerian.
+  methods = methods.filter(m =>
+    (m.id !== 'manual' || BUYER_COUNTRY === 'GH') &&
+    (m.id !== 'bank'   || BUYER_COUNTRY === 'NG'));
+  if(!methods.length){ toast('Payment is temporarily unavailable for your region. Please contact support.', 'error'); return; }
   if(methods.length > 1) return openMethodPicker(pkg, methods);
   startPayment(pkg, methods[0]);
 }
@@ -743,10 +761,17 @@ function momoCopy(btn){
 let bankSelIdx = 0;
 function openBankModal(pkg){ bankSelIdx = 0; renderBankForm(pkg, ''); }
 
+/* What the buyer must actually send: their local currency when we know it
+   (e.g. ₦ for +234 numbers, from the admin-set rates), else GHS. */
+function localAmount(pkg){
+  return LOCAL ? (LOCAL.sym + Math.round(pkg.price * LOCAL.rate).toLocaleString() + ' ' + LOCAL.code) : pkg.label;
+}
+
 function renderBankForm(pkg, keepTxid){
   const accs = PAY_BANK_ACCOUNTS;
   if(bankSelIdx >= accs.length) bankSelIdx = 0;
   const a = accs[bankSelIdx];
+  const amt = localAmount(pkg);
   const tabs = accs.length > 1
     ? `<div class="momo-nets">${accs.map((x, i) =>
         `<button type="button" class="momo-net${i === bankSelIdx ? ' on' : ''}" data-i="${i}">${esc(x.bank || 'Account ' + (i + 1))}</button>`
@@ -756,17 +781,17 @@ function renderBankForm(pkg, keepTxid){
   b.innerHTML = `
     <div class="momo-eyebrow">Bank Transfer</div>
     <h3 class="momo-title">Pay by bank transfer</h3>
-    <div class="momo-amt">${esc(pkg.label)}</div>
+    <div class="momo-amt">${esc(amt)}</div>
     ${tabs}
     <div class="momo-box">
       ${a.bank ? `<div class="momo-row"><span class="k">Bank</span><span class="v">${esc(a.bank)}</span></div>` : ''}
       <div class="momo-row"><span class="k">Account number</span>
         <span class="v">${esc(a.number)} <button class="momo-copy" data-c="${esc(a.number)}" onclick="momoCopy(this)">Copy</button></span></div>
       ${a.name ? `<div class="momo-row"><span class="k">Account name</span><span class="v">${esc(a.name)}</span></div>` : ''}
-      <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(pkg.label)}</span></div>
+      <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(amt)}</span></div>
     </div>
     <ol class="momo-steps">
-      <li>Transfer <b>${esc(pkg.label)}</b> to the account above from your banking app${a.bank ? ' (' + esc(a.bank) + ')' : ''}.</li>
+      <li>Transfer <b>${esc(amt)}</b> to the account above from your banking app${a.bank ? ' (' + esc(a.bank) + ')' : ''}.</li>
       <li>Copy the <b>transfer reference / transaction ID</b> from your receipt or SMS alert.</li>
       <li>Paste it below — your predictions are added once the payment is confirmed.</li>
     </ol>
@@ -793,8 +818,8 @@ async function bankSubmit(pkg){
     const r = await VE.manualClaim({
       pkg: pkg.label,
       credits: pkg.preds === 999 ? 9999 : pkg.preds,
-      // tell the admin which bank account to check for the money
-      amount: pkg.label + ' · Bank' + (acc.bank ? ' — ' + acc.bank : ''),
+      // tell the admin which bank to check and the local amount actually sent
+      amount: localAmount(pkg) + ' · Bank' + (acc.bank ? ' — ' + acc.bank : ''),
       txid,
     });
     try { localStorage.setItem('ve_momo_claim', String(r.id)); } catch(e){}
