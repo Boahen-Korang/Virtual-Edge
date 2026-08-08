@@ -48,6 +48,9 @@ const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 465;
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
+/* Canonical public address — used for links in emails and anywhere a
+   shareable URL is produced (never the onrender.com host). */
+const PUBLIC_URL = (process.env.PUBLIC_URL || 'https://virtualsoracle.com').replace(/\/+$/, '');
 
 /* Claude client for screenshot scanning (vision). Key lives only here, server-side. */
 let anthropic = null;
@@ -283,8 +286,7 @@ app.post('/api/auth/forgot', wrap(async (req, res) => {
     // this link (and any other outstanding one) stops working.
     const token = jwt.sign({ email, role: 'pwreset', h: String(rows[0].pw_hash || '').slice(-12) },
       JWT_SECRET, { expiresIn: '30m' });
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const link = proto + '://' + req.get('host') + '/login.html?reset=' + encodeURIComponent(token);
+    const link = PUBLIC_URL + '/login.html?reset=' + encodeURIComponent(token);
     await sendMail(email, 'Reset your Virtual Oracle password',
       `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#222">
          <h2 style="margin:0 0 12px">Reset your password</h2>
@@ -443,8 +445,7 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   // Tell every admin a deposit is waiting so it gets approved quickly (best-effort)
   const adminTo = [...new Set([...Object.keys(ADMIN_HASHES), ...Object.keys(ADMIN_ENV_ACCOUNTS)])];
   if (adminTo.length) {
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const link = proto + '://' + req.get('host') + '/admin.html';
+    const link = PUBLIC_URL + '/admin.html';
     const isBank = method === 'bank';
     Promise.resolve(sendMail(adminTo, '💰 Deposit awaiting approval — ' + (amount || pkg),
       `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#222">

@@ -361,9 +361,11 @@ function fmtDate(ts){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Referral links always use the public custom domain, never the host the
+   partner happens to be browsing on (e.g. the onrender.com address). */
+const SITE_URL = 'https://virtualsoracle.com';
 function refLink(code){
-  try { return new URL('index.html?ref=' + encodeURIComponent(code), location.href).href; }
-  catch(e){ return 'index.html?ref=' + code; }
+  return SITE_URL + '/index.html?ref=' + encodeURIComponent(code);
 }
 
 let CURRENT = null;

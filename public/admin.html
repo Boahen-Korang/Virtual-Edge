@@ -919,10 +919,11 @@ async function topupScans(){
   } catch(e){ toast(e.message || 'Could not update scans.', 'error'); }
 }
 
-/* Build a full referral URL for a partner code (works on file:// and http) */
+/* Referral links always use the public custom domain, never the host the
+   admin happens to be browsing on (e.g. the onrender.com address). */
+const SITE_URL = 'https://virtualsoracle.com';
 function refLink(code){
-  try { return new URL('index.html?ref=' + encodeURIComponent(code), location.href).href; }
-  catch(e){ return 'index.html?ref=' + code; }
+  return SITE_URL + '/index.html?ref=' + encodeURIComponent(code);
 }
 /* Emails of members attributed to a partner code */
 function partnerMembers(code){
