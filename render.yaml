@@ -1,4 +1,4 @@
-# Render Blueprint — provisions the web service + PostgreSQL together.
+﻿# Render Blueprint â€” provisions the web service + PostgreSQL together.
 # Push this repo to GitHub, then in Render: New > Blueprint > pick this repo.
 services:
   - type: web
@@ -24,7 +24,7 @@ services:
       - key: RESEND_API_KEY
         sync: false                  # set this yourself (email confirmations); blank = emails off
       - key: MAIL_FROM
-        sync: false                  # e.g. "VirtualEdge <noreply@yourdomain.com>"
+        sync: false                  # e.g. "Virtual Oracle <noreply@yourdomain.com>"
       - key: DATABASE_SSL
         value: "on"
 

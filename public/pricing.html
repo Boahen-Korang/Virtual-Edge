@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VirtualEdge — Choose Package</title>
+<title>Virtual Oracle — Choose Package</title>
 <link rel="stylesheet" href="style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -367,7 +367,7 @@
 <!-- Top bar -->
 <div class="top-bar">
   <button class="back-btn" onclick="goBack()">&larr; Back</button>
-  <div class="brand"><span class="di">◆</span>VirtualEdge</div>
+  <div class="brand"><span class="di">◆</span>Virtual Oracle</div>
   <div class="spacer"></div>
   <button class="logout" onclick="logout()">Log out</button>
 </div>
@@ -424,12 +424,12 @@
 <script src="api.js"></script>
 <script>
 /* ================================================================
-   VirtualEdge — Pricing / Package selection (API-backed via window.VE)
+   Virtual Oracle — Pricing / Package selection (API-backed via window.VE)
    The Paystack key + currency are loaded from the server payment config.
    ================================================================ */
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
-let PAY_BUSINESS = 'VirtualEdge';
+let PAY_BUSINESS = 'Virtual Oracle';
 let PAY_PROVIDER = 'paystack';
 let PAY_MOMO_ACCOUNTS = [];   // direct-MoMo wallets [{network,number,name}] (provider = manual)
 let PAY_BANK_ACCOUNTS = [];   // bank-transfer accounts [{bank,number,name}] (provider = bank)

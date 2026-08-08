@@ -1,4 +1,4 @@
--- VirtualEdge database schema
+-- Virtual Oracle database schema
 -- Mirrors the former localStorage keys:
 --   ve_users -> users, ve_partners -> partners, ve_pushed -> pushed_picks,
 --   ve_purchases -> purchases, ve_results -> results, ve_credits -> credits,
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS payment_config (
   currency    TEXT DEFAULT 'GHS',
   public_key  TEXT DEFAULT '',
   secret_key  TEXT DEFAULT '',
-  business    TEXT DEFAULT 'VirtualEdge',
+  business    TEXT DEFAULT 'Virtual Oracle',
   momo_number  TEXT DEFAULT '',
   momo_name    TEXT DEFAULT '',
   momo_network TEXT DEFAULT '',
