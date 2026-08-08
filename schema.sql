@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS partners (
   locked_at   TIMESTAMPTZ
 );
 ALTER TABLE partners ADD COLUMN IF NOT EXISTS commission NUMERIC NOT NULL DEFAULT 10;
+-- partner's own revenue counter reset point (display only; purchases stay stored)
+ALTER TABLE partners ADD COLUMN IF NOT EXISTS revenue_cleared_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS pushed_picks (
   id            SERIAL PRIMARY KEY,
@@ -125,6 +127,8 @@ ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS momo_accounts JSONB NOT NULL
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS providers JSONB NOT NULL DEFAULT '{}'::jsonb;
 -- Direct bank-transfer receiving accounts: [{bank,number,name}, …]
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS bank_accounts JSONB NOT NULL DEFAULT '[]'::jsonb;
+-- admin revenue counter reset point (display only; purchases stay stored)
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS revenue_cleared_at TIMESTAMPTZ;
 
 -- Direct mobile-money payments (provider = 'manual'): the buyer sends money
 -- straight to the admin's MoMo number, then submits the transaction ID here.

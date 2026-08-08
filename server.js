@@ -529,12 +529,22 @@ app.get('/api/partner/me', auth('partner'), wrap(async (req, res) => {
 
 app.get('/api/partner/referrals', auth('partner'), wrap(async (req, res) => {
   const code = req.user.code;
+  const p = await loadPartner(code);
+  // partner's own "clear revenue" marker — spend only counts newer purchases
+  const since = (p && p.revenue_cleared_at) || new Date(0);
   const u = await query('SELECT * FROM users WHERE partner=$1', [code]);
   const buys = await query(
-    'SELECT email, pkg FROM purchases WHERE email IN (SELECT email FROM users WHERE partner=$1)', [code]);
+    'SELECT email, pkg FROM purchases WHERE created_at > $2 AND email IN (SELECT email FROM users WHERE partner=$1)',
+    [code, since]);
   const spend = {};
   buys.rows.forEach((b) => { spend[b.email] = (spend[b.email] || 0) + parsePrice(b.pkg); });
   res.json(u.rows.map((r) => ({ ...userOut(r), spend: spend[r.email] || 0 })));
+}));
+
+// reset the partner's own revenue/earnings display to zero (data is kept)
+app.post('/api/partner/revenue-clear', auth('partner'), wrap(async (req, res) => {
+  await query('UPDATE partners SET revenue_cleared_at=now() WHERE code=$1', [req.user.code]);
+  res.json({ ok: true });
 }));
 
 app.get('/api/partner/picks', auth('partner'), wrap(async (req, res) => {
@@ -713,8 +723,21 @@ app.delete('/api/admin/users/:email', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* "Clear revenue" is a display reset, not a deletion: dashboards only count
+   purchases made after the marker; the rows stay in the database. */
+const adminRevenueSince = async () => {
+  const { rows } = await query('SELECT revenue_cleared_at FROM payment_config WHERE id=1');
+  return (rows[0] && rows[0].revenue_cleared_at) || new Date(0);
+};
+
+app.post('/api/admin/revenue-clear', auth('admin'), wrap(async (req, res) => {
+  await query('UPDATE payment_config SET revenue_cleared_at=now() WHERE id=1');
+  res.json({ ok: true });
+}));
+
 app.get('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
-  const { rows } = await query('SELECT * FROM purchases ORDER BY created_at DESC');
+  const since = await adminRevenueSince();
+  const { rows } = await query('SELECT * FROM purchases WHERE created_at > $1 ORDER BY created_at DESC', [since]);
   res.json(rows.map((r) => ({
     id: r.id, email: r.email, pkg: r.pkg, reference: r.reference,
     predictions: r.predictions, date: r.created_at,
@@ -933,11 +956,12 @@ app.post('/api/admin/manual-claims/:id/:action', auth('admin'), wrap(async (req,
 
 app.get('/api/admin/stats', auth('admin'), wrap(async (req, res) => {
   const now = Date.now();
+  const since = await adminRevenueSince();
   const [m, a, p, rev] = await Promise.all([
     query('SELECT COUNT(*)::int AS n FROM users'),
     query('SELECT COUNT(*)::int AS n FROM users WHERE plan_end > $1', [now]),
-    query('SELECT COUNT(*)::int AS n FROM purchases'),
-    query('SELECT pkg FROM purchases'),   // revenue needs the GHS-label parse (kept in JS)
+    query('SELECT COUNT(*)::int AS n FROM purchases WHERE created_at > $1', [since]),
+    query('SELECT pkg FROM purchases WHERE created_at > $1', [since]),   // revenue needs the GHS-label parse (kept in JS)
   ]);
   res.json({
     members: m.rows[0].n,

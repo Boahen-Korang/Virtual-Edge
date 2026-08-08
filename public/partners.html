@@ -235,6 +235,8 @@
       <a class="nav-item" data-view="referrals" onclick="showView('referrals')"><span class="ico">☷</span>Referrals<span class="badge" id="nav-ref-badge" style="display:none">0</span></a>
     </nav>
     <div class="side-foot">
+      <button class="tbtn" onclick="refreshP()"><span class="ico">↻</span>Refresh</button>
+      <button class="tbtn" onclick="clearRevenueP()"><span class="ico">∅</span>Clear revenue</button>
       <button class="tbtn" onclick="signOut()"><span class="ico">⏻</span>Sign out</button>
     </div>
   </aside>
@@ -721,6 +723,24 @@ function toast(msg, type=''){
   el.textContent = msg; el.className = 'toast' + (type ? ' '+type : '');
   void el.offsetWidth; el.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* Re-fetch everything from the server and repaint */
+async function refreshP(){
+  try { const r = await VE.partnerMe(); CURRENT = r.partner; } catch(e){}
+  await render();
+  toast('Refreshed');
+}
+
+/* Reset MY revenue/earnings display to zero (nothing is deleted; the admin's
+   totals are unaffected) */
+async function clearRevenueP(){
+  if(!confirm('Reset your revenue and earnings display to GHS 0?\n\nCounting starts fresh from now. This only affects your dashboard.')) return;
+  try {
+    await VE.partnerClearRevenue();
+    await render();
+    toast('Revenue cleared — counting from now.');
+  } catch(e){ toast(e.message || 'Could not clear revenue.'); }
 }
 
 /* Init — require an approved partner session, else go to login */

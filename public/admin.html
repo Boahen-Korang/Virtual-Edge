@@ -367,7 +367,7 @@
         <div class="page-eyebrow">Control Room</div>
         <div class="page-title" id="view-title">Overview</div>
       </div>
-      <button class="tbtn" onclick="refresh()">↻ Refresh</button>
+      <button class="tbtn" onclick="refreshAll()">↻ Refresh</button>
     </div>
 
     <!-- ===== Overview ===== -->
@@ -567,7 +567,8 @@
           <div class="ph-spacer"></div>
           <input class="search" id="tx-search" placeholder="Search email, package, ref…" oninput="renderTx()">
           <button class="mini ghost" onclick="exportTx()">Export CSV</button>
-          <button class="mini ghost" onclick="clearTransactions()" style="color:var(--crimson)">Clear all</button>
+          <button class="mini ghost" onclick="clearRevenue()">Clear revenue</button>
+          <button class="mini ghost" onclick="clearTransactions()" style="color:var(--crimson)">Delete all</button>
         </div>
         <div class="tbl-scroll">
           <table>
@@ -1619,6 +1620,17 @@ function exportTx(){
   downloadCSV('virtual-oracle-transactions.csv', rows);
   toast('Transactions exported', 'success');
 }
+/* Soft reset: revenue and the transaction list start counting from now.
+   Nothing is deleted — a fresh day/period at the press of a button. */
+async function clearRevenue(){
+  if(!confirm('Reset revenue to GHS 0?\n\nThe dashboard starts counting from now. Past transactions are kept in the database (use "Delete all" to erase them for good).')) return;
+  try {
+    await VE.adminClearRevenue();
+    toast('Revenue reset — counting from now.', 'success');
+    await loadAll(); refresh();
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not reset revenue.', 'error'); }
+}
+
 async function clearTransactions(){
   if(!confirm('Delete ALL transaction history? This wipes the revenue figure and cannot be undone.\n\n(Members keep their credits — this only clears the purchase records.)')) return;
   try {
@@ -1906,6 +1918,13 @@ async function cancelPick(id){
 })();
 
 function refresh(){ renderStats(); renderUsers(); renderTx(); renderClaims(); renderPartners(); renderSentPicks(); }
+/* The topbar Refresh button: actually re-fetch from the server, then re-render
+   (refresh() alone only repaints the cached data). */
+async function refreshAll(){
+  await loadAll();
+  refresh();
+  toast('Data refreshed', 'success');
+}
 
 /* An admin token lasts 30 days; when it lapses the API answers 401
    "Session expired". Send the admin back to the login page. */
