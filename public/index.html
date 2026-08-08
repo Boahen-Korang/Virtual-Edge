@@ -72,27 +72,27 @@
   .btn:hover .arr{transform:translateX(4px)}
 
   /* ---------- nav ---------- */
+  /* SportyBet-style solid red header */
   nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;
-    padding:20px 5vw;transition:.28s ease;border-bottom:1px solid transparent}
-  nav.on{background:rgba(243,245,248,.82);backdrop-filter:blur(12px);
-    border-bottom-color:rgba(228,24,39,.4);padding:13px 5vw}
-  .brand{font-family:var(--display);font-weight:700;letter-spacing:.16em;font-size:19px;color:var(--bone);
+    padding:16px 5vw;transition:.28s ease;background:var(--crimson);border-bottom:1px solid rgba(0,0,0,.08)}
+  nav.on{padding:11px 5vw;box-shadow:0 4px 18px rgba(25,30,45,.18)}
+  .brand{font-family:var(--display);font-weight:700;letter-spacing:.16em;font-size:19px;color:#FFFFFF;
     display:flex;align-items:center;gap:10px}
-  .brand .di{color:var(--crimson);filter:drop-shadow(0 0 7px rgba(228,24,39,.6));font-size:13px}
+  .brand .di{color:#FFFFFF;filter:drop-shadow(0 0 7px rgba(0,0,0,.25));font-size:13px}
   .navlinks{display:flex;gap:34px}
   .navlinks a{font-family:var(--ui);text-transform:uppercase;letter-spacing:.16em;font-size:12.5px;
-    color:var(--ash);transition:.15s;position:relative;padding:4px 0}
-  .navlinks a::after{content:"";position:absolute;left:0;bottom:-2px;height:1px;width:0;background:var(--crimson);transition:.2s}
-  .navlinks a:hover{color:var(--bone)} .navlinks a:hover::after{width:100%}
+    color:rgba(255,255,255,.85);transition:.15s;position:relative;padding:4px 0}
+  .navlinks a::after{content:"";position:absolute;left:0;bottom:-2px;height:2px;width:0;background:#37C169;transition:.2s}
+  .navlinks a:hover{color:#FFFFFF} .navlinks a:hover::after{width:100%}
   .nav-cta{display:flex;align-items:center;gap:16px}
-  .age{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--ash);
-    border:1px solid rgba(180,155,152,.35);border-radius:50%;width:34px;height:34px;display:grid;place-items:center}
-  .nav-sign{font-family:var(--ui);text-transform:uppercase;letter-spacing:.14em;font-size:12.5px;color:var(--ash)}
-  .nav-sign:hover{color:var(--bone)}
+  .age{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.85);
+    border:1px solid rgba(255,255,255,.45);border-radius:50%;width:34px;height:34px;display:grid;place-items:center}
+  .nav-sign{font-family:var(--ui);text-transform:uppercase;letter-spacing:.14em;font-size:12.5px;color:rgba(255,255,255,.85)}
+  .nav-sign:hover{color:#FFFFFF}
   .nav-join{font-family:var(--ui);text-transform:uppercase;letter-spacing:.13em;font-size:12.5px;font-weight:600;
-    color:#FCEFEC;background:linear-gradient(180deg,var(--crimson),var(--blood));border:1px solid #FF4736;
-    padding:10px 22px;border-radius:3px;box-shadow:0 6px 22px rgba(197,15,31,.45);transition:.16s}
-  .nav-join:hover{filter:brightness(1.1);box-shadow:0 0 18px rgba(228,24,39,.5)}
+    color:#FFFFFF;background:linear-gradient(180deg,#26AF53,#1F9E48);border:1px solid #2BBE5C;
+    padding:10px 22px;border-radius:3px;box-shadow:0 6px 22px rgba(31,158,72,.4);transition:.16s}
+  .nav-join:hover{filter:brightness(1.1);box-shadow:0 0 18px rgba(31,158,72,.5)}
   @media(max-width:880px){.navlinks{display:none}}
 
   /* ---------- hero ---------- */
