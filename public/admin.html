@@ -339,19 +339,7 @@
 <div class="grain"></div>
 <div class="vig"></div>
 
-<!-- ===== Passcode gate ===== -->
-<div class="gate" id="gate">
-  <div class="gate-card">
-    <div class="di">◆</div>
-    <h1>Admin Access</h1>
-    <p>Enter the passcode to view the control room.</p>
-    <div class="gate-err" id="gate-err"></div>
-    <input type="password" id="gate-input" placeholder="• • • • • •" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()">
-    <button onclick="tryUnlock()">Unlock</button>
-  </div>
-</div>
-
-<!-- ===== App ===== -->
+<!-- ===== App ===== (sign-in lives on admin-login.html) -->
 <div class="layout">
 
   <!-- Sidebar -->
@@ -1830,30 +1818,14 @@ async function cancelPick(id){
 function refresh(){ renderStats(); renderUsers(); renderTx(); renderClaims(); renderPartners(); renderSentPicks(); }
 
 /* An admin token lasts 30 days; when it lapses the API answers 401
-   "Session expired". Re-show the passcode gate instead of dead errors. */
+   "Session expired". Send the admin back to the login page. */
 function authGuard(e){
   if(!e || e.status !== 401) return false;
   VE.signOutAdmin();
-  document.getElementById('gate').style.display = '';
-  document.getElementById('gate-err').textContent = 'Session expired — enter the passcode again.';
-  const gi = document.getElementById('gate-input');
-  if(gi){ gi.value = ''; gi.focus(); }
+  location.replace('admin-login.html?expired=1');
   return true;
 }
-
-async function tryUnlock(){
-  const v = document.getElementById('gate-input').value;
-  try {
-    await VE.adminLogin(v);
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('gate-err').textContent = '';
-    loadAll();
-  } catch(e){
-    document.getElementById('gate-err').textContent = e.message || 'Wrong passcode.';
-    document.getElementById('gate-input').value = '';
-  }
-}
-function lock(){ VE.signOutAdmin(); location.reload(); }
+function lock(){ VE.signOutAdmin(); location.replace('admin-login.html'); }
 function signOut(){ VE.signOutAdmin(); window.location.href = 'index.html'; }
 
 /* ---- Toast ---- */
@@ -1868,14 +1840,10 @@ function toast(msg, type=''){
   toastT = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-/* ---- Init ---- */
+/* ---- Init: not signed in → dedicated login page ---- */
 (function init(){
-  if(VE.isAdmin()){
-    document.getElementById('gate').style.display = 'none';
-    loadAll();
-  } else {
-    document.getElementById('gate-input').focus();
-  }
+  if(!VE.isAdmin()){ location.replace('admin-login.html'); return; }
+  loadAll();
 })();
 </script>
 </body>
