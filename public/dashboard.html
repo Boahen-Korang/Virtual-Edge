@@ -644,6 +644,7 @@ async function scanScreenshot(dataUrl){
     let msg;
     if(st === 429)      msg = '⏳ Scanner is busy right now — wait a moment and re-upload, or type the teams in.';
     else if(st === 401) msg = '🔒 Your session expired — sign out and sign back in, then re-upload.';
+    else if(st === 402) msg = '💳 You need prediction credits to scan — buy a package first.';
     else if(st === 400) msg = '🖼 That image couldn’t be read (unsupported or corrupt). Use a normal PNG/JPG screenshot, or type the teams in.';
     else if(st === 413) msg = '📦 That image is too large — re-upload; it should shrink automatically.';
     else if(st === 503) msg = '⚙️ Scanner is temporarily offline. Type the teams in for now.';

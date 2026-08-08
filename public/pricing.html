@@ -529,7 +529,9 @@ function applyLocalCurrency(sportyAccount){
   document.getElementById('balance-banner').style.display = 'flex';
 })();
 
-/* ---- Packages ---- */
+/* ---- Packages ----
+   NOTE: if you change prices/credits here, update CLAIM_PACKAGES in server.js
+   too — direct-payment (MoMo/bank) claims are validated against that list. */
 const PACKAGES = [
   { id:'p250', price:250, label:'GHS 250', preds:2, desc:'2 predictions per screenshot', icon:'⚡', tag:'2 predictions' },
   { id:'p350', price:350, label:'GHS 350', preds:3, desc:'3 predictions per screenshot', icon:'🔥', tag:'3 predictions' },

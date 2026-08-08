@@ -15,6 +15,12 @@ const { pool, query, initSchema } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
+// A forgeable JWT secret = full account/admin takeover. Never run on Render
+// (production) with the dev fallback.
+if (process.env.RENDER && !process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET is not set. Refusing to start with the dev fallback in production.');
+  process.exit(1);
+}
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '';   // legacy; only works when explicitly set
 
 /* Admin sign-in accounts: email -> bcrypt password hash (never plaintext —
@@ -58,15 +64,25 @@ app.set('trust proxy', 1);   // Render runs behind a proxy — needed for correc
 app.use(cors());
 app.use(express.json({ limit: '8mb' }));   // screenshots (base64) can be a few MB
 
+/* Baseline security headers (no extra deps needed) */
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');            // nothing here is meant to be framed
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
+
 /* ----------------------------- rate limiting ----------------------------- */
 const rlMsg = (m) => ({ windowMs: m.windowMs, max: m.max, standardHeaders: true, legacyHeaders: false, message: { error: m.msg } });
 const authLimiter  = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 40, msg: 'Too many attempts. Please wait a few minutes and try again.' }));
 const loginLimiter = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 12, msg: 'Too many login attempts. Please wait 15 minutes.' }));
 const scanLimiter  = rateLimit(rlMsg({ windowMs: 60 * 1000,      max: 30, msg: 'Scanning too fast — wait a moment and try again.' }));
-app.use('/api/auth', authLimiter);               // register + login
-app.use('/api/admin/login', loginLimiter);       // passcode brute-force guard
+app.use('/api/auth', authLimiter);               // register + login + forgot/reset
+app.use('/api/admin/login', loginLimiter);       // credential brute-force guard
 app.use('/api/partner/login', loginLimiter);
 app.use('/api/scan', scanLimiter);               // protect the paid scanner from abuse
+app.use('/api/pay/cowrie/init', authLimiter);    // public: cap charge-creation spam
+app.use('/api/admin/payment-config/get', authLimiter);   // slow gateway-passcode guessing
 
 /* Best-effort transactional email. Prefers SMTP via Nodemailer (set SMTP_USER +
    SMTP_PASS — e.g. a Gmail address + app password; host/port default to Gmail
@@ -261,9 +277,12 @@ app.post('/api/auth/forgot', wrap(async (req, res) => {
   const email = norm(req.body.email);
   if (!email) return res.status(400).json({ error: 'Enter your email address.' });
   if (!mailConfigured()) return res.status(503).json({ error: 'Password reset is unavailable right now. Please contact support.' });
-  const { rows } = await query('SELECT email, name FROM users WHERE email=$1', [email]);
+  const { rows } = await query('SELECT email, name, pw_hash FROM users WHERE email=$1', [email]);
   if (rows.length) {
-    const token = jwt.sign({ email, role: 'pwreset' }, JWT_SECRET, { expiresIn: '30m' });
+    // Bind the token to the current password hash: once the password changes,
+    // this link (and any other outstanding one) stops working.
+    const token = jwt.sign({ email, role: 'pwreset', h: String(rows[0].pw_hash || '').slice(-12) },
+      JWT_SECRET, { expiresIn: '30m' });
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const link = proto + '://' + req.get('host') + '/login.html?reset=' + encodeURIComponent(token);
     await sendMail(email, 'Reset your Virtual Oracle password',
@@ -292,8 +311,12 @@ app.post('/api/auth/reset', wrap(async (req, res) => {
     return res.status(400).json({ error: 'This reset link is invalid or has expired. Request a new one.' });
   }
   if (decoded.role !== 'pwreset') return res.status(400).json({ error: 'This reset link is invalid.' });
-  const { rowCount } = await query('UPDATE users SET pw_hash=$2 WHERE email=$1', [decoded.email, hash(password)]);
-  if (!rowCount) return res.status(404).json({ error: 'That account no longer exists.' });
+  const { rows } = await query('SELECT pw_hash FROM users WHERE email=$1', [decoded.email]);
+  if (!rows.length) return res.status(404).json({ error: 'That account no longer exists.' });
+  if (decoded.h !== undefined && decoded.h !== String(rows[0].pw_hash || '').slice(-12)) {
+    return res.status(400).json({ error: 'This reset link was already used. Request a new one.' });
+  }
+  await query('UPDATE users SET pw_hash=$2 WHERE email=$1', [decoded.email, hash(password)]);
   res.json({ ok: true });
 }));
 
@@ -385,9 +408,17 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
    No credits are granted here — the buyer's pkg/credits are just a display aid
    for the admin, who checks the money actually arrived and approves the claim
    (that approval is what credits the account). */
+/* Canonical claimable packages — MUST stay in sync with PACKAGES in
+   public/pricing.html. Credits come from HERE, never from the client, so a
+   tampered request can't claim more than the package grants. */
+const CLAIM_PACKAGES = { 'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4 };
+
 app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const pkg = String(req.body.pkg || '').slice(0, 40);
-  const credits = parseInt(req.body.credits, 10) || 0;
+  const credits = CLAIM_PACKAGES[pkg];
+  if (credits === undefined) {
+    return res.status(400).json({ error: 'Unknown package — please refresh the page and try again.' });
+  }
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   const method = String(req.body.method || '').slice(0, 10);
@@ -962,6 +993,18 @@ const SCAN_SCHEMA = {
 app.post('/api/scan', auth(), wrap(async (req, res) => {
   if (!['member', 'partner', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   if (!anthropic) return res.status(503).json({ error: 'Screenshot scanning is not configured.' });
+  // Each scan costs real API money — members must have something to spend.
+  if (req.user.role === 'member') {
+    const [c, u] = await Promise.all([
+      query('SELECT amount FROM credits WHERE email=$1', [req.user.email]),
+      query('SELECT unlimited_until FROM users WHERE email=$1', [req.user.email]),
+    ]);
+    const credits = c.rows[0] ? c.rows[0].amount : 0;
+    const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
+    if (!credits && !unlimited) {
+      return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
+    }
+  }
   const m = /^data:(image\/(?:png|jpe?g|gif|webp));base64,(.*)$/i.exec(String(req.body.image || ''));
   if (!m) return res.status(400).json({ error: 'Bad image data' });
   let mediaType = m[1].toLowerCase();
