@@ -882,16 +882,32 @@ function generatePrediction(homeName, awayName, matchOdds){
     { label:`${away.name} Win`, icon:'✈️', confidence: awayW/n, out:'away' },
   ];
 
-  /* A partner-pushed pick (if any) overrides the random outcome;
-     otherwise Home Win, Draw and Away Win each get an equal 1-in-3 chance */
+  /* A partner-pushed pick (if any) overrides the pick. Otherwise be FAIR to
+     the buyer: follow the real probabilities instead of a blind 1-in-3.
+     - With odds from the slip: use the bookmaker's implied probabilities
+       (1/odds, normalized to strip the margin) and back the most likely
+       outcome — Instant Virtuals results are drawn from those same odds.
+     - Without odds: weight by the stored results when there's enough data,
+       else by typical football frequencies (home 45% / draw 27% / away 28%),
+       so draws and outsiders are no longer over-picked. */
   const pushCtx = getPushedPickCtx(home.name, away.name);
   let pick, pushedOdds = null;
   if(pushCtx){
     pick = options.find(o => o.out === pushCtx.pick.out) || options[Math.floor(Math.random() * options.length)];
     pushedOdds = pushCtx.pick.odds || null;
     consumePushed(pushCtx);
+  } else if(matchOdds && matchOdds.home > 1 && matchOdds.draw > 1 && matchOdds.away > 1){
+    const inv = { home: 1/matchOdds.home, draw: 1/matchOdds.draw, away: 1/matchOdds.away };
+    const tot = inv.home + inv.draw + inv.away;
+    options.forEach(o => { o.confidence = inv[o.out] / tot; });
+    pick = options.reduce((a, b) => (b.confidence > a.confidence ? b : a));
   } else {
-    pick = options[Math.floor(Math.random() * options.length)];
+    const prior = { home: .45, draw: .27, away: .28 };
+    const weights = options.map(o => (n > 20 ? Math.max(o.confidence, .05) : prior[o.out]));
+    const wTot = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * wTot;
+    pick = options[options.length - 1];
+    for(let i = 0; i < options.length; i++){ r -= weights[i]; if(r <= 0){ pick = options[i]; break; } }
   }
 
   /* Odds priority: partner-supplied → exact odds from the screenshot →
