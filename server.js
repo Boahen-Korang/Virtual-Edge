@@ -402,6 +402,30 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const { rows } = await query(
     'INSERT INTO manual_claims (email,pkg,credits,amount,txid,proof) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
     [req.user.email, pkg, credits, amount, txid, proof || null]);
+
+  // Tell every admin a deposit is waiting so it gets approved quickly (best-effort)
+  const adminTo = [...new Set([...Object.keys(ADMIN_HASHES), ...Object.keys(ADMIN_ENV_ACCOUNTS)])];
+  if (adminTo.length) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const link = proto + '://' + req.get('host') + '/admin.html';
+    const isBank = method === 'bank';
+    Promise.resolve(sendMail(adminTo, '💰 Deposit awaiting approval — ' + (amount || pkg),
+      `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#222">
+         <h2 style="margin:0 0 14px;color:#E41827">New deposit to confirm</h2>
+         <table style="border-collapse:collapse;width:100%;font-size:14px">
+           <tr><td style="padding:6px 10px 6px 0;color:#777">Member</td><td style="padding:6px 0"><b>${req.user.email}</b></td></tr>
+           <tr><td style="padding:6px 10px 6px 0;color:#777">Package</td><td style="padding:6px 0">${pkg} — ${credits >= 9999 ? 'Unlimited · 24h' : credits + ' predictions'}</td></tr>
+           <tr><td style="padding:6px 10px 6px 0;color:#777">Amount sent</td><td style="padding:6px 0"><b>${amount || pkg}</b></td></tr>
+           <tr><td style="padding:6px 10px 6px 0;color:#777">${isBank ? 'Proof' : 'Transaction ID'}</td>
+               <td style="padding:6px 0">${isBank ? 'Receipt screenshot attached — open it from the panel' : (txid || '—')}</td></tr>
+         </table>
+         <p style="margin:18px 0 6px">Check the money actually arrived, then approve or reject it under
+            <b>Transactions → MoMo Payments — Confirm</b>. Credits are granted only when you approve.</p>
+         <p style="text-align:center;margin:22px 0 6px">
+           <a href="${link}" style="background:#1F9E48;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:bold">Open admin panel</a>
+         </p>
+       </div>`)).catch(() => {});
+  }
   res.json({ ok: true, id: rows[0].id });
 }));
 
