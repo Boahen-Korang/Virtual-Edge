@@ -372,7 +372,8 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   const method = String(req.body.method || '').slice(0, 10);
-  if (txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
+  // Bank transfers are verified by the receipt screenshot alone — no reference needed
+  if (method !== 'bank' && txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
 
   // Receipt screenshot: required for bank transfers (no SMS lands on our side)
   let proof = String(req.body.proof || '');
