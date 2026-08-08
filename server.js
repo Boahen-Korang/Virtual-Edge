@@ -15,9 +15,20 @@ const { pool, query, initSchema } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '0552905815';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'desmondagrah48@gmail.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ADMIN_PASSCODE;   // password defaults to the passcode
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '';   // legacy; only works when explicitly set
+
+/* Admin sign-in accounts: email -> bcrypt password hash (never plaintext —
+   this repo is public). Add or override without code changes via the
+   ADMIN_ACCOUNTS env var: "email:password,email2:password2". */
+const ADMIN_HASHES = {
+  'groovyalpha@gmail.com': '$2a$10$bGDzCr3v1PAHsHU3i6nsje7XleCXsOQlNUS1wIHwpdtKPfPCuPHPi',
+  'andrewturkenterprise@gmail.com': '$2a$10$LGgOEReRiby4n5lsXxho7uMBEfru9tZmsLlc.apSAAbUN9/Kd.ppG',
+};
+const ADMIN_ENV_ACCOUNTS = {};
+String(process.env.ADMIN_ACCOUNTS || '').split(',').forEach((pair) => {
+  const i = pair.indexOf(':');
+  if (i > 0) ADMIN_ENV_ACCOUNTS[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1);
+});
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -506,19 +517,23 @@ async function insertPicks(email, picks, fromCode, fromName) {
 }
 
 /* ============================ ADMIN ============================ */
-/* Admin sign-in: email + password (ADMIN_EMAIL / ADMIN_PASSWORD env, with the
-   legacy passcode as the default password). The old {passcode} body still
-   works so existing scripts don't break. */
+/* Admin sign-in: email + password against ADMIN_HASHES (bcrypt) or
+   ADMIN_ACCOUNTS env pairs. The old {passcode} body only works when the
+   ADMIN_PASSCODE env var is explicitly set (no hardcoded fallback). */
 app.post('/api/admin/login', wrap(async (req, res) => {
   if (req.body.passcode !== undefined && req.body.email === undefined) {
-    if (String(req.body.passcode || '') !== ADMIN_PASSCODE) return res.status(401).json({ error: 'Wrong passcode.' });
-    return res.json({ token: sign({ role: 'admin' }) });
+    if (ADMIN_PASSCODE && String(req.body.passcode || '') === ADMIN_PASSCODE) {
+      return res.json({ token: sign({ role: 'admin' }) });
+    }
+    return res.status(401).json({ error: 'Wrong passcode.' });
   }
   const email = norm(req.body.email);
   const password = String(req.body.password || '');
-  if (email !== norm(ADMIN_EMAIL) || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Wrong email or password.' });
-  }
+  const ok = password && (
+    (ADMIN_ENV_ACCOUNTS[email] !== undefined && password === ADMIN_ENV_ACCOUNTS[email]) ||
+    (ADMIN_HASHES[email] !== undefined && check(password, ADMIN_HASHES[email]))
+  );
+  if (!ok) return res.status(401).json({ error: 'Wrong email or password.' });
   res.json({ token: sign({ role: 'admin', email }) });
 }));
 
