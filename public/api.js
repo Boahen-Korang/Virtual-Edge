@@ -100,7 +100,7 @@
     adminUsers: () => req('GET', '/admin/users', null, 'admin'),
     adminPartners: () => req('GET', '/admin/partners', null, 'admin'),
     adminAddPartner: (p) => req('POST', '/admin/partners', p, 'admin'),
-    adminPartnerAction: (id, action) => req('PATCH', '/admin/partners/' + id, { action }, 'admin'),
+    adminPartnerAction: (id, action, extra) => req('PATCH', '/admin/partners/' + id, Object.assign({ action }, extra || {}), 'admin'),
     adminDeletePartner: (id) => req('DELETE', '/admin/partners/' + id, null, 'admin'),
     adminGrantCredits: (email, amount) => req('POST', '/admin/credits', { email, amount }, 'admin'),
     adminScanUsage: () => req('GET', '/admin/scan-usage', null, 'admin'),

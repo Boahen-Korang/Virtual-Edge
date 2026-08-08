@@ -531,7 +531,7 @@
         <div class="tbl-scroll">
           <table>
             <thead><tr>
-              <th>Partner</th><th>Status</th><th>Code</th><th>Link</th><th>Referrals</th><th>Revenue</th><th>Actions</th>
+              <th>Partner</th><th>Status</th><th>Code</th><th>Link</th><th>Referrals</th><th>Revenue</th><th>Commission</th><th>Actions</th>
             </tr></thead>
             <tbody id="partners-body"></tbody>
           </table>
@@ -1230,7 +1230,7 @@ function renderPartners(){
 
   const body = document.getElementById('partners-body');
   if(!partners.length){
-    body.innerHTML = `<tr><td colspan="7"><div class="empty">No partners yet. Add one above, or wait for applications.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="8"><div class="empty">No partners yet. Add one above, or wait for applications.</div></td></tr>`;
     renderPager('partners-pager','partners',1);
     return;
   }
@@ -1259,6 +1259,8 @@ function renderPartners(){
     } else {
       actions = `<button class="act danger" onclick="deletePartner('${esc(p.code)}')">Delete</button>`;
     }
+    const rate = p.commission != null ? Number(p.commission) : 10;
+    const earn = rev * rate / 100;
     return `
       <tr>
         <td><div class="name">${esc(p.name||'—')}</div><div class="email">${esc(p.email||'—')}</div></td>
@@ -1267,6 +1269,8 @@ function renderPartners(){
         <td>${status==='pending' ? '<span class="ref">—</span>' : `<button class="act" onclick="copyRef('${esc(p.code)}')">Copy</button>`}</td>
         <td><span class="credits-num">${refs}</span></td>
         <td>${esc(fmtMoney(rev))}</td>
+        <td><div class="name">${rate}% <button class="act" title="Change this partner's commission" onclick="editCommission('${esc(p.code)}')" style="margin-left:5px">✎</button></div>
+            <div class="email" title="What this partner has earned">${esc(fmtMoney(earn))} earned</div></td>
         <td><div class="row-actions">${actions}</div></td>
       </tr>`;
   }).join('');
@@ -1295,6 +1299,20 @@ function lockPartner(code){
 }
 function unlockPartner(code){
   partnerAction(code, 'unlock', p => 'Account unlocked · ' + (p.name || code));
+}
+async function editCommission(code){
+  const p = pById(code);
+  if(!p.id) return;
+  const cur = p.commission != null ? Number(p.commission) : 10;
+  const raw = prompt('Commission for ' + (p.name || code) + ' — percent of referred revenue they earn (0–100):', cur);
+  if(raw == null) return;
+  const rate = parseFloat(raw);
+  if(isNaN(rate) || rate < 0 || rate > 100){ toast('Enter a percentage between 0 and 100.', 'error'); return; }
+  try {
+    await VE.adminPartnerAction(p.id, 'commission', { rate });
+    toast((p.name || code) + ' now earns ' + rate + '%', 'success');
+    await loadAll();
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not update commission.', 'error'); }
 }
 
 async function addPartner(){
@@ -1347,10 +1365,15 @@ function copyField(id, label){
   }
 }
 function exportPartners(){
-  const rows = [['Name','Email','Code','Referrals','Revenue','ReferralLink','Created']];
-  getPartners().forEach(p => rows.push([
-    p.name||'', p.email||'', p.code, partnerMembers(p.code).length, partnerRevenue(p.code), refLink(p.code), p.created||''
-  ]));
+  const rows = [['Name','Email','Code','Referrals','Revenue','CommissionPct','Earnings','ReferralLink','Created']];
+  getPartners().forEach(p => {
+    const rev = partnerRevenue(p.code);
+    const rate = p.commission != null ? Number(p.commission) : 10;
+    rows.push([
+      p.name||'', p.email||'', p.code, partnerMembers(p.code).length, rev,
+      rate, +(rev * rate / 100).toFixed(2), refLink(p.code), p.created||''
+    ]);
+  });
   downloadCSV('virtual-oracle-partners.csv', rows);
   toast('Partners exported', 'success');
 }

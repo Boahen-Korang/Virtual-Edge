@@ -28,10 +28,12 @@ CREATE TABLE IF NOT EXISTS partners (
   code        TEXT UNIQUE NOT NULL,
   status      TEXT NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
   locked      BOOLEAN NOT NULL DEFAULT false,
+  commission  NUMERIC NOT NULL DEFAULT 10,       -- % of referred revenue the partner earns
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   approved_at TIMESTAMPTZ,
   locked_at   TIMESTAMPTZ
 );
+ALTER TABLE partners ADD COLUMN IF NOT EXISTS commission NUMERIC NOT NULL DEFAULT 10;
 
 CREATE TABLE IF NOT EXISTS pushed_picks (
   id            SERIAL PRIMARY KEY,

@@ -390,12 +390,14 @@ async function render(){
   const total    = members.length;
   const active   = members.filter(m => m.planEnd && m.planEnd > now).length;
   const revenue  = members.reduce((a,m) => a + (spendByEmail[m.email]||0), 0);
+  const rate     = (CURRENT && CURRENT.commission != null) ? Number(CURRENT.commission) : 10;
+  const earnings = revenue * rate / 100;
 
   /* Stat cards */
   const cards = [
     { label:'Referred Members', val: total,  ico:'☷', cls:'',     sub: active+' currently active' },
-    { label:'Active Members',   val: active, ico:'⚡', cls:'',     sub:'with a live subscription' },
-    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'gold', icoCls:'gold', sub:'from your referrals' },
+    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'', sub:'from your referrals' },
+    { label:'Your Earnings',    val: fmtMoney(earnings), ico:'★', cls:'gold', icoCls:'gold', sub: rate + '% commission on referred revenue' },
   ];
   document.getElementById('stats').innerHTML = cards.map(c => `
     <div class="stat">

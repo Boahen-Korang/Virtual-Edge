@@ -210,7 +210,8 @@ async function creditPurchaseOnce(email, pkg, reference, predictions) {
 }
 const partnerOut = (r) => r && ({
   id: r.id, name: r.name, email: r.email, code: r.code, status: r.status,
-  locked: r.locked, created: r.created_at, approvedAt: r.approved_at, lockedAt: r.locked_at,
+  locked: r.locked, commission: r.commission != null ? Number(r.commission) : 10,
+  created: r.created_at, approvedAt: r.approved_at, lockedAt: r.locked_at,
 });
 const pickOut = (r) => r && ({
   id: r.id, email: r.member_email, home: r.home, away: r.away, out: r.outcome,
@@ -604,6 +605,12 @@ app.post('/api/admin/partners', auth('admin'), wrap(async (req, res) => {
 app.patch('/api/admin/partners/:id', auth('admin'), wrap(async (req, res) => {
   const action = String(req.body.action || '');
   const id = req.params.id;
+  if (action === 'commission') {
+    const rate = Number(req.body.rate);
+    if (!isFinite(rate) || rate < 0 || rate > 100) return res.status(400).json({ error: 'Commission must be between 0 and 100 percent.' });
+    const { rows } = await query('UPDATE partners SET commission=$2 WHERE id=$1 RETURNING *', [id, rate]);
+    return res.json({ partner: partnerOut(rows[0]) });
+  }
   const map = {
     approve: "UPDATE partners SET status='approved', approved_at=now() WHERE id=$1 RETURNING *",
     reject:  "UPDATE partners SET status='rejected' WHERE id=$1 RETURNING *",
