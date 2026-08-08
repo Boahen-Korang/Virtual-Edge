@@ -371,15 +371,23 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const credits = parseInt(req.body.credits, 10) || 0;
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
+  const method = String(req.body.method || '').slice(0, 10);
   if (txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
+
+  // Receipt screenshot: required for bank transfers (no SMS lands on our side)
+  let proof = String(req.body.proof || '');
+  if (proof && !/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(proof)) proof = '';
+  if (proof.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'That screenshot is too large. Please try again.' });
+  if (method === 'bank' && !proof) return res.status(400).json({ error: 'Attach a screenshot of your transfer receipt.' });
+
   const dup = await query(
     "SELECT COUNT(*)::int AS n FROM manual_claims WHERE email=$1 AND status='pending'", [req.user.email]);
   if (dup.rows[0].n >= 3) {
     return res.status(429).json({ error: 'You already have payments awaiting confirmation. Please wait for those first.' });
   }
   const { rows } = await query(
-    'INSERT INTO manual_claims (email,pkg,credits,amount,txid) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-    [req.user.email, pkg, credits, amount, txid]);
+    'INSERT INTO manual_claims (email,pkg,credits,amount,txid,proof) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+    [req.user.email, pkg, credits, amount, txid, proof || null]);
   res.json({ ok: true, id: rows[0].id });
 }));
 
@@ -791,10 +799,19 @@ app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
 
 /* ---- Direct MoMo payment claims (provider = 'manual') ---- */
 app.get('/api/admin/manual-claims', auth('admin'), wrap(async (req, res) => {
+  // proof images stay out of the list (they can be MBs) — fetched per claim below
   const { rows } = await query(
-    `SELECT * FROM manual_claims ORDER BY (status='pending') DESC, created_at DESC LIMIT 300`);
+    `SELECT id, email, pkg, credits, amount, txid, status, created_at,
+            (proof IS NOT NULL AND proof <> '') AS has_proof
+       FROM manual_claims ORDER BY (status='pending') DESC, created_at DESC LIMIT 300`);
   res.json(rows.map((r) => ({ id: r.id, email: r.email, pkg: r.pkg, credits: r.credits,
-    amount: r.amount, txid: r.txid, status: r.status, created: r.created_at })));
+    amount: r.amount, txid: r.txid, status: r.status, created: r.created_at, hasProof: r.has_proof })));
+}));
+
+app.get('/api/admin/manual-claims/:id/proof', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query('SELECT proof FROM manual_claims WHERE id=$1', [req.params.id]);
+  if (!rows.length || !rows[0].proof) return res.status(404).json({ error: 'No screenshot attached to this claim.' });
+  res.json({ proof: rows[0].proof });
 }));
 
 // Approve = grant the credits (exactly once — the status flip guards re-clicks);

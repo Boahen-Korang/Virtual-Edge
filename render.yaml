@@ -1,4 +1,4 @@
-﻿# Render Blueprint â€” provisions the web service + PostgreSQL together.
+# Render Blueprint — provisions the web service + PostgreSQL together.
 # Push this repo to GitHub, then in Render: New > Blueprint > pick this repo.
 services:
   - type: web

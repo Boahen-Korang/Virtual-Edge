@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Oracle â€” Admin</title>
+<title>Virtual Oracle — Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;1,400&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
@@ -87,7 +87,7 @@
   .main-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:28px;flex-wrap:wrap}
   .page-eyebrow{font-family:var(--ui);text-transform:uppercase;letter-spacing:.3em;font-size:11px;
     font-weight:500;color:var(--crimson);display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
-  .page-eyebrow::before{content:"â—†";font-size:8px;color:var(--blood)}
+  .page-eyebrow::before{content:"◆";font-size:8px;color:var(--blood)}
   .page-title{font-family:var(--display);font-weight:700;font-size:clamp(1.6rem,3.6vw,2.3rem);
     color:var(--bone);letter-spacing:.01em}
 
@@ -342,11 +342,11 @@
 <!-- ===== Passcode gate ===== -->
 <div class="gate" id="gate">
   <div class="gate-card">
-    <div class="di">â—†</div>
+    <div class="di">◆</div>
     <h1>Admin Access</h1>
     <p>Enter the passcode to view the control room.</p>
     <div class="gate-err" id="gate-err"></div>
-    <input type="password" id="gate-input" placeholder="â€¢ â€¢ â€¢ â€¢ â€¢ â€¢" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <input type="password" id="gate-input" placeholder="• • • • • •" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()">
     <button onclick="tryUnlock()">Unlock</button>
   </div>
 </div>
@@ -356,19 +356,19 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="side-brand"><span class="di">â—†</span>Virtual Oracle<span class="tag">Admin</span></div>
+    <div class="side-brand"><span class="di">◆</span>Virtual Oracle<span class="tag">Admin</span></div>
     <nav class="nav">
-      <a class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="ico">â–¦</span>Overview<span class="badge" id="nav-alerts-badge" style="display:none;background:rgba(228,24,39,.18);color:var(--ember,#FF3B22)">0</span></a>
-      <a class="nav-item" data-view="members" onclick="showView('members')"><span class="ico">â˜·</span>Members</a>
-      <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">âŠ•</span>Send Prediction</a>
-      <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">âœ¦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
-      <a class="nav-item" data-view="partners" onclick="showView('partners')"><span class="ico">â¬¡</span>Partners</a>
-      <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">â‡„</span>Transactions<span class="badge" id="nav-claims-badge" style="display:none">0</span></a>
-      <a class="nav-item" data-view="gateway" onclick="showView('gateway')"><span class="ico">â–¤</span>Payment Gateway</a>
+      <a class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="ico">▦</span>Overview<span class="badge" id="nav-alerts-badge" style="display:none;background:rgba(228,24,39,.18);color:var(--ember,#FF3B22)">0</span></a>
+      <a class="nav-item" data-view="members" onclick="showView('members')"><span class="ico">☷</span>Members</a>
+      <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">⊕</span>Send Prediction</a>
+      <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">✦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
+      <a class="nav-item" data-view="partners" onclick="showView('partners')"><span class="ico">⬡</span>Partners</a>
+      <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">⇄</span>Transactions<span class="badge" id="nav-claims-badge" style="display:none">0</span></a>
+      <a class="nav-item" data-view="gateway" onclick="showView('gateway')"><span class="ico">▤</span>Payment Gateway</a>
     </nav>
     <div class="side-foot">
-      <a class="nav-item" onclick="lock()"><span class="ico">ðŸ”’</span>Lock</a>
-      <a class="nav-item" onclick="signOut()"><span class="ico">â»</span>Sign out</a>
+      <a class="nav-item" onclick="lock()"><span class="ico">🔒</span>Lock</a>
+      <a class="nav-item" onclick="signOut()"><span class="ico">⏻</span>Sign out</a>
     </div>
   </aside>
 
@@ -379,7 +379,7 @@
         <div class="page-eyebrow">Control Room</div>
         <div class="page-title" id="view-title">Overview</div>
       </div>
-      <button class="tbtn" onclick="refresh()">â†» Refresh</button>
+      <button class="tbtn" onclick="refresh()">↻ Refresh</button>
     </div>
 
     <!-- ===== Overview ===== -->
@@ -387,7 +387,7 @@
       <!-- Security alerts -->
       <div class="panel" id="alerts-panel" style="display:none;margin-bottom:18px;border-color:rgba(228,24,39,.4)">
         <div class="panel-head">
-          <h2>âš  Security Alerts</h2>
+          <h2>⚠ Security Alerts</h2>
           <span class="count" id="alerts-count" style="background:rgba(228,24,39,.15);color:var(--ember,#FF3B22)">0</span>
           <div class="ph-spacer"></div>
           <button class="mini ghost" onclick="clearAlerts()">Dismiss all</button>
@@ -428,7 +428,7 @@
           <h2>Members</h2>
           <span class="count" id="users-count">0</span>
           <div class="ph-spacer"></div>
-          <input class="search" id="users-search" placeholder="Search name or emailâ€¦" oninput="renderUsers()">
+          <input class="search" id="users-search" placeholder="Search name or email…" oninput="renderUsers()">
           <button class="mini ghost" onclick="exportUsers()">Export CSV</button>
         </div>
         <div class="tbl-scroll">
@@ -454,19 +454,19 @@
           <p class="send-lead">Upload a SportyBet screenshot, let it scan the teams &amp; odds, choose the winner for each match, and push the picks straight into a member's account.</p>
 
           <label class="drop" id="drop">
-            <span class="drop-ico">ðŸ“¸</span>
+            <span class="drop-ico">📸</span>
             <span class="drop-title">Upload screenshot</span>
-            <span class="drop-sub">Tap to select â€” we'll read the matches automatically</span>
+            <span class="drop-sub">Tap to select — we'll read the matches automatically</span>
             <input type="file" id="file-input" accept="image/*" hidden onclick="this.value=null" onchange="onFile(event)">
           </label>
 
           <div id="send-fields">
             <div class="prev">
               <img id="prev-img" alt="Screenshot">
-              <button class="prev-x" onclick="resetSend()" title="Remove">âœ•</button>
+              <button class="prev-x" onclick="resetSend()" title="Remove">✕</button>
             </div>
 
-            <div class="scanline" id="scan-stat"><span class="spin" id="scan-spin"></span><span id="scan-txt">Scanningâ€¦</span></div>
+            <div class="scanline" id="scan-stat"><span class="spin" id="scan-spin"></span><span id="scan-txt">Scanning…</span></div>
 
             <div class="fb-label" id="matches-head" style="display:none">Choose the winning team for each match</div>
             <div id="matches-list"></div>
@@ -477,7 +477,7 @@
               <select id="s-account" class="sel"></select>
             </div>
 
-            <button class="mini send-btn" onclick="sendPrediction()">Send picks to account â†’</button>
+            <button class="mini send-btn" onclick="sendPrediction()">Send picks to account →</button>
           </div>
         </div>
       </div>
@@ -537,7 +537,7 @@
           <h2>Partners</h2>
           <span class="count" id="partners-count">0</span>
           <div class="ph-spacer"></div>
-          <input class="search" id="partners-search" placeholder="Search name, email, codeâ€¦" oninput="renderPartners()">
+          <input class="search" id="partners-search" placeholder="Search name, email, code…" oninput="renderPartners()">
           <button class="mini ghost" onclick="exportPartners()">Export CSV</button>
         </div>
         <div class="tbl-scroll">
@@ -558,7 +558,7 @@
       <!-- Direct MoMo claims awaiting a decision -->
       <div class="panel" style="margin-bottom:18px">
         <div class="panel-head">
-          <h2>MoMo Payments â€” Confirm</h2>
+          <h2>MoMo Payments — Confirm</h2>
           <span class="count" id="claims-count">0</span>
           <div class="ph-spacer"></div>
         </div>
@@ -577,7 +577,7 @@
           <h2>Transaction History</h2>
           <span class="count" id="tx-count">0</span>
           <div class="ph-spacer"></div>
-          <input class="search" id="tx-search" placeholder="Search email, package, refâ€¦" oninput="renderTx()">
+          <input class="search" id="tx-search" placeholder="Search email, package, ref…" oninput="renderTx()">
           <button class="mini ghost" onclick="exportTx()">Export CSV</button>
           <button class="mini ghost" onclick="clearTransactions()" style="color:var(--crimson)">Clear all</button>
         </div>
@@ -601,18 +601,18 @@
         <div class="panel-head">
           <h2>Screenshot Scans</h2>
           <div class="ph-spacer"></div>
-          <span id="scan-pill" class="codechip">â€” left</span>
+          <span id="scan-pill" class="codechip">— left</span>
         </div>
         <div class="panel-body">
-          <div id="scan-low" class="warn" style="display:none">âš  Low on scans â€” buy more Anthropic credits at console.anthropic.com, then add the scans below.</div>
+          <div id="scan-low" class="warn" style="display:none">⚠ Low on scans — buy more Anthropic credits at console.anthropic.com, then add the scans below.</div>
           <div class="form-grid">
             <div class="field">
               <label>Scans remaining</label>
-              <div id="scan-remaining" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--sulfur)">â€”</div>
+              <div id="scan-remaining" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--sulfur)">—</div>
             </div>
             <div class="field">
               <label>Scans used (total)</label>
-              <div id="scan-used" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--bone)">â€”</div>
+              <div id="scan-used" style="font-family:var(--display);font-weight:800;font-size:30px;color:var(--bone)">—</div>
             </div>
             <div class="field full">
               <label>Estimate from your Anthropic $ balance</label>
@@ -620,7 +620,7 @@
                 <input id="scan-usd" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 4.94" style="flex:1;min-width:0">
                 <button class="mini" type="button" onclick="setScansFromUsd()" style="flex:0 0 auto">Set</button>
               </div>
-              <div class="hint">â‰ˆ <span id="scan-per-usd">â€”</span> scans per $1 on Haiku (~$0.0055 each). Enter your current Anthropic credit and this sets "remaining" to the estimate.</div>
+              <div class="hint">≈ <span id="scan-per-usd">—</span> scans per $1 on Haiku (~$0.0055 each). Enter your current Anthropic credit and this sets "remaining" to the estimate.</div>
             </div>
             <div class="field full">
               <label>Or add scans manually</label>
@@ -634,21 +634,21 @@
         </div>
       </div>
 
-      <!-- Exchange rates (GHS â†’ local, display only) -->
+      <!-- Exchange rates (GHS → local, display only) -->
       <div class="panel" style="margin-bottom:18px">
         <div class="panel-head">
           <h2>Exchange Rates</h2>
           <div class="ph-spacer"></div>
-          <span class="codechip" style="color:var(--ash);background:none;border-color:rgba(25,28,34,.16)">GHS â†’ local</span>
+          <span class="codechip" style="color:var(--ash);background:none;border-color:rgba(25,28,34,.16)">GHS → local</span>
         </div>
         <div class="panel-body">
-          <div class="hint" style="margin-bottom:12px">How many local units equal <b>1 GHS</b>. Shown as an estimate on the packages page for users from that country â€” checkout still charges GHS.</div>
+          <div class="hint" style="margin-bottom:12px">How many local units equal <b>1 GHS</b>. Shown as an estimate on the packages page for users from that country — checkout still charges GHS.</div>
           <div class="form-grid">
-            <div class="field"><label>ðŸ‡³ðŸ‡¬ Nigeria â€” â‚¦ per GHS</label><input id="fx-NGN" type="number" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label>ðŸ‡°ðŸ‡ª Kenya â€” KSh per GHS</label><input id="fx-KES" type="number" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label>ðŸ‡¹ðŸ‡¿ Tanzania â€” TSh per GHS</label><input id="fx-TZS" type="number" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label>ðŸ‡¿ðŸ‡² Zambia â€” ZK per GHS</label><input id="fx-ZMW" type="number" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label>ðŸ‡¿ðŸ‡¦ South Africa â€” R per GHS</label><input id="fx-ZAR" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇳🇬 Nigeria — ₦ per GHS</label><input id="fx-NGN" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇰🇪 Kenya — KSh per GHS</label><input id="fx-KES" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇹🇿 Tanzania — TSh per GHS</label><input id="fx-TZS" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇿🇲 Zambia — ZK per GHS</label><input id="fx-ZMW" type="number" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label>🇿🇦 South Africa — R per GHS</label><input id="fx-ZAR" type="number" step="0.01" inputmode="decimal"></div>
           </div>
           <div class="save-row"><button class="mini" type="button" onclick="saveFxRates()">Save rates</button></div>
         </div>
@@ -662,8 +662,8 @@
         </div>
         <div class="panel-body">
           <div class="warn">
-            <b>âš  Security note.</b> The <b>public key (pk_â€¦)</b> safely powers the checkout. The
-            <b>secret key (sk_â€¦)</b> is stored here only for your convenience â€” on a live site it must live
+            <b>⚠ Security note.</b> The <b>public key (pk_…)</b> safely powers the checkout. The
+            <b>secret key (sk_…)</b> is stored here only for your convenience — on a live site it must live
             on a secure server, never shipped to visitors' browsers. Anything saved on this page is kept in
             this browser's local storage, so treat this device as trusted.
           </div>
@@ -672,11 +672,11 @@
             <div class="field">
               <label>Currency</label>
               <select id="pg-currency">
-                <option value="GHS">GHS â€” Ghana Cedi</option>
-                <option value="NGN">NGN â€” Nigerian Naira</option>
-                <option value="USD">USD â€” US Dollar</option>
-                <option value="KES">KES â€” Kenyan Shilling</option>
-                <option value="ZAR">ZAR â€” South African Rand</option>
+                <option value="GHS">GHS — Ghana Cedi</option>
+                <option value="NGN">NGN — Nigerian Naira</option>
+                <option value="USD">USD — US Dollar</option>
+                <option value="KES">KES — Kenyan Shilling</option>
+                <option value="ZAR">ZAR — South African Rand</option>
               </select>
             </div>
             <div class="field">
@@ -691,25 +691,25 @@
 
               <div class="pm-card" id="pmc-paystack">
                 <div class="pm-head">
-                  <div><div class="pm-name">Paystack</div><div class="pm-sub">Card &amp; mobile money Â· inline popup</div></div>
+                  <div><div class="pm-name">Paystack</div><div class="pm-sub">Card &amp; mobile money · inline popup</div></div>
                   <div class="sp"></div>
                   <label class="switch"><input type="checkbox" id="pm-paystack" onchange="pmToggled()"><span class="sl"></span></label>
                 </div>
                 <div class="pm-body">
-                  <input id="pm-paystack-key" type="text" placeholder="Public key (pk_â€¦)" autocomplete="off" spellcheck="false">
-                  <input id="pm-paystack-secret" type="password" placeholder="Secret key (sk_â€¦) â€” kept on the server" autocomplete="off">
+                  <input id="pm-paystack-key" type="text" placeholder="Public key (pk_…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-paystack-secret" type="password" placeholder="Secret key (sk_…) — kept on the server" autocomplete="off">
                 </div>
               </div>
 
               <div class="pm-card" id="pmc-flutterwave">
                 <div class="pm-head">
-                  <div><div class="pm-name">Flutterwave</div><div class="pm-sub">Card, MoMo, USSD &amp; bank Â· inline popup</div></div>
+                  <div><div class="pm-name">Flutterwave</div><div class="pm-sub">Card, MoMo, USSD &amp; bank · inline popup</div></div>
                   <div class="sp"></div>
                   <label class="switch"><input type="checkbox" id="pm-flutterwave" onchange="pmToggled()"><span class="sl"></span></label>
                 </div>
                 <div class="pm-body">
-                  <input id="pm-flutterwave-key" type="text" placeholder="Public key (FLWPUBK-â€¦)" autocomplete="off" spellcheck="false">
-                  <input id="pm-flutterwave-secret" type="password" placeholder="Secret key (FLWSECK-â€¦) â€” kept on the server" autocomplete="off">
+                  <input id="pm-flutterwave-key" type="text" placeholder="Public key (FLWPUBK-…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-flutterwave-secret" type="password" placeholder="Secret key (FLWSECK-…) — kept on the server" autocomplete="off">
                 </div>
               </div>
 
@@ -720,8 +720,8 @@
                   <label class="switch"><input type="checkbox" id="pm-cowrie" onchange="pmToggled()"><span class="sl"></span></label>
                 </div>
                 <div class="pm-body">
-                  <input id="pm-cowrie-key" type="text" placeholder="Public key (cowrie_pk_â€¦)" autocomplete="off" spellcheck="false">
-                  <input id="pm-cowrie-secret" type="password" placeholder="Secret key (cowrie_sk_â€¦) â€” kept on the server" autocomplete="off">
+                  <input id="pm-cowrie-key" type="text" placeholder="Public key (cowrie_pk_…)" autocomplete="off" spellcheck="false">
+                  <input id="pm-cowrie-secret" type="password" placeholder="Secret key (cowrie_sk_…) — kept on the server" autocomplete="off">
                 </div>
               </div>
 
@@ -734,7 +734,7 @@
                 <div class="pm-body">
                   <div id="momo-list" style="width:100%"></div>
                   <button class="mini ghost" type="button" onclick="addMomoRow()" style="align-self:flex-start">+ Add another number</button>
-                  <div class="hint">One wallet per telco you use â€” buyers pick a network and send money straight to that number.</div>
+                  <div class="hint">One wallet per telco you use — buyers pick a network and send money straight to that number.</div>
                 </div>
               </div>
 
@@ -747,7 +747,7 @@
                 <div class="pm-body">
                   <div id="bank-list" style="width:100%"></div>
                   <button class="mini ghost" type="button" onclick="addBankRow()" style="align-self:flex-start">+ Add another account</button>
-                  <div class="hint">Add each bank account you can receive on â€” buyers pick one and transfer straight to it.</div>
+                  <div class="hint">Add each bank account you can receive on — buyers pick one and transfer straight to it.</div>
                 </div>
               </div>
             </div>
@@ -780,12 +780,12 @@
 <script src="api.js"></script>
 <script>
 /* ================================================================
-   Virtual Oracle â€” Admin dashboard (API-backed via window.VE)
+   Virtual Oracle — Admin dashboard (API-backed via window.VE)
    The passcode is verified server-side (ADMIN_PASSCODE env var) and
    exchanged for a JWT; it is no longer present in client code.
    ================================================================ */
 
-/* Packages â€” keep in sync with pricing.html */
+/* Packages — keep in sync with pricing.html */
 const PACKAGES = [
   { price:300,  label:'GHS 300',  tag:'1 prediction'  },
   { price:500,  label:'GHS 500',  tag:'2 predictions' },
@@ -832,7 +832,7 @@ async function loadAll(){
   loadFxRates();
 }
 
-/* ---- Exchange rates (GHS â†’ local) ---- */
+/* ---- Exchange rates (GHS → local) ---- */
 const FX_CODES = ['NGN','KES','TZS','ZMW','ZAR'];
 async function loadFxRates(){
   try {
@@ -861,10 +861,10 @@ async function loadAlerts(){
     if(navb){ navb.textContent = a.length; navb.style.display = 'inline-block'; }
     if(list) list.innerHTML = a.map(x => `
       <div class="mini-row">
-        <div class="mini-avatar" style="background:rgba(228,24,39,.15);color:var(--ember,#FF3B22)">âš </div>
+        <div class="mini-avatar" style="background:rgba(228,24,39,.15);color:var(--ember,#FF3B22)">⚠</div>
         <div class="mini-main">
-          <div class="mini-title">${esc(x.email || 'â€”')}</div>
-          <div class="mini-sub">${esc(x.detail || x.kind || '')} Â· ${esc(fmtDateTime(x.date))}</div>
+          <div class="mini-title">${esc(x.email || '—')}</div>
+          <div class="mini-sub">${esc(x.detail || x.kind || '')} · ${esc(fmtDateTime(x.date))}</div>
         </div>
       </div>`).join('');
     if(panel) panel.style.display = '';
@@ -900,7 +900,7 @@ async function setScansFromUsd(){
   try {
     await VE.adminScanTopup(target - _scanRemaining);   // set remaining to the estimate
     el.value = '';
-    toast('Scans set to â‰ˆ ' + target.toLocaleString() + ' (for $' + usd.toFixed(2) + ')', 'success');
+    toast('Scans set to ≈ ' + target.toLocaleString() + ' (for $' + usd.toFixed(2) + ')', 'success');
     loadScanMeter();
   } catch(e){ toast(e.message || 'Could not update scans.', 'error'); }
 }
@@ -941,12 +941,12 @@ function parsePrice(label){
 const fmtMoney = n => 'GHS ' + n.toLocaleString('en-US');
 function fmtDate(iso){
   const d = new Date(iso);
-  if(isNaN(d)) return 'â€”';
+  if(isNaN(d)) return '—';
   return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) +
-         ' Â· ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+         ' · ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const creditLabel = n => (n >= 9999 ? 'âˆž' : (n||0));
+const creditLabel = n => (n >= 9999 ? '∞' : (n||0));
 
 /* ================= View switching ================= */
 const VIEW_TITLES = { overview:'Overview', members:'Members', send:'Send a Prediction', sent:'Sent Picks', partners:'Partners', transactions:'Transaction History', gateway:'Payment Gateway' };
@@ -972,11 +972,11 @@ function renderStats(){
   const hasUnlim = Object.values(credits).some(c => c >= 9999);
 
   const cards = [
-    { label:'Total Members', val: totalUsers, cls:'', ico:'â˜·', sub: active+' active subscription'+(active===1?'':'s') },
-    { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'â‚µ', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
-    { label:'Transactions', val: txCount, cls:'crimson', ico:'â‡„', sub:'all-time purchases' },
-    { label:'Credits Live', val: outstanding + (hasUnlim?' +âˆž':''), cls:'', ico:'âš¡', sub:'unused predictions' },
-    { label:'Seed Matches', val: getResults().length, cls:'', ico:'âš½', sub:'in prediction pool' },
+    { label:'Total Members', val: totalUsers, cls:'', ico:'☷', sub: active+' active subscription'+(active===1?'':'s') },
+    { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'₵', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
+    { label:'Transactions', val: txCount, cls:'crimson', ico:'⇄', sub:'all-time purchases' },
+    { label:'Credits Live', val: outstanding + (hasUnlim?' +∞':''), cls:'', ico:'⚡', sub:'unused predictions' },
+    { label:'Seed Matches', val: getResults().length, cls:'', ico:'⚽', sub:'in prediction pool' },
   ];
   document.getElementById('stats').innerHTML = cards.map(c => `
     <div class="stat">
@@ -1006,8 +1006,8 @@ function renderOverview(){
         <div class="mini-row">
           <div class="mini-avatar">${esc(initial)}</div>
           <div class="mini-main">
-            <div class="mini-title">${esc(nm || p.email || 'â€”')}</div>
-            <div class="mini-sub">${esc(p.pkg)} Â· ${esc(fmtDate(p.date))}</div>
+            <div class="mini-title">${esc(nm || p.email || '—')}</div>
+            <div class="mini-sub">${esc(p.pkg)} · ${esc(fmtDate(p.date))}</div>
           </div>
           <div class="mini-val">${esc(fmtMoney(parsePrice(p.pkg)))}</div>
         </div>`;
@@ -1028,7 +1028,7 @@ function renderOverview(){
         <div class="mini-row">
           <div class="mini-avatar">${esc(initial)}</div>
           <div class="mini-main">
-            <div class="mini-title">${esc(m.name || 'â€”')}</div>
+            <div class="mini-title">${esc(m.name || '—')}</div>
             <div class="mini-sub">${esc(m.email)}</div>
           </div>
           ${badge}
@@ -1058,9 +1058,9 @@ function renderPager(id, key, total){
   if(total <= 1){ el.innerHTML = ''; return; }
   const p = _pg[key];
   el.innerHTML = `<div style="display:flex;gap:10px;justify-content:center;align-items:center;padding:16px 0 2px">
-      ${pgBtn(key, p-1, 'â€¹ Prev', p<=1)}
+      ${pgBtn(key, p-1, '‹ Prev', p<=1)}
       <span style="font-family:var(--ui);font-size:12px;letter-spacing:.05em;color:var(--ash)">Page ${p} / ${total}</span>
-      ${pgBtn(key, p+1, 'Next â€º', p>=total)}
+      ${pgBtn(key, p+1, 'Next ›', p>=total)}
     </div>`;
 }
 function gotoPage(key, n){
@@ -1088,15 +1088,15 @@ function renderUsers(){
     const status = (r.plan == null && !r.planEnd)
       ? `<span class="pill none">No plan</span>`
       : isActive ? `<span class="pill active">Active</span>` : `<span class="pill expired">Expired</span>`;
-    const exp = r.planEnd ? new Date(r.planEnd).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'â€”';
+    const exp = r.planEnd ? new Date(r.planEnd).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const inf = r.credits >= 9999 ? ' inf' : '';
     return `
       <tr>
-        <td><div class="name">${esc(r.name||'â€”')}</div><div class="email">${esc(r.email)}</div></td>
-        <td>${esc(r.plan || 'â€”')}</td>
+        <td><div class="name">${esc(r.name||'—')}</div><div class="email">${esc(r.email)}</div></td>
+        <td>${esc(r.plan || '—')}</td>
         <td>${status}<div class="email" style="margin-top:4px">exp ${exp}</div></td>
         <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span></td>
-        <td><span class="ref">${esc(r.ref || 'â€”')}</span></td>
+        <td><span class="ref">${esc(r.ref || '—')}</span></td>
         <td><div class="row-actions">
           <button class="act" onclick="grantCredits('${esc(r.email)}')">+ Credits</button>
           <button class="act danger" onclick="deleteUser('${esc(r.email)}')">Delete</button>
@@ -1126,17 +1126,17 @@ function renderTx(){
     return `
       <tr>
         <td><span class="ref">${esc(fmtDate(p.date))}</span></td>
-        <td><div class="name">${esc(name||'â€”')}</div><div class="email">${esc(p.email)}</div></td>
+        <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(p.email)}</div></td>
         <td><span class="credits-num">${esc(p.pkg)}</span></td>
         <td>${esc(fmtMoney(parsePrice(p.pkg)))}</td>
-        <td>${esc(p.preds || 'â€”')}</td>
-        <td><span class="ref">${esc(p.ref || 'â€”')}</span>
+        <td>${esc(p.preds || '—')}</td>
+        <td><span class="ref">${esc(p.ref || '—')}</span>
           <button class="act" title="Remove from revenue only (member keeps their credits)"
             onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}',false)"
-            style="margin-left:8px">âœ• revenue</button>
+            style="margin-left:8px">✕ revenue</button>
           <button class="act danger" title="Remove AND take back the credits this purchase granted"
             onclick="deleteTransaction('${esc(p.ref || p.id)}','${esc((users[p.email]&&users[p.email].name)||p.email)}',true)"
-            style="margin-left:6px">âœ• + credits</button></td>
+            style="margin-left:6px">✕ + credits</button></td>
       </tr>`;
   }).join('');
   renderPager('tx-pager', 'tx', total);
@@ -1148,7 +1148,7 @@ function renderClaims(){
   const users = getUsers();
   const pending = claims.filter(c => c.status === 'pending').length;
 
-  document.getElementById('claims-count').textContent = claims.length + (pending ? ' Â· ' + pending + ' pending' : '');
+  document.getElementById('claims-count').textContent = claims.length + (pending ? ' · ' + pending + ' pending' : '');
   const badge = document.getElementById('nav-claims-badge');
   if(badge){ badge.textContent = pending; badge.style.display = pending ? '' : 'none'; }
 
@@ -1164,20 +1164,38 @@ function renderClaims(){
                :                           `<span class="pill expired">Rejected</span>`;
     const actions = c.status === 'pending'
       ? `<div class="row-actions">
-           <button class="act approve" onclick="claimAction(${c.id},'approve')">âœ“ Money received</button>
-           <button class="act danger" onclick="claimAction(${c.id},'reject')">âœ• Reject</button>
+           <button class="act approve" onclick="claimAction(${c.id},'approve')">✓ Money received</button>
+           <button class="act danger" onclick="claimAction(${c.id},'reject')">✕ Reject</button>
          </div>`
       : '';
     return `
       <tr>
         <td><span class="ref">${esc(fmtDate(c.created))}</span></td>
-        <td><div class="name">${esc(name||'â€”')}</div><div class="email">${esc(c.email)}</div></td>
-        <td><span class="credits-num">${esc(c.pkg||'â€”')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited Â· 24h' : (c.credits||0) + ' predictions'}${c.amount && c.amount !== c.pkg ? ' Â· ' + esc(c.amount.replace((c.pkg||'') + ' Â· ', '')) : ''}</div></td>
-        <td><span class="ref">${esc(c.txid||'â€”')}</span></td>
+        <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(c.email)}</div></td>
+        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits||0) + ' predictions'}${c.amount && c.amount !== c.pkg ? ' · ' + esc(c.amount.replace((c.pkg||'') + ' · ', '')) : ''}</div></td>
+        <td><span class="ref">${esc(c.txid||'—')}</span>${c.hasProof ? `<button class="act" onclick="viewProof(${c.id})" style="margin-left:8px">📎 Proof</button>` : ''}</td>
         <td>${pill}</td>
         <td>${actions}</td>
       </tr>`;
   }).join('');
+}
+
+/* Receipt screenshot lightbox (bank-transfer claims) */
+async function viewProof(id){
+  try {
+    const r = await VE.adminManualClaimProof(id);
+    let box = document.getElementById('proof-view');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'proof-view';
+      box.style.cssText = 'display:flex;position:fixed;inset:0;z-index:400;background:rgba(20,24,32,.88);align-items:center;justify-content:center;padding:22px;cursor:zoom-out';
+      box.innerHTML = '<img style="max-width:92vw;max-height:90vh;border-radius:8px;box-shadow:0 30px 80px rgba(0,0,0,.5)">';
+      box.addEventListener('click', () => { box.style.display = 'none'; });
+      document.body.appendChild(box);
+    }
+    box.querySelector('img').src = r.proof;
+    box.style.display = 'flex';
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'No screenshot attached.', 'error'); }
 }
 
 async function claimAction(id, action){
@@ -1186,7 +1204,7 @@ async function claimAction(id, action){
   if(action === 'reject' && !confirm('Reject this payment claim from ' + (c.email || 'this member') + '? No credits will be granted.')) return;
   try {
     await VE.adminManualClaimDecide(id, action);
-    toast(action === 'approve' ? 'Payment confirmed â€” credits granted.' : 'Claim rejected.', action === 'approve' ? 'success' : '');
+    toast(action === 'approve' ? 'Payment confirmed — credits granted.' : 'Claim rejected.', action === 'approve' ? 'success' : '');
     await loadAll(); refresh();
   } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not update the claim.', 'error'); }
 }
@@ -1205,7 +1223,7 @@ function renderPartners(){
   partners.sort((a,b) => (order[a.status||'approved']) - (order[b.status||'approved']));
 
   const pending = partners.filter(p => (p.status||'approved') === 'pending').length;
-  document.getElementById('partners-count').textContent = partners.length + (pending ? ' Â· '+pending+' pending' : '');
+  document.getElementById('partners-count').textContent = partners.length + (pending ? ' · '+pending+' pending' : '');
 
   const body = document.getElementById('partners-body');
   if(!partners.length){
@@ -1240,10 +1258,10 @@ function renderPartners(){
     }
     return `
       <tr>
-        <td><div class="name">${esc(p.name||'â€”')}</div><div class="email">${esc(p.email||'â€”')}</div></td>
+        <td><div class="name">${esc(p.name||'—')}</div><div class="email">${esc(p.email||'—')}</div></td>
         <td>${statusPill}</td>
         <td><span class="codechip">${esc(p.code)}</span></td>
-        <td>${status==='pending' ? '<span class="ref">â€”</span>' : `<button class="act" onclick="copyRef('${esc(p.code)}')">Copy</button>`}</td>
+        <td>${status==='pending' ? '<span class="ref">—</span>' : `<button class="act" onclick="copyRef('${esc(p.code)}')">Copy</button>`}</td>
         <td><span class="credits-num">${refs}</span></td>
         <td>${esc(fmtMoney(rev))}</td>
         <td><div class="row-actions">${actions}</div></td>
@@ -1260,7 +1278,7 @@ async function partnerAction(code, action, okMsg){
   catch(e){ toast(e.message || 'Action failed.', 'error'); }
 }
 function approvePartner(code){
-  partnerAction(code, 'approve', p => 'Approved Â· ' + (p.name || code) + ' can now sign in');
+  partnerAction(code, 'approve', p => 'Approved · ' + (p.name || code) + ' can now sign in');
 }
 function rejectPartner(code){
   const p = pById(code);
@@ -1270,10 +1288,10 @@ function rejectPartner(code){
 function lockPartner(code){
   const p = pById(code);
   if(!confirm('Lock ' + (p.name || code) + '? They will be signed out and blocked from signing in until unlocked.')) return;
-  partnerAction(code, 'lock', p => 'Account locked Â· ' + (p.name || code));
+  partnerAction(code, 'lock', p => 'Account locked · ' + (p.name || code));
 }
 function unlockPartner(code){
-  partnerAction(code, 'unlock', p => 'Account unlocked Â· ' + (p.name || code));
+  partnerAction(code, 'unlock', p => 'Account unlocked · ' + (p.name || code));
 }
 
 async function addPartner(){
@@ -1290,7 +1308,7 @@ async function addPartner(){
     document.getElementById('np-email').value = '';
     document.getElementById('np-pass').value = '';
     document.getElementById('np-code').value = '';
-    toast('Partner added Â· code ' + (r.partner ? r.partner.code : ''), 'success');
+    toast('Partner added · code ' + (r.partner ? r.partner.code : ''), 'success');
     await loadAll();
   } catch(e){ toast(e.message || 'Could not add partner.', 'error'); }
 }
@@ -1394,14 +1412,14 @@ const MOMO_NETWORKS = [
 ];
 function momoRowHtml(a){
   a = a || {};
-  const opts = ['<option value="">Networkâ€¦</option>'].concat(
+  const opts = ['<option value="">Network…</option>'].concat(
     MOMO_NETWORKS.map(n => `<option value="${n[0]}"${a.network === n[0] ? ' selected' : ''}>${n[1]}</option>`)
   ).join('');
   return `<div class="momo-acc" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
     <select class="ma-net" style="flex:1;min-width:140px">${opts}</select>
-    <input class="ma-num" type="text" inputmode="tel" placeholder="Number Â· e.g. 024 123 4567" value="${esc(a.number||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
+    <input class="ma-num" type="text" inputmode="tel" placeholder="Number · e.g. 024 123 4567" value="${esc(a.number||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
     <input class="ma-name" type="text" placeholder="Name on the number" value="${esc(a.name||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
-    <button class="mini ghost" type="button" title="Remove this number" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">âœ•</button>
+    <button class="mini ghost" type="button" title="Remove this number" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">✕</button>
   </div>`;
 }
 function renderMomoRows(list){
@@ -1423,10 +1441,10 @@ function collectMomoRows(){
 function bankRowHtml(a){
   a = a || {};
   return `<div class="bank-acc" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-    <input class="ba-bank" type="text" placeholder="Bank Â· e.g. GCB Bank" value="${esc(a.bank||'')}" autocomplete="off" style="flex:1;min-width:140px">
+    <input class="ba-bank" type="text" placeholder="Bank · e.g. GCB Bank" value="${esc(a.bank||'')}" autocomplete="off" style="flex:1;min-width:140px">
     <input class="ba-num" type="text" inputmode="numeric" placeholder="Account number" value="${esc(a.number||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
     <input class="ba-name" type="text" placeholder="Account name" value="${esc(a.name||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
-    <button class="mini ghost" type="button" title="Remove this account" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">âœ•</button>
+    <button class="mini ghost" type="button" title="Remove this account" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">✕</button>
   </div>`;
 }
 function renderBankRows(list){
@@ -1451,13 +1469,13 @@ async function saveGateway(){
   for(const id of PM_IDS){
     if(!providers[id].enabled) continue;
     if(id === 'manual' && !momoAccounts.length){
-      toast('Direct MoMo is on â€” add at least one MoMo number.', 'error'); return;
+      toast('Direct MoMo is on — add at least one MoMo number.', 'error'); return;
     }
     if(id === 'bank' && !bankAccounts.length){
-      toast('Bank Transfer is on â€” add at least one bank account.', 'error'); return;
+      toast('Bank Transfer is on — add at least one bank account.', 'error'); return;
     }
     if(!PM_KEYLESS[id] && !providers[id].key){
-      toast(PM_NAMES[id] + ' is on â€” paste its public key (or turn it off).', 'error'); return;
+      toast(PM_NAMES[id] + ' is on — paste its public key (or turn it off).', 'error'); return;
     }
   }
   const cfg = {
@@ -1480,7 +1498,7 @@ function renderGatewayStatus(){
     return t && t.checked;
   });
   el.innerHTML = on.length
-    ? `<span class="pill live">${on.map(id => PM_NAMES[id]).join(' Â· ')}</span>`
+    ? `<span class="pill live">${on.map(id => PM_NAMES[id]).join(' · ')}</span>`
     : `<span class="pill none">No payment method enabled</span>`;
 }
 
@@ -1524,7 +1542,7 @@ function exportTx(){
   toast('Transactions exported', 'success');
 }
 async function clearTransactions(){
-  if(!confirm('Delete ALL transaction history? This wipes the revenue figure and cannot be undone.\n\n(Members keep their credits â€” this only clears the purchase records.)')) return;
+  if(!confirm('Delete ALL transaction history? This wipes the revenue figure and cannot be undone.\n\n(Members keep their credits — this only clears the purchase records.)')) return;
   try {
     const r = await VE.adminClearPurchases();
     toast('Cleared ' + (r.deleted || 0) + ' transactions', 'success');
@@ -1535,8 +1553,8 @@ async function clearTransactions(){
 async function deleteTransaction(key, who, revoke){
   if(!key || key === 'undefined'){ toast('This transaction has no reference to delete.', 'error'); return; }
   const msg = revoke
-    ? 'Remove ' + (who || 'this') + 'â€™s transaction AND take back the credits it granted?\n\nThis reverses the purchase completely (use for refunds / fraud).'
-    : 'Remove ' + (who || 'this') + 'â€™s transaction from revenue?\n\nThis deletes only the purchase record; the member keeps their credits.';
+    ? 'Remove ' + (who || 'this') + '’s transaction AND take back the credits it granted?\n\nThis reverses the purchase completely (use for refunds / fraud).'
+    : 'Remove ' + (who || 'this') + '’s transaction from revenue?\n\nThis deletes only the purchase record; the member keeps their credits.';
   if(!confirm(msg)) return;
   try {
     const r = await VE.adminDeletePurchase(key, revoke);
@@ -1550,8 +1568,8 @@ async function deleteTransaction(key, who, revoke){
 /* ================= Refresh / gate ================= */
 /* ================================================================
    SEND A PREDICTION (admin)
-   Upload a screenshot â†’ Claude reads the matches & odds â†’ choose a
-   winner per match â†’ push into a member's ve_pushed[email] queue.
+   Upload a screenshot → Claude reads the matches & odds → choose a
+   winner per match → push into a member's ve_pushed[email] queue.
    Picks are attributed to "Admin" and surface in that member's
    dashboard the next time they get a prediction for those teams.
    ================================================================ */
@@ -1569,7 +1587,7 @@ function populateAccounts(){
     sel.innerHTML = `<option value="" disabled selected>No member accounts yet</option>`;
     return;
   }
-  sel.innerHTML = emails.map(e => `<option value="${esc(e)}">${esc(users[e].name || e)} â€” ${esc(e)}</option>`).join('');
+  sel.innerHTML = emails.map(e => `<option value="${esc(e)}">${esc(users[e].name || e)} — ${esc(e)}</option>`).join('');
 }
 
 function onFile(e){
@@ -1598,7 +1616,7 @@ async function scanShot(dataUrl){
   document.getElementById('matches-list').innerHTML = '';
   document.getElementById('matches-head').style.display = 'none';
   document.getElementById('add-match').style.display = 'none';
-  setScan('busy', 'Reading screenshotâ€¦');
+  setScan('busy', 'Reading screenshot…');
   const my = ++scanToken;
   let teams = null;
   try { teams = await scanScreenshot(dataUrl); }
@@ -1620,10 +1638,10 @@ function applyScan(matches){
   }));
   picks = {};
   if(detected.length){
-    setScan('ok', detected.length > 1 ? `âœ“ Found ${detected.length} matches â€” choose a winner for each` : 'âœ“ Match detected â€” choose a winner');
+    setScan('ok', detected.length > 1 ? `✓ Found ${detected.length} matches — choose a winner for each` : '✓ Match detected — choose a winner');
   } else {
     detected = [{ home:'', away:'', odds:{ home:null, draw:null, away:null } }];
-    setScan('warn', "Couldn't read the matches â€” type them in below.");
+    setScan('warn', "Couldn't read the matches — type them in below.");
   }
   renderMatches();
 }
@@ -1635,8 +1653,8 @@ function renderMatches(){
   const list = document.getElementById('matches-list');
   list.innerHTML = detected.map((m, i) => {
     const sel = picks[i];
-    const homeLbl = (m.home || 'Home').length > 14 ? (m.home || 'Home').slice(0,13)+'â€¦' : (m.home || 'Home');
-    const awayLbl = (m.away || 'Away').length > 14 ? (m.away || 'Away').slice(0,13)+'â€¦' : (m.away || 'Away');
+    const homeLbl = (m.home || 'Home').length > 14 ? (m.home || 'Home').slice(0,13)+'…' : (m.home || 'Home');
+    const awayLbl = (m.away || 'Away').length > 14 ? (m.away || 'Away').slice(0,13)+'…' : (m.away || 'Away');
     return `
       <div class="match-row ${sel?'chosen':''}" data-i="${i}">
         <div class="mr-teams">
@@ -1645,7 +1663,7 @@ function renderMatches(){
           <span class="mr-vs">VS</span>
           <input class="mr-in" value="${esc(m.away)}" placeholder="Away team" autocomplete="off"
                  oninput="setTeam(${i},'away',this.value)">
-          <button class="mr-rm" title="Remove match" onclick="removeMatch(${i})">âœ•</button>
+          <button class="mr-rm" title="Remove match" onclick="removeMatch(${i})">✕</button>
         </div>
         <div class="mr-outs">
           <button class="ocm ${sel==='home'?'on':''}" onclick="selectOut(${i},'home')">${esc(homeLbl)}<small>Win</small></button>
@@ -1663,7 +1681,7 @@ function setTeam(i, side, val){
   const btns = document.querySelectorAll(`.match-row[data-i="${i}"] .ocm`);
   if(btns.length){
     const lbl = (val.trim() || (side==='home'?'Home':'Away'));
-    const short = lbl.length > 14 ? lbl.slice(0,13)+'â€¦' : lbl;
+    const short = lbl.length > 14 ? lbl.slice(0,13)+'…' : lbl;
     const target = side==='home' ? btns[0] : btns[2];
     target.childNodes[0].nodeValue = short;
   }
@@ -1720,7 +1738,7 @@ async function sendPrediction(){
 
   try {
     await VE.adminSendPicks(email, objs);
-    toast(`${objs.length} pick${objs.length>1?'s':''} sent â†’ ${email}`, 'success');
+    toast(`${objs.length} pick${objs.length>1?'s':''} sent → ${email}`, 'success');
     resetSend();
     await loadAll();
   } catch(e){ toast(e.message || 'Could not send picks.', 'error'); }
@@ -1738,18 +1756,18 @@ function resetSend(){
   document.getElementById('scan-stat').className = 'scanline';
 }
 
-/* ---- Sent picks log (all senders â€” admin oversight) ---- */
+/* ---- Sent picks log (all senders — admin oversight) ---- */
 function fmtDateTime(ts){
   const d = new Date(ts);
-  if(isNaN(d)) return 'â€”';
-  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' Â· ' +
+  if(isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' · ' +
          d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 function senderName(p){
   if(p.fromName) return p.fromName;
   if((p.from || '') === 'ADMIN') return 'Admin';
   const partner = getPartners().find(x => x.code === p.from);
-  return partner ? partner.name : (p.from || 'â€”');
+  return partner ? partner.name : (p.from || '—');
 }
 function getSentPicks(){
   const users = getUsers();
@@ -1759,12 +1777,12 @@ function renderSentPicks(){
   const rows = getSentPicks();
   const pending = rows.filter(r => !r.used).length;
   document.getElementById('sent-count').textContent =
-    rows.length + (pending ? ' Â· ' + pending + ' pending' : '');
+    rows.length + (pending ? ' · ' + pending + ' pending' : '');
   const sb = document.getElementById('nav-sent-badge');
   if(sb){ sb.textContent = pending; sb.style.display = pending ? 'inline-block' : 'none'; }
   const body = document.getElementById('sent-body');
   if(!rows.length){
-    body.innerHTML = `<tr><td colspan="7"><div class="empty">No picks sent yet. Use â€œSend a Predictionâ€.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">No picks sent yet. Use “Send a Prediction”.</div></td></tr>`;
     renderPager('sent-pager','sent',1);
     return;
   }
@@ -1817,7 +1835,7 @@ function authGuard(e){
   if(!e || e.status !== 401) return false;
   VE.signOutAdmin();
   document.getElementById('gate').style.display = '';
-  document.getElementById('gate-err').textContent = 'Session expired â€” enter the passcode again.';
+  document.getElementById('gate-err').textContent = 'Session expired — enter the passcode again.';
   const gi = document.getElementById('gate-input');
   if(gi){ gi.value = ''; gi.focus(); }
   return true;

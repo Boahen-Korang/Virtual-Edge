@@ -119,6 +119,7 @@
     adminSavePaymentConfig: (c) => req('PUT', '/admin/payment-config', c, 'admin'),
     adminManualClaims: () => req('GET', '/admin/manual-claims', null, 'admin'),
     adminManualClaimDecide: (id, action) => req('POST', '/admin/manual-claims/' + id + '/' + action, {}, 'admin'),
+    adminManualClaimProof: (id) => req('GET', '/admin/manual-claims/' + id + '/proof', null, 'admin'),
     signOutAdmin() { setTok('admin', null); },
 
     /* ---- public ---- */

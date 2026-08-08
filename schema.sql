@@ -133,9 +133,11 @@ CREATE TABLE IF NOT EXISTS manual_claims (
   pkg        TEXT,                              -- package label e.g. "GHS 385"
   credits    INTEGER NOT NULL DEFAULT 0,        -- 9999 = 24h unlimited
   amount     TEXT,                              -- what the buyer was told to send
-  txid       TEXT NOT NULL,                     -- MoMo transaction ID they entered
+  txid       TEXT NOT NULL,                     -- MoMo transaction ID / bank transfer reference
+  proof      TEXT,                              -- receipt screenshot (data:image URL; required for bank)
   status     TEXT NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   decided_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_claims_status ON manual_claims(status);
+ALTER TABLE manual_claims ADD COLUMN IF NOT EXISTS proof TEXT;
