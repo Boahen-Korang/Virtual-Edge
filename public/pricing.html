@@ -432,6 +432,7 @@ let PAY_CURRENCY = 'GHS';
 let PAY_BUSINESS = 'VirtualEdge';
 let PAY_PROVIDER = 'paystack';
 let PAY_MOMO_ACCOUNTS = [];   // direct-MoMo wallets [{network,number,name}] (provider = manual)
+let PAY_BANK_ACCOUNTS = [];   // bank-transfer accounts [{bank,number,name}] (provider = bank)
 let PAY_METHODS = [];         // enabled methods [{id,key}] — buyer picks one when several
 
 /* ---- Auth guard ---- */
@@ -450,9 +451,12 @@ if(!SESSION) throw new Error('redirect');
       if(cfg.currency) PAY_CURRENCY = cfg.currency;
       if(cfg.business) PAY_BUSINESS = cfg.business;
       if(Array.isArray(cfg.momoAccounts)) PAY_MOMO_ACCOUNTS = cfg.momoAccounts.filter(a => a && a.number);
+      if(Array.isArray(cfg.bankAccounts)) PAY_BANK_ACCOUNTS = cfg.bankAccounts.filter(a => a && a.number);
       if(Array.isArray(cfg.methods)){
-        // an enabled Direct-MoMo method is only offerable if numbers exist
-        PAY_METHODS = cfg.methods.filter(m => m && m.id && (m.id !== 'manual' || PAY_MOMO_ACCOUNTS.length));
+        // direct methods are only offerable if their receiving accounts exist
+        PAY_METHODS = cfg.methods.filter(m => m && m.id
+          && (m.id !== 'manual' || PAY_MOMO_ACCOUNTS.length)
+          && (m.id !== 'bank' || PAY_BANK_ACCOUNTS.length));
       }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
@@ -586,6 +590,11 @@ function startPayment(pkg, m){
     openMomoModal(pkg);
     return;
   }
+  if(m.id === 'bank'){
+    if(!PAY_BANK_ACCOUNTS.length){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
+    openBankModal(pkg);
+    return;
+  }
 
   // No real gateway key loaded → fail safe, never simulate a payment.
   if(!m.key || m.key.includes('REPLACE')){
@@ -633,6 +642,7 @@ const METHOD_LABELS = {
   flutterwave: ['Flutterwave', 'Card, mobile money, USSD & bank'],
   cowrie:      ['Online Checkout', 'Card & mobile money'],
   manual:      ['Direct MoMo Transfer', 'Send to our wallet — confirmed by our team'],
+  bank:        ['Bank Transfer', 'Send to our bank account — confirmed by our team'],
 };
 function openMethodPicker(pkg, methods){
   const b = document.getElementById('momo-body');
@@ -724,9 +734,75 @@ function renderMomoForm(pkg, keepTxid){
 }
 
 function momoCopy(btn){
-  const a = PAY_MOMO_ACCOUNTS[momoSelIdx] || {};
-  try { navigator.clipboard && navigator.clipboard.writeText(a.number || '').catch(()=>{}); } catch(e){}
+  const val = (btn.dataset && btn.dataset.c) || (PAY_MOMO_ACCOUNTS[momoSelIdx] || {}).number || '';
+  try { navigator.clipboard && navigator.clipboard.writeText(val).catch(()=>{}); } catch(e){}
   btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+}
+
+/* ---- Direct bank transfer: same claim flow, bank details instead of a wallet ---- */
+let bankSelIdx = 0;
+function openBankModal(pkg){ bankSelIdx = 0; renderBankForm(pkg, ''); }
+
+function renderBankForm(pkg, keepTxid){
+  const accs = PAY_BANK_ACCOUNTS;
+  if(bankSelIdx >= accs.length) bankSelIdx = 0;
+  const a = accs[bankSelIdx];
+  const tabs = accs.length > 1
+    ? `<div class="momo-nets">${accs.map((x, i) =>
+        `<button type="button" class="momo-net${i === bankSelIdx ? ' on' : ''}" data-i="${i}">${esc(x.bank || 'Account ' + (i + 1))}</button>`
+      ).join('')}</div>`
+    : '';
+  const b = document.getElementById('momo-body');
+  b.innerHTML = `
+    <div class="momo-eyebrow">Bank Transfer</div>
+    <h3 class="momo-title">Pay by bank transfer</h3>
+    <div class="momo-amt">${esc(pkg.label)}</div>
+    ${tabs}
+    <div class="momo-box">
+      ${a.bank ? `<div class="momo-row"><span class="k">Bank</span><span class="v">${esc(a.bank)}</span></div>` : ''}
+      <div class="momo-row"><span class="k">Account number</span>
+        <span class="v">${esc(a.number)} <button class="momo-copy" data-c="${esc(a.number)}" onclick="momoCopy(this)">Copy</button></span></div>
+      ${a.name ? `<div class="momo-row"><span class="k">Account name</span><span class="v">${esc(a.name)}</span></div>` : ''}
+      <div class="momo-row"><span class="k">Amount</span><span class="v">${esc(pkg.label)}</span></div>
+    </div>
+    <ol class="momo-steps">
+      <li>Transfer <b>${esc(pkg.label)}</b> to the account above from your banking app${a.bank ? ' (' + esc(a.bank) + ')' : ''}.</li>
+      <li>Copy the <b>transfer reference / transaction ID</b> from your receipt or SMS alert.</li>
+      <li>Paste it below — your predictions are added once the payment is confirmed.</li>
+    </ol>
+    <label class="momo-label" for="momo-txid">Transfer reference</label>
+    <input class="momo-input" id="momo-txid" placeholder="e.g. FT24123456789" autocomplete="off" spellcheck="false">
+    <button class="momo-btn" id="momo-send">I've sent the money</button>`;
+  if(keepTxid) document.getElementById('momo-txid').value = keepTxid;
+  document.getElementById('momo-overlay').classList.add('show');
+  document.getElementById('momo-send').onclick = () => bankSubmit(pkg);
+  b.querySelectorAll('.momo-net').forEach(t => t.addEventListener('click', () => {
+    bankSelIdx = +t.dataset.i;
+    renderBankForm(pkg, (document.getElementById('momo-txid') || {}).value || '');
+  }));
+}
+
+async function bankSubmit(pkg){
+  const inp = document.getElementById('momo-txid');
+  const txid = (inp.value || '').trim();
+  if(txid.length < 4){ toast('Enter the transfer reference from your receipt.', 'error'); inp.focus(); return; }
+  const btn = document.getElementById('momo-send');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  const acc = PAY_BANK_ACCOUNTS[bankSelIdx] || {};
+  try {
+    const r = await VE.manualClaim({
+      pkg: pkg.label,
+      credits: pkg.preds === 999 ? 9999 : pkg.preds,
+      // tell the admin which bank account to check for the money
+      amount: pkg.label + ' · Bank' + (acc.bank ? ' — ' + acc.bank : ''),
+      txid,
+    });
+    try { localStorage.setItem('ve_momo_claim', String(r.id)); } catch(e){}
+    momoWait(r.id);
+  } catch(e){
+    btn.disabled = false; btn.textContent = "I've sent the money";
+    toast(e.message || 'Could not submit. Please try again.', 'error');
+  }
 }
 
 async function momoSubmit(pkg){

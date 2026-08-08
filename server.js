@@ -682,7 +682,7 @@ app.delete('/api/admin/picks/:id', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const PROVIDER_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual'];
+const PROVIDER_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual', 'bank'];
 
 /* Per-method config {id:{enabled,key,secret}}. Falls back to the legacy
    single-provider columns for configs saved before the toggles existed. */
@@ -719,7 +719,8 @@ app.get('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
-    business: r.business, momoAccounts: momoAccountsOut(r), providers: providersOut(r) });
+    business: r.business, momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r),
+    providers: providersOut(r) });
 }));
 
 /* The list of direct-MoMo receiving wallets. Falls back to the legacy single
@@ -743,9 +744,24 @@ function momoAccountsIn(raw) {
     .slice(0, 10);
 }
 
+/* Direct bank-transfer receiving accounts [{bank,number,name}] */
+const bankAccountsOut = (r) => (Array.isArray(r.bank_accounts) ? r.bank_accounts : []);
+function bankAccountsIn(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((a) => ({
+      bank: String((a && a.bank) || '').trim().slice(0, 60),
+      number: String((a && a.number) || '').trim().slice(0, 34),
+      name: String((a && a.name) || '').trim().slice(0, 60),
+    }))
+    .filter((a) => a.number)
+    .slice(0, 10);
+}
+
 app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   const { currency, business } = req.body;
   const accounts = momoAccountsIn(req.body.momoAccounts);
+  const banks = bankAccountsIn(req.body.bankAccounts);
   const provs = req.body.providers !== undefined ? providersIn(req.body.providers) : null;
   const first = accounts[0] || { network: '', number: '', name: '' };
 
@@ -765,10 +781,10 @@ app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
   await query(
     `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
        momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb,
-       providers=COALESCE($10::jsonb, providers) WHERE id=1`,
+       bank_accounts=$10::jsonb, providers=COALESCE($11::jsonb, providers) WHERE id=1`,
     [provider, currency || 'GHS', key, secret, business || 'VirtualEdge',
      first.number, first.name, first.network, JSON.stringify(accounts),
-     provs ? JSON.stringify(provs) : null]
+     JSON.stringify(banks), provs ? JSON.stringify(provs) : null]
   );
   res.json({ ok: true });
 }));
@@ -940,13 +956,13 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,providers FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,bank_accounts,providers FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   const provs = providersOut(r);   // never sent raw — secrets stay server-side
   const methods = PROVIDER_IDS.filter((id) => provs[id].enabled)
-    .map((id) => ({ id, key: id === 'manual' ? '' : provs[id].key }));
+    .map((id) => ({ id, key: (id === 'manual' || id === 'bank') ? '' : provs[id].key }));
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
-    momoAccounts: momoAccountsOut(r), methods });
+    momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

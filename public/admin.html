@@ -737,6 +737,19 @@
                   <div class="hint">One wallet per telco you use — buyers pick a network and send money straight to that number.</div>
                 </div>
               </div>
+
+              <div class="pm-card" id="pmc-bank">
+                <div class="pm-head">
+                  <div><div class="pm-name">Direct Bank Transfer</div><div class="pm-sub">Buyers transfer to your bank account; you confirm each payment under Transactions</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-bank" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <div id="bank-list" style="width:100%"></div>
+                  <button class="mini ghost" type="button" onclick="addBankRow()" style="align-self:flex-start">+ Add another account</button>
+                  <div class="hint">Add each bank account you can receive on — buyers pick one and transfer straight to it.</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -806,7 +819,8 @@ async function loadAll(){
     _picks = picks;
     _claims = claims;
     _paycfg = { currency: cfg.currency, business: cfg.business,
-      momoAccounts: cfg.momoAccounts || [], providers: cfg.providers || {} };
+      momoAccounts: cfg.momoAccounts || [], bankAccounts: cfg.bankAccounts || [],
+      providers: cfg.providers || {} };
   } catch(e){
     console.error(e);
     if(authGuard(e)) return;
@@ -1331,8 +1345,9 @@ function renderPackages(){
 }
 
 /* ================= Payment gateway ================= */
-const PM_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual'];
-const PM_NAMES = { paystack: 'Paystack', flutterwave: 'Flutterwave', cowrie: 'Cowrie', manual: 'Direct MoMo' };
+const PM_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual', 'bank'];
+const PM_NAMES = { paystack: 'Paystack', flutterwave: 'Flutterwave', cowrie: 'Cowrie', manual: 'Direct MoMo', bank: 'Bank Transfer' };
+const PM_KEYLESS = { manual: true, bank: true };   // methods without gateway keys
 
 function loadGateway(){
   const c = getPayConfig();
@@ -1342,12 +1357,13 @@ function loadGateway(){
   PM_IDS.forEach(id => {
     const p = provs[id] || {};
     document.getElementById('pm-' + id).checked = !!p.enabled;
-    if(id !== 'manual'){
+    if(!PM_KEYLESS[id]){
       document.getElementById('pm-' + id + '-key').value = p.key || '';
       document.getElementById('pm-' + id + '-secret').value = p.secret || '';
     }
   });
   renderMomoRows(c.momoAccounts || []);
+  renderBankRows(c.bankAccounts || []);
   pmToggled();
 }
 
@@ -1363,8 +1379,8 @@ function collectProviders(){
   PM_IDS.forEach(id => {
     out[id] = {
       enabled: document.getElementById('pm-' + id).checked,
-      key: id === 'manual' ? '' : document.getElementById('pm-' + id + '-key').value.trim(),
-      secret: id === 'manual' ? '' : document.getElementById('pm-' + id + '-secret').value.trim(),
+      key: PM_KEYLESS[id] ? '' : document.getElementById('pm-' + id + '-key').value.trim(),
+      secret: PM_KEYLESS[id] ? '' : document.getElementById('pm-' + id + '-secret').value.trim(),
     };
   });
   return out;
@@ -1402,23 +1418,52 @@ function collectMomoRows(){
     name: row.querySelector('.ma-name').value.trim(),
   })).filter(a => a.number);
 }
+
+/* --- Bank account list editor (bank / account number / account name) --- */
+function bankRowHtml(a){
+  a = a || {};
+  return `<div class="bank-acc" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+    <input class="ba-bank" type="text" placeholder="Bank · e.g. GCB Bank" value="${esc(a.bank||'')}" autocomplete="off" style="flex:1;min-width:140px">
+    <input class="ba-num" type="text" inputmode="numeric" placeholder="Account number" value="${esc(a.number||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
+    <input class="ba-name" type="text" placeholder="Account name" value="${esc(a.name||'')}" autocomplete="off" style="flex:1.2;min-width:160px">
+    <button class="mini ghost" type="button" title="Remove this account" onclick="this.parentElement.remove()" style="color:var(--crimson);flex:0 0 auto">✕</button>
+  </div>`;
+}
+function renderBankRows(list){
+  const box = document.getElementById('bank-list');
+  box.innerHTML = (list && list.length ? list : [{}]).map(bankRowHtml).join('');
+}
+function addBankRow(){
+  document.getElementById('bank-list').insertAdjacentHTML('beforeend', bankRowHtml());
+}
+function collectBankRows(){
+  return [...document.querySelectorAll('#bank-list .bank-acc')].map(row => ({
+    bank: row.querySelector('.ba-bank').value.trim(),
+    number: row.querySelector('.ba-num').value.trim(),
+    name: row.querySelector('.ba-name').value.trim(),
+  })).filter(a => a.number);
+}
 async function saveGateway(){
   const providers = collectProviders();
   const momoAccounts = collectMomoRows();
+  const bankAccounts = collectBankRows();
   // A method that's on must actually be usable.
   for(const id of PM_IDS){
     if(!providers[id].enabled) continue;
     if(id === 'manual' && !momoAccounts.length){
       toast('Direct MoMo is on — add at least one MoMo number.', 'error'); return;
     }
-    if(id !== 'manual' && !providers[id].key){
+    if(id === 'bank' && !bankAccounts.length){
+      toast('Bank Transfer is on — add at least one bank account.', 'error'); return;
+    }
+    if(!PM_KEYLESS[id] && !providers[id].key){
       toast(PM_NAMES[id] + ' is on — paste its public key (or turn it off).', 'error'); return;
     }
   }
   const cfg = {
     currency: document.getElementById('pg-currency').value,
     business: document.getElementById('pg-business').value.trim(),
-    momoAccounts, providers,
+    momoAccounts, bankAccounts, providers,
   };
   try {
     await VE.adminSavePaymentConfig(cfg);
