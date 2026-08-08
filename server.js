@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '0552905815';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'desmondagrah48@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ADMIN_PASSCODE;   // password defaults to the passcode
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -504,9 +506,20 @@ async function insertPicks(email, picks, fromCode, fromName) {
 }
 
 /* ============================ ADMIN ============================ */
+/* Admin sign-in: email + password (ADMIN_EMAIL / ADMIN_PASSWORD env, with the
+   legacy passcode as the default password). The old {passcode} body still
+   works so existing scripts don't break. */
 app.post('/api/admin/login', wrap(async (req, res) => {
-  if (String(req.body.passcode || '') !== ADMIN_PASSCODE) return res.status(401).json({ error: 'Wrong passcode.' });
-  res.json({ token: sign({ role: 'admin' }) });
+  if (req.body.passcode !== undefined && req.body.email === undefined) {
+    if (String(req.body.passcode || '') !== ADMIN_PASSCODE) return res.status(401).json({ error: 'Wrong passcode.' });
+    return res.json({ token: sign({ role: 'admin' }) });
+  }
+  const email = norm(req.body.email);
+  const password = String(req.body.password || '');
+  if (email !== norm(ADMIN_EMAIL) || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Wrong email or password.' });
+  }
+  res.json({ token: sign({ role: 'admin', email }) });
 }));
 
 app.get('/api/admin/users', auth('admin'), wrap(async (req, res) => {

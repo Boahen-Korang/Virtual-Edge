@@ -92,8 +92,8 @@
     scan: (image) => req('POST', '/scan', { image }),
 
     /* ---- admin ---- */
-    async adminLogin(passcode) {
-      const r = await req('POST', '/admin/login', { passcode });
+    async adminLogin(email, password) {
+      const r = await req('POST', '/admin/login', { email, password });
       setTok('admin', r.token);
       return true;
     },

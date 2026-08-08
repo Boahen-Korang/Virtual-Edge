@@ -84,14 +84,18 @@
   <div class="card">
     <div class="lock-ic">🔒</div>
     <h1>Admin Access</h1>
-    <p class="sub">Enter the passcode to open the control room.</p>
+    <p class="sub">Sign in with your admin email and password.</p>
     <div class="err" id="err"></div>
+    <input type="email" id="email" placeholder="admin@gmail.com" autocomplete="username"
+           style="margin-bottom:12px;text-align:left;letter-spacing:normal"
+           onkeydown="if(event.key==='Enter')doUnlock()">
     <div class="pw-wrap">
-      <input type="password" id="pass" placeholder="• • • • • •" autocomplete="off"
+      <input type="password" id="pass" placeholder="Password" autocomplete="current-password"
+             style="text-align:left;letter-spacing:normal"
              onkeydown="if(event.key==='Enter')doUnlock()">
       <button class="pw-toggle" type="button" onclick="togglePw()">👁</button>
     </div>
-    <button class="go" id="go" onclick="doUnlock()">Unlock</button>
+    <button class="go" id="go" onclick="doUnlock()">Sign in</button>
   </div>
 </div>
 
@@ -113,7 +117,7 @@ const err = document.getElementById('err');
     location.replace('admin.html');
     return;
   }
-  document.getElementById('pass').focus();
+  document.getElementById('email').focus();
 })();
 
 function togglePw(){
@@ -122,20 +126,21 @@ function togglePw(){
 }
 
 async function doUnlock(){
+  const email = document.getElementById('email').value.trim();
   const pass = document.getElementById('pass').value;
   const btn = document.getElementById('go');
   err.classList.remove('show');
-  if(!pass){ err.textContent = 'Enter the passcode.'; err.classList.add('show'); return; }
+  if(!email || !pass){ err.textContent = 'Enter your email and password.'; err.classList.add('show'); return; }
   btn.disabled = true; btn.textContent = 'Checking…';
   try {
-    await VE.adminLogin(pass);
+    await VE.adminLogin(email, pass);
     location.replace('admin.html');
   } catch(e){
-    err.textContent = e.message || 'Wrong passcode.';
+    err.textContent = e.message || 'Wrong email or password.';
     err.classList.add('show');
     document.getElementById('pass').value = '';
     document.getElementById('pass').focus();
-    btn.disabled = false; btn.textContent = 'Unlock';
+    btn.disabled = false; btn.textContent = 'Sign in';
   }
 }
 </script>
