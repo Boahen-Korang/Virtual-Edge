@@ -416,13 +416,13 @@
           <h2>Members</h2>
           <span class="count" id="users-count">0</span>
           <div class="ph-spacer"></div>
-          <input class="search" id="users-search" placeholder="Search name or email…" oninput="renderUsers()">
+          <input class="search" id="users-search" placeholder="Search name, email or partner…" oninput="renderUsers()">
           <button class="mini ghost" onclick="exportUsers()">Export CSV</button>
         </div>
         <div class="tbl-scroll">
           <table>
             <thead><tr>
-              <th>Member</th><th>Plan</th><th>Status</th><th>Credits</th><th>Ref</th><th>Actions</th>
+              <th>Member</th><th>Plan</th><th>Status</th><th>Credits</th><th>Referred By</th><th>Actions</th>
             </tr></thead>
             <tbody id="users-body"></tbody>
           </table>
@@ -1088,12 +1088,20 @@ function gotoPage(key, n){
   else if(key==='sent') renderSentPicks();
 }
 
+/* "PARTNER NAME · CODE" (or just the code if the partner was deleted) */
+function referredByLabel(code){
+  if(!code) return '';
+  const p = getPartners().find(x => x.code === code);
+  return p && p.name ? p.name + ' · ' + code : code;
+}
+
 function renderUsers(){
   const users = getUsers(), credits = getCredits(), now = Date.now();
   const q = (document.getElementById('users-search').value || '').toLowerCase().trim();
   let rows = Object.keys(users).map(email => ({ email, ...users[email], credits: credits[email] || 0 }));
   rows.sort((a,b) => (b.planEnd||0) - (a.planEnd||0));
-  if(q) rows = rows.filter(r => r.email.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q));
+  if(q) rows = rows.filter(r => r.email.toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q)
+    || referredByLabel(r.partner).toLowerCase().includes(q));
 
   document.getElementById('users-count').textContent = rows.length;
   const body = document.getElementById('users-body');
@@ -1113,7 +1121,9 @@ function renderUsers(){
         <td>${esc(r.plan || '—')}</td>
         <td>${status}<div class="email" style="margin-top:4px">exp ${exp}</div></td>
         <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span></td>
-        <td><span class="ref">${esc(r.ref || '—')}</span></td>
+        <td>${r.partner
+          ? `<span class="codechip">${esc(r.partner)}</span><div class="email" style="margin-top:4px">${esc((getPartners().find(x => x.code === r.partner) || {}).name || '')}</div>`
+          : `<span class="ref">— direct</span>`}</td>
         <td><div class="row-actions">
           <button class="act" onclick="grantCredits('${esc(r.email)}')">+ Credits</button>
           <button class="act danger" onclick="deleteUser('${esc(r.email)}')">Delete</button>
@@ -1618,10 +1628,10 @@ function downloadCSV(filename, rows){
 }
 function exportUsers(){
   const users = getUsers(), credits = getCredits();
-  const rows = [['Name','Email','Plan','PlanEnd','Credits','Ref']];
+  const rows = [['Name','Email','Plan','PlanEnd','Credits','ReferredBy']];
   Object.keys(users).forEach(e => {
     const u = users[e];
-    rows.push([u.name||'', e, u.plan||'', u.planEnd ? new Date(u.planEnd).toISOString() : '', credits[e]||0, u.ref||'']);
+    rows.push([u.name||'', e, u.plan||'', u.planEnd ? new Date(u.planEnd).toISOString() : '', credits[e]||0, referredByLabel(u.partner)]);
   });
   downloadCSV('virtual-oracle-members.csv', rows);
   toast('Members exported', 'success');
