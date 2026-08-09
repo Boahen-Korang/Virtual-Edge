@@ -606,6 +606,17 @@ function buyPackage(e, i){
 function startPayment(pkg, m){
   // Direct MoMo: no gateway — show our number, the buyer sends the money
   // from their wallet, and the admin confirms before credits are granted.
+  if(m.id === 'manual' || m.id === 'bank'){
+    // Already waiting on a deposit? Show that instead of taking another one —
+    // resubmitting the same payment just crowds the admin's review queue.
+    let pendingId = '';
+    try { pendingId = localStorage.getItem('ve_momo_claim') || ''; } catch(e){}
+    if(pendingId){
+      toast('Your previous deposit is still awaiting confirmation.');
+      momoWait(pendingId);
+      return;
+    }
+  }
   if(m.id === 'manual'){
     if(!PAY_MOMO_ACCOUNTS.length){ toast('Payment is temporarily unavailable. Please try again shortly.', 'error'); return; }
     openMomoModal(pkg);

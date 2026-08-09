@@ -427,10 +427,22 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   if (proof.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'That screenshot is too large. Please try again.' });
   if (method === 'bank' && !proof) return res.status(400).json({ error: 'Attach a screenshot of your transfer receipt.' });
 
+  // A transaction ID can only ever be submitted once (stops resends AND
+  // replaying an already-approved reference).
+  if (txid) {
+    const dupTx = await query(
+      "SELECT status FROM manual_claims WHERE UPPER(txid)=UPPER($1) AND status <> 'rejected' LIMIT 1", [txid]);
+    if (dupTx.rows.length) {
+      return res.status(409).json({ error: dupTx.rows[0].status === 'approved'
+        ? 'This transaction ID has already been used.'
+        : 'This deposit has already been submitted and is awaiting confirmation — no need to resend it.' });
+    }
+  }
+  // One pending claim per member — resending just crowds the review queue.
   const dup = await query(
     "SELECT COUNT(*)::int AS n FROM manual_claims WHERE email=$1 AND status='pending'", [req.user.email]);
-  if (dup.rows[0].n >= 3) {
-    return res.status(429).json({ error: 'You already have payments awaiting confirmation. Please wait for those first.' });
+  if (dup.rows[0].n >= 1) {
+    return res.status(429).json({ error: 'Your previous deposit is still awaiting confirmation. Please wait — your credits arrive as soon as it is approved.' });
   }
   const { rows } = await query(
     'INSERT INTO manual_claims (email,pkg,credits,amount,txid,proof) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
