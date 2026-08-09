@@ -802,7 +802,7 @@ const PACKAGES = [
 
 /* ---- Data access (cached from the API; loadAll() refreshes them) ---- */
 const read = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || fb); } catch(e){ return JSON.parse(fb); } };
-let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [];
+let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [], _fx = {};
 const getUsers     = () => _users;
 const getCredits   = () => _credits;
 const getPurchases = () => _purchases;
@@ -814,10 +814,12 @@ const getClaims    = () => _claims;
 /* Fetch everything the dashboard needs, then re-render */
 async function loadAll(){
   try {
-    const [users, partners, purchases, picks, claims] = await Promise.all([
+    const [users, partners, purchases, picks, claims, fx] = await Promise.all([
       VE.adminUsers(), VE.adminPartners(), VE.adminPurchases(), VE.adminPicks(),
-      VE.adminManualClaims().catch(() => [])
+      VE.adminManualClaims().catch(() => []),
+      VE.fxRates().catch(() => ({}))
     ]);
+    _fx = fx || {};
     _users = {}; _credits = {};
     users.forEach(u => { _users[u.email] = u; _credits[u.email] = u.credits || 0; });
     _partners = partners;
@@ -976,9 +978,19 @@ function renderStats(){
   const outstanding = Object.values(credits).reduce((a,c) => a + (c >= 9999 ? 0 : (c||0)), 0);
   const hasUnlim = Object.values(credits).some(c => c >= 9999);
 
+  /* Nigerian revenue: purchases by members registered with a +234 number
+     (the same rule that routes them to bank payment) */
+  const isNG = e => String((users[e] && users[e].sportyAccount) || '').trim().startsWith('+234');
+  const ngPurchases = purchases.filter(p => isNG(p.email));
+  const ngRevenue = ngPurchases.reduce((a,p) => a + parsePrice(p.pkg), 0);
+  const ngRate = Number(_fx && _fx.NGN) || 0;
+  const ngSub = ngPurchases.length + ' transaction' + (ngPurchases.length===1?'':'s')
+    + (ngRate ? ' · ≈ ₦' + Math.round(ngRevenue * ngRate).toLocaleString() : '');
+
   const cards = [
     { label:'Total Members', val: totalUsers, cls:'', ico:'☷', sub: active+' active subscription'+(active===1?'':'s') },
     { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'₵', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
+    { label:'Nigeria Revenue', val: fmtMoney(ngRevenue), cls:'', ico:'🇳🇬', sub: ngSub },
     { label:'Transactions', val: txCount, cls:'crimson', ico:'⇄', sub:'all-time purchases' },
     { label:'Credits Live', val: outstanding + (hasUnlim?' +∞':''), cls:'', ico:'⚡', sub:'unused predictions' },
     { label:'Seed Matches', val: getResults().length, cls:'', ico:'⚽', sub:'in prediction pool' },
