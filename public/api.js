@@ -117,7 +117,7 @@
     adminSendPicks: (email, picks) => req('POST', '/admin/picks', { email, picks }, 'admin'),
     adminCancelPick: (id) => req('DELETE', '/admin/picks/' + id, null, 'admin'),
     adminStats: () => req('GET', '/admin/stats', null, 'admin'),
-    adminPaymentConfig: (gatewayPass) => req('POST', '/admin/payment-config/get', { gatewayPass }, 'admin'),
+    adminPaymentConfig: () => req('POST', '/admin/payment-config/get', {}, 'admin'),
     adminSavePaymentConfig: (c) => req('PUT', '/admin/payment-config', c, 'admin'),
     adminManualClaims: () => req('GET', '/admin/manual-claims', null, 'admin'),
     adminManualClaimDecide: (id, action) => req('POST', '/admin/manual-claims/' + id + '/' + action, {}, 'admin'),

@@ -585,20 +585,7 @@
     <!-- ===== Payment Gateway ===== -->
     <section class="view" id="view-gateway" hidden>
 
-      <!-- Passcode lock: money settings need a second unlock -->
-      <div class="panel" id="gw-lock" style="max-width:420px;margin:40px auto">
-        <div class="panel-body" style="text-align:center;padding:34px 26px">
-          <div style="width:54px;height:54px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:rgba(228,24,39,.08);border:1.5px solid rgba(228,24,39,.3);font-size:22px">🔒</div>
-          <h2 style="font-family:var(--display);font-weight:700;font-size:19px;margin-bottom:6px">Payment Gateway is locked</h2>
-          <p style="font-size:13px;color:var(--ash);margin-bottom:18px">Enter the gateway passcode to view or change payment settings.</p>
-          <input type="password" id="gw-pass" placeholder="• • • • • •" autocomplete="off"
-                 style="width:100%;max-width:260px;text-align:center;letter-spacing:.25em;font-size:15px;padding:12px;border:1.5px solid rgba(25,28,34,.18);border-radius:6px;background:rgba(243,245,248,.6);color:var(--bone);outline:none;margin-bottom:14px"
-                 onkeydown="if(event.key==='Enter')gwUnlock()">
-          <div><button class="mini" id="gw-unlock-btn" onclick="gwUnlock()">Unlock</button></div>
-        </div>
-      </div>
-
-      <div id="gw-content" hidden>
+      <div id="gw-content">
 
       <!-- Screenshot scan credits -->
       <div class="panel" style="margin-bottom:18px">
@@ -1413,50 +1400,17 @@ function renderPackages(){
 }
 
 /* ================= Payment gateway ================= */
-/* The money settings sit behind a second, server-verified passcode: the
-   config (with its secret keys) is only fetchable/savable with it. */
-let _gwPass = sessionStorage.getItem('ve_gwpass') || '';
 const mapPayCfg = (cfg) => ({ currency: cfg.currency, business: cfg.business,
   momoAccounts: cfg.momoAccounts || [], bankAccounts: cfg.bankAccounts || [],
   providers: cfg.providers || {} });
 
-function gwShowLock(msg){
-  document.getElementById('gw-lock').style.display = '';
-  document.getElementById('gw-content').hidden = true;
-  const inp = document.getElementById('gw-pass');
-  inp.value = ''; inp.focus();
-  if(msg) toast(msg, 'error');
-}
-function gwShowContent(){
-  document.getElementById('gw-lock').style.display = 'none';
-  document.getElementById('gw-content').hidden = false;
-  loadGateway(); renderPackages();
-}
-async function gwUnlock(){
-  const p = document.getElementById('gw-pass').value;
-  if(!p){ toast('Enter the gateway passcode.', 'error'); return; }
-  const btn = document.getElementById('gw-unlock-btn');
-  btn.disabled = true; btn.textContent = 'Checking…';
-  try {
-    const cfg = await VE.adminPaymentConfig(p);
-    _gwPass = p; sessionStorage.setItem('ve_gwpass', p);
-    _paycfg = mapPayCfg(cfg);
-    gwShowContent();
-  } catch(e){
-    if(!authGuard(e)) toast(e.message || 'Wrong passcode.', 'error');
-  }
-  btn.disabled = false; btn.textContent = 'Unlock';
-}
-/* Entered from the sidebar: re-fetch with the remembered passcode, or lock */
+/* Entered from the sidebar: fetch the config fresh, then render */
 async function openGateway(){
-  if(!_gwPass) return gwShowLock();
   try {
-    _paycfg = mapPayCfg(await VE.adminPaymentConfig(_gwPass));
-    gwShowContent();
+    _paycfg = mapPayCfg(await VE.adminPaymentConfig());
+    loadGateway(); renderPackages();
   } catch(e){
-    if(authGuard(e)) return;
-    _gwPass = ''; sessionStorage.removeItem('ve_gwpass');
-    gwShowLock();
+    if(!authGuard(e)) toast(e.message || 'Could not load payment settings.', 'error');
   }
 }
 
@@ -1581,14 +1535,12 @@ async function saveGateway(){
     momoAccounts, bankAccounts, providers,
   };
   try {
-    await VE.adminSavePaymentConfig(Object.assign({ gatewayPass: _gwPass }, cfg));
+    await VE.adminSavePaymentConfig(cfg);
     _paycfg = Object.assign({}, _paycfg, cfg);
     toast('Payment settings saved', 'success');
     renderGatewayStatus();
   } catch(e){
-    if(authGuard(e)) return;
-    if(e && e.status === 403){ _gwPass = ''; sessionStorage.removeItem('ve_gwpass'); gwShowLock('Gateway passcode expired — unlock again.'); return; }
-    toast(e.message || 'Could not save.', 'error');
+    if(!authGuard(e)) toast(e.message || 'Could not save.', 'error');
   }
 }
 function renderGatewayStatus(){
