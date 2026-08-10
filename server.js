@@ -981,6 +981,7 @@ app.get('/api/admin/stats', auth('admin'), wrap(async (req, res) => {
    the browser. Any signed-in role may scan a betslip screenshot. */
 const SCAN_PROMPT =
   'This is a screenshot from a SportyBet Instant Virtual Football betslip or fixture list. ' +
+  'The app may be in LIGHT or DARK theme — read the text either way. ' +
   'It may contain SEVERAL matches. Find EVERY match and list ALL of them. ' +
   'Each match has TWO OPPOSING TEAMS shown next to each other, usually separated by "vs", "v", "-", or a scoreline. ' +
   'Return the exact team names as written. Do NOT include country/site names, league names, market names ' +
@@ -991,8 +992,12 @@ const SCAN_PROMPT =
   'ALSO transcribe into "header" any title, tab, logo, league name or branding text visible near the TOP of the screenshot, ' +
   'EXACTLY as written — for example "Instant Virtuals", "Instant Football", "Premier League", "Bundesliga", "La Liga". ' +
   'If you see no such text, use an empty string. Do NOT put the word "Instant" in "header" unless it is genuinely printed in the image. ' +
-  'Respond with ONLY compact JSON: {"header":"Instant Virtuals","matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}. ' +
-  'Returning EVERY match in "matches" and the exact "header" text are both required.';
+  'Set "isInstant" to true ONLY if the screenshot clearly shows the SportyBet Instant Virtuals / Instant Football interface — ' +
+  'signs include: an "Instant" tab or title, virtual league tabs (England, Spain, Germany, Italy, Champions), ' +
+  'teams shown with star ratings, a "Next Round" button, a round countdown, or the green BB logo. ' +
+  'Set it false for regular (real-match) sports betting screens or anything else. ' +
+  'Respond with ONLY compact JSON: {"header":"Instant Virtuals","isInstant":true,"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}. ' +
+  'Returning EVERY match in "matches", the exact "header" text and "isInstant" are all required.';
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
@@ -1003,6 +1008,7 @@ const SCAN_SCHEMA = {
   additionalProperties: false,
   properties: {
     header: { type: 'string' },
+    isInstant: { type: 'boolean' },
     matches: {
       type: 'array',
       items: {
@@ -1017,7 +1023,7 @@ const SCAN_SCHEMA = {
       },
     },
   },
-  required: ['header', 'matches'],
+  required: ['header', 'isInstant', 'matches'],
 };
 
 app.post('/api/scan', auth(), wrap(async (req, res) => {
@@ -1079,10 +1085,11 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     odds: { home: num(mm.oddsHome), draw: num(mm.oddsDraw), away: num(mm.oddsAway) },
   })).filter((mm) => mm.home || mm.away);
 
-  // Decide deterministically from the transcribed header text (reliable OCR),
-  // not the model's judgment: it's an Instant slip only if the header says "Instant".
+  // A header that says "Instant" settles it. Otherwise fall back to the
+  // model's UI-marker judgment (dark theme / cropped slips often hide the
+  // header even on genuine Instant Virtuals screens).
   const headerText = String(parsed.header || '');
-  const instant = /\binstant\b/i.test(headerText);
+  const instant = /\binstant\b/i.test(headerText) || parsed.isInstant === true;
 
   // meter a completed scan (best-effort; never block the response)
   query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
