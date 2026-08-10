@@ -224,6 +224,7 @@ async function creditPurchaseOnce(email, pkg, reference, predictions) {
 const partnerOut = (r) => r && ({
   id: r.id, name: r.name, email: r.email, code: r.code, status: r.status,
   locked: r.locked, commission: r.commission != null ? Number(r.commission) : 10,
+  revenueClearedAt: r.revenue_cleared_at || null,
   created: r.created_at, approvedAt: r.approved_at, lockedAt: r.locked_at,
 });
 const pickOut = (r) => r && ({
@@ -664,6 +665,8 @@ app.patch('/api/admin/partners/:id', auth('admin'), wrap(async (req, res) => {
     reject:  "UPDATE partners SET status='rejected' WHERE id=$1 RETURNING *",
     lock:    "UPDATE partners SET locked=true, locked_at=now() WHERE id=$1 RETURNING *",
     unlock:  "UPDATE partners SET locked=false, locked_at=NULL WHERE id=$1 RETURNING *",
+    // reset the partner's revenue/earnings display (e.g. after paying them out)
+    'clear-revenue': "UPDATE partners SET revenue_cleared_at=now() WHERE id=$1 RETURNING *",
   };
   if (!map[action]) return res.status(400).json({ error: 'Unknown action.' });
   const { rows } = await query(map[action], [id]);
