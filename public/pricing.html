@@ -621,8 +621,21 @@ function renderFeeMode(){
         <span class="pkg-tag">Pay once</span>
         <span class="pkg-tag">Then connect SportyBet</span>
       </div>
-      <button class="pkg-btn" onclick="payFor(FEE_PKG)"><span class="arrow">→</span> PAY GHS 50</button>
+      <div style="font-family:var(--ui);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ash);margin:2px 0 10px">Where are you paying from?</div>
+      <button class="pay-opt" type="button" onclick="feeCountry('GH')">
+        <div><div class="t">🇬🇭 I'm Ghanaian</div><div class="s">Pay with Mobile Money</div></div><span class="go">→</span>
+      </button>
+      <button class="pay-opt" type="button" onclick="feeCountry('NG')">
+        <div><div class="t">🇳🇬 I'm Nigerian</div><div class="s">Pay by bank transfer</div></div><span class="go">→</span>
+      </button>
     </div>`;
+}
+
+/* Fee payers haven't linked a number yet, so they tell us the country —
+   that picks the direct rail exactly like the number prefix does later. */
+function feeCountry(c){
+  BUYER_COUNTRY = c;
+  payFor(FEE_PKG);
 }
 
 function buyPackage(e, i){
@@ -636,13 +649,11 @@ function payFor(pkg){
   // Methods the admin has toggled on; older configs fall back to the single provider.
   let methods = PAY_METHODS.length ? PAY_METHODS
     : [{ id: PAY_PROVIDER, key: PAYSTACK_PUBLIC_KEY }];
-  // Direct rails are country-routed: MoMo for Ghanaian numbers, bank for Nigerian.
-  // Fee payers haven't linked a number yet, so they see every enabled rail.
-  if(!FEE_DUE){
-    methods = methods.filter(m =>
-      (m.id !== 'manual' || BUYER_COUNTRY === 'GH') &&
-      (m.id !== 'bank'   || BUYER_COUNTRY === 'NG'));
-  }
+  // Direct rails are country-routed: MoMo for Ghanaians, bank for Nigerians
+  // (fee payers choose their country; members are routed by their number).
+  methods = methods.filter(m =>
+    (m.id !== 'manual' || BUYER_COUNTRY === 'GH') &&
+    (m.id !== 'bank'   || BUYER_COUNTRY === 'NG'));
   if(!methods.length){ toast('Payment is temporarily unavailable for your region. Please contact support.', 'error'); return; }
   if(methods.length > 1) return openMethodPicker(pkg, methods);
   startPayment(pkg, methods[0]);
@@ -824,9 +835,9 @@ function openBankModal(pkg){ bankSelIdx = 0; BANK_PROOF = ''; renderBankForm(pkg
    (e.g. ₦ for +234 numbers, from the admin-set rates), else GHS. */
 function localAmount(pkg){
   if(LOCAL) return LOCAL.sym + Math.round(pkg.price * LOCAL.rate).toLocaleString() + ' ' + LOCAL.code;
-  // Fee payers haven't linked a number yet — if they chose the (Nigerian)
-  // bank rail, still show the naira estimate next to the GHS amount.
-  if(FEE_DUE && CURRENCIES['+234'] && CURRENCIES['+234'].rate){
+  // Fee payers who chose Nigeria have no linked number yet — still show the
+  // naira estimate next to the GHS amount.
+  if(BUYER_COUNTRY === 'NG' && CURRENCIES['+234'] && CURRENCIES['+234'].rate){
     return pkg.label + ' (≈ ₦' + Math.round(pkg.price * CURRENCIES['+234'].rate).toLocaleString() + ')';
   }
   return pkg.label;
