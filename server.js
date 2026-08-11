@@ -429,8 +429,9 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   const method = String(req.body.method || '').slice(0, 10);
-  // Bank transfers are verified by the receipt screenshot alone — no reference needed
-  if (method !== 'bank' && txid.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from your payment SMS.' });
+  // Bank transfers are verified by the receipt screenshot alone — no reference needed.
+  // MoMo payments are matched by the sender's registered MoMo name (stored in txid).
+  if (method !== 'bank' && txid.length < 4) return res.status(400).json({ error: 'Enter the name on the MoMo number you paid from.' });
 
   // Receipt screenshot: required for bank transfers (no SMS lands on our side)
   let proof = String(req.body.proof || '');
@@ -438,15 +439,14 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   if (proof.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'That screenshot is too large. Please try again.' });
   if (method === 'bank' && !proof) return res.status(400).json({ error: 'Attach a screenshot of your transfer receipt.' });
 
-  // A transaction ID can only ever be submitted once (stops resends AND
-  // replaying an already-approved reference).
+  // The same member can't resubmit the same payment (sender names aren't
+  // globally unique, so this dedupe is scoped per member).
   if (txid) {
     const dupTx = await query(
-      "SELECT status FROM manual_claims WHERE UPPER(txid)=UPPER($1) AND status <> 'rejected' LIMIT 1", [txid]);
+      "SELECT status FROM manual_claims WHERE email=$2 AND UPPER(txid)=UPPER($1) AND status='pending' LIMIT 1",
+      [txid, req.user.email]);
     if (dupTx.rows.length) {
-      return res.status(409).json({ error: dupTx.rows[0].status === 'approved'
-        ? 'This transaction ID has already been used.'
-        : 'This deposit has already been submitted and is awaiting confirmation — no need to resend it.' });
+      return res.status(409).json({ error: 'This deposit has already been submitted and is awaiting confirmation — no need to resend it.' });
     }
   }
   // One pending claim per member — resending just crowds the review queue.
@@ -471,7 +471,7 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
            <tr><td style="padding:6px 10px 6px 0;color:#777">Member</td><td style="padding:6px 0"><b>${req.user.email}</b></td></tr>
            <tr><td style="padding:6px 10px 6px 0;color:#777">Package</td><td style="padding:6px 0">${pkg} — ${credits >= 9999 ? 'Unlimited · 24h' : (credits ? credits + ' predictions' : 'Registration fee')}</td></tr>
            <tr><td style="padding:6px 10px 6px 0;color:#777">Amount sent</td><td style="padding:6px 0"><b>${amount || pkg}</b></td></tr>
-           <tr><td style="padding:6px 10px 6px 0;color:#777">${isBank ? 'Proof' : 'Transaction ID'}</td>
+           <tr><td style="padding:6px 10px 6px 0;color:#777">${isBank ? 'Proof' : 'Sender name'}</td>
                <td style="padding:6px 0">${isBank ? 'Receipt screenshot attached — open it from the panel' : (txid || '—')}</td></tr>
          </table>
          <p style="margin:18px 0 6px">Check the money actually arrived, then approve or reject it under

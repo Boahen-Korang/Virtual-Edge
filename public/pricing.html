@@ -806,11 +806,11 @@ function renderMomoForm(pkg, keepTxid){
     </div>
     <ol class="momo-steps">
       <li>Send <b>${esc(pkg.label)}</b> to the ${a.network ? `<b>${esc(a.network)}</b>` : 'mobile money'} number above from your wallet.</li>
-      <li>Copy the <b>Transaction ID</b> from the confirmation SMS you receive.</li>
-      <li>Paste it below — your predictions are added once the payment is confirmed.</li>
+      <li>Enter the <b>name registered on the MoMo number</b> you sent from.</li>
+      <li>Your payment is matched by that name and confirmed shortly after.</li>
     </ol>
-    <label class="momo-label" for="momo-txid">Transaction ID</label>
-    <input class="momo-input" id="momo-txid" placeholder="e.g. 8412345678" autocomplete="off" spellcheck="false">
+    <label class="momo-label" for="momo-txid">Name on your MoMo number</label>
+    <input class="momo-input" id="momo-txid" placeholder="e.g. Kwame Mensah" autocomplete="name" spellcheck="false" style="letter-spacing:normal">
     <button class="momo-btn" id="momo-send">I've sent the money</button>`;
   if(keepTxid) document.getElementById('momo-txid').value = keepTxid;
   document.getElementById('momo-overlay').classList.add('show');
@@ -944,7 +944,7 @@ async function bankSubmit(pkg){
 async function momoSubmit(pkg){
   const inp = document.getElementById('momo-txid');
   const txid = (inp.value || '').trim();
-  if(txid.length < 4){ toast('Enter the transaction ID from your MoMo SMS.', 'error'); inp.focus(); return; }
+  if(txid.length < 4){ toast('Enter the name on the MoMo number you paid from.', 'error'); inp.focus(); return; }
   const btn = document.getElementById('momo-send');
   btn.disabled = true; btn.textContent = 'Submitting…';
   const acc = PAY_MOMO_ACCOUNTS[momoSelIdx] || {};
