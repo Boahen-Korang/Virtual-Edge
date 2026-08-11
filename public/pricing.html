@@ -514,6 +514,13 @@ function applyLocalCurrency(sportyAccount){
   setBuyerCountry(me.user && me.user.sportyAccount);
   applyLocalCurrency(me.user && me.user.sportyAccount);
 
+  // Registration fee not paid yet → this visit is about the fee, nothing else
+  if(me.user && me.user.regFeePaid === false){
+    FEE_DUE = true;
+    renderFeeMode();
+    return;
+  }
+
   const credits = me.credits || 0;
   const uu = (me.user && me.user.unlimitedUntil) || 0;
   const unlimited = uu && Date.now() < uu;
@@ -528,6 +535,11 @@ function applyLocalCurrency(sportyAccount){
   }
   document.getElementById('balance-banner').style.display = 'flex';
 })();
+
+/* One-time registration fee: gates new accounts until paid (server enforces
+   the flag; this page collects the payment through the normal rails). */
+const FEE_PKG = { id:'fee', price:50, label:'GHS 50', preds:0, desc:'One-time registration fee', icon:'🎫', tag:'Registration' };
+let FEE_DUE = false;
 
 /* ---- Packages ----
    NOTE: if you change prices/credits here, update CLAIM_PACKAGES in server.js
@@ -587,17 +599,50 @@ function selectPackage(i){
 }
 
 /* ---- Payment ---- */
+/* Where to send the buyer once this payment lands: fee payers continue the
+   signup (connect SportyBet); package buyers go to the dashboard. */
+const postPayUrl = () => (FEE_DUE ? 'login.html#sporty' : 'dashboard.html');
+
+/* Fee-mode screen: one card, no packages, no step indicator */
+function renderFeeMode(){
+  const sw = document.querySelector('.steps-wrap'); if(sw) sw.style.display = 'none';
+  const bb = document.getElementById('balance-banner'); if(bb) bb.style.display = 'none';
+  const h = document.querySelector('.pkg-header h2'); if(h) h.textContent = 'Activate Your Account';
+  const p = document.querySelector('.pkg-header p'); if(p) p.textContent = 'Pay the one-time GHS 50 registration fee, then connect your SportyBet account.';
+  document.getElementById('packages-list').innerHTML = `
+    <div class="pkg-card selected">
+      <div class="pkg-top">
+        <div><div class="pkg-price">GHS 50</div><div class="pkg-local" id="fee-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div></div>
+        <span class="pkg-avail">One-time</span>
+        <div class="pkg-icon">🎫</div>
+      </div>
+      <div class="pkg-desc">Registration fee — activates your Virtual Oracle account.</div>
+      <div class="pkg-tags">
+        <span class="pkg-tag">Pay once</span>
+        <span class="pkg-tag">Then connect SportyBet</span>
+      </div>
+      <button class="pkg-btn" onclick="payFor(FEE_PKG)"><span class="arrow">→</span> PAY GHS 50</button>
+    </div>`;
+}
+
 function buyPackage(e, i){
   e.stopPropagation();
   selectPackage(i);
-  const pkg = PACKAGES[i];
+  payFor(PACKAGES[i]);
+}
+
+function payFor(pkg){
+  if(FEE_DUE && pkg.id !== 'fee'){ toast('Please pay the one-time registration fee first.', 'error'); pkg = FEE_PKG; }
   // Methods the admin has toggled on; older configs fall back to the single provider.
   let methods = PAY_METHODS.length ? PAY_METHODS
     : [{ id: PAY_PROVIDER, key: PAYSTACK_PUBLIC_KEY }];
   // Direct rails are country-routed: MoMo for Ghanaian numbers, bank for Nigerian.
-  methods = methods.filter(m =>
-    (m.id !== 'manual' || BUYER_COUNTRY === 'GH') &&
-    (m.id !== 'bank'   || BUYER_COUNTRY === 'NG'));
+  // Fee payers haven't linked a number yet, so they see every enabled rail.
+  if(!FEE_DUE){
+    methods = methods.filter(m =>
+      (m.id !== 'manual' || BUYER_COUNTRY === 'GH') &&
+      (m.id !== 'bank'   || BUYER_COUNTRY === 'NG'));
+  }
   if(!methods.length){ toast('Payment is temporarily unavailable for your region. Please contact support.', 'error'); return; }
   if(methods.length > 1) return openMethodPicker(pkg, methods);
   startPayment(pkg, methods[0]);
@@ -703,7 +748,7 @@ async function onPaymentSuccess(pkg, ref){
     try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
     document.getElementById('paying-overlay').classList.remove('show');
     toast('Payment successful! Redirecting…', 'success');
-    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+    setTimeout(() => { window.location.href = postPayUrl(); }, 1200);
   } catch(e){
     document.getElementById('paying-overlay').classList.remove('show');
     toast(e.message || 'Could not record purchase.', 'error');
@@ -778,7 +823,13 @@ function openBankModal(pkg){ bankSelIdx = 0; BANK_PROOF = ''; renderBankForm(pkg
 /* What the buyer must actually send: their local currency when we know it
    (e.g. ₦ for +234 numbers, from the admin-set rates), else GHS. */
 function localAmount(pkg){
-  return LOCAL ? (LOCAL.sym + Math.round(pkg.price * LOCAL.rate).toLocaleString() + ' ' + LOCAL.code) : pkg.label;
+  if(LOCAL) return LOCAL.sym + Math.round(pkg.price * LOCAL.rate).toLocaleString() + ' ' + LOCAL.code;
+  // Fee payers haven't linked a number yet — if they chose the (Nigerian)
+  // bank rail, still show the naira estimate next to the GHS amount.
+  if(FEE_DUE && CURRENCIES['+234'] && CURRENCIES['+234'].rate){
+    return pkg.label + ' (≈ ₦' + Math.round(pkg.price * CURRENCIES['+234'].rate).toLocaleString() + ')';
+  }
+  return pkg.label;
 }
 
 function renderBankForm(pkg){
@@ -921,7 +972,7 @@ function momoWait(id){
         momoStopPoll();
         try { localStorage.removeItem('ve_momo_claim'); } catch(e){}
         toast('Payment confirmed! Redirecting…', 'success');
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+        setTimeout(() => { window.location.href = postPayUrl(); }, 1000);
       } else if(s.status === 'rejected'){
         momoStopPoll();
         try { localStorage.removeItem('ve_momo_claim'); } catch(e){}
@@ -962,8 +1013,8 @@ async function confirmPending(ref, deadlineMs){
       const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
       if(r && r.ok){                                           // paid (or already credited by the webhook)
         try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
-        setPayingText('Payment confirmed! Opening your dashboard…');
-        window.location.href = 'dashboard.html';
+        setPayingText('Payment confirmed! Continuing…');
+        window.location.href = postPayUrl();
         return true;
       }
     } catch(err){

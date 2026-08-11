@@ -182,7 +182,16 @@ const userOut = (r) => r && ({
   ref: r.ref, partner: r.partner,
   sportyAccount: r.sporty_account || null,
   unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
+  regFeePaid: !!r.reg_fee_paid,
 });
+
+/* The one-time registration fee is sold as the "GHS 50" package (0 credits).
+   Whenever such a purchase is credited, flip the member's paid flag. */
+const REG_FEE_PKG = 'GHS 50';
+const markFeeIfPaid = (email, pkg) => {
+  if (pkg !== REG_FEE_PKG || !email) return Promise.resolve();
+  return query('UPDATE users SET reg_fee_paid=true WHERE email=$1', [email]).catch(() => {});
+};
 
 /* Credit a purchase exactly once, atomically. The browser poll and the Cowrie
    webhook can both fire for the same payment; a per-reference advisory lock plus
@@ -393,6 +402,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
 
   // Credit exactly once (atomic; safe against the webhook racing this).
   const r = await creditPurchaseOnce(req.user.email, pkg, reference, predictions);
+  await markFeeIfPaid(req.user.email, pkg);
   if (!r.duplicate && (plan != null || planEnd != null)) {
     await query('UPDATE users SET plan=COALESCE($2,plan), plan_end=COALESCE($3,plan_end) WHERE email=$1',
       [req.user.email, plan, planEnd]);
@@ -408,7 +418,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
 /* Canonical claimable packages — MUST stay in sync with PACKAGES in
    public/pricing.html. Credits come from HERE, never from the client, so a
    tampered request can't claim more than the package grants. */
-const CLAIM_PACKAGES = { 'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4 };
+const CLAIM_PACKAGES = { 'GHS 50': 0, 'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4 };   // GHS 50 = registration fee
 
 app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const pkg = String(req.body.pkg || '').slice(0, 40);
@@ -459,7 +469,7 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
          <h2 style="margin:0 0 14px;color:#E41827">New deposit to confirm</h2>
          <table style="border-collapse:collapse;width:100%;font-size:14px">
            <tr><td style="padding:6px 10px 6px 0;color:#777">Member</td><td style="padding:6px 0"><b>${req.user.email}</b></td></tr>
-           <tr><td style="padding:6px 10px 6px 0;color:#777">Package</td><td style="padding:6px 0">${pkg} — ${credits >= 9999 ? 'Unlimited · 24h' : credits + ' predictions'}</td></tr>
+           <tr><td style="padding:6px 10px 6px 0;color:#777">Package</td><td style="padding:6px 0">${pkg} — ${credits >= 9999 ? 'Unlimited · 24h' : (credits ? credits + ' predictions' : 'Registration fee')}</td></tr>
            <tr><td style="padding:6px 10px 6px 0;color:#777">Amount sent</td><td style="padding:6px 0"><b>${amount || pkg}</b></td></tr>
            <tr><td style="padding:6px 10px 6px 0;color:#777">${isBank ? 'Proof' : 'Transaction ID'}</td>
                <td style="padding:6px 0">${isBank ? 'Receipt screenshot attached — open it from the panel' : (txid || '—')}</td></tr>
@@ -955,6 +965,7 @@ app.post('/api/admin/manual-claims/:id/:action', auth('admin'), wrap(async (req,
   const c = rows[0];
   if (action === 'approve') {
     await creditPurchaseOnce(c.email, c.pkg, 'MOMO_' + c.id + '_' + String(c.txid || '').slice(0, 40), c.credits);
+    await markFeeIfPaid(c.email, c.pkg);
   }
   res.json({ ok: true, status: c.status });
 }));
@@ -1274,6 +1285,7 @@ app.post('/api/pay/cowrie/webhook', wrap(async (req, res) => {
 
   // credit exactly once (atomic; safe against the browser poll racing this)
   const r = await creditPurchaseOnce(email, pkg, reference, credits);
+  await markFeeIfPaid(email, pkg);
   res.status(200).json({ ok: true, credited: r.duplicate ? 0 : credits, duplicate: r.duplicate });
 }));
 

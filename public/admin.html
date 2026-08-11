@@ -1191,7 +1191,7 @@ function renderClaims(){
       <tr>
         <td><span class="ref">${esc(fmtDate(c.created))}</span></td>
         <td><div class="name">${esc(name||'—')}</div><div class="email">${esc(c.email)}</div></td>
-        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits||0) + ' predictions'}${c.amount && c.amount !== c.pkg ? ' · ' + esc(c.amount.replace((c.pkg||'') + ' · ', '')) : ''}</div></td>
+        <td><span class="credits-num">${esc(c.pkg||'—')}</span><div class="email">${c.credits >= 9999 ? 'Unlimited · 24h' : (c.credits ? c.credits + ' predictions' : 'Registration fee')}${c.amount && c.amount !== c.pkg ? ' · ' + esc(c.amount.replace((c.pkg||'') + ' · ', '')) : ''}</div></td>
         <td><span class="ref">${esc(c.txid||'—')}</span>${c.hasProof ? `<button class="act" onclick="viewProof(${c.id})" style="margin-left:8px">📎 Proof</button>` : ''}</td>
         <td>${pill}</td>
         <td>${actions}</td>

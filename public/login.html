@@ -353,14 +353,15 @@ async function doLogin(){
 
   try {
     await VE.login(email, pw);
-    // If they still have predictions left (credits or an active unlimited day-pass),
-    // skip the payment page and go straight to the dashboard.
-    let credits = 0, unlimited = false;
-    try {
-      const me = await VE.me();
-      credits = me.credits || 0;
-      unlimited = !!(me.user && me.user.unlimitedUntil && Date.now() < me.user.unlimitedUntil);
-    } catch(e){}
+    let me = null;
+    try { me = await VE.me(); } catch(e){}
+    const u = (me && me.user) || {};
+    // Signup gates first: registration fee, then a linked SportyBet account
+    if(me && u.regFeePaid === false){ window.location.href = 'pricing.html'; return; }
+    if(me && !u.sportyAccount){ showStep('step-sporty'); updateSportyHint(); return; }
+    // Then: predictions left → dashboard, otherwise the packages page
+    const credits = (me && me.credits) || 0;
+    const unlimited = !!(u.unlimitedUntil && Date.now() < u.unlimitedUntil);
     window.location.href = (credits > 0 || unlimited) ? 'dashboard.html' : 'pricing.html';
   } catch(e){
     errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='';
@@ -391,9 +392,9 @@ async function goToPlans(){
     const refCode = localStorage.getItem('ve_ref') || '';
     await VE.register(name, email, pw, refCode);
     localStorage.removeItem('ve_ref');
-    // First-time only: ask them to connect their SportyBet account before continuing
-    showStep('step-sporty');
-    updateSportyHint();
+    // New accounts pay the one-time registration fee first; the pricing page
+    // sends them back here (#sporty) to connect their SportyBet account after.
+    window.location.href = 'pricing.html';
   } catch(e){
     btn.disabled = false; btn.textContent = 'Create account →';
     errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='';
@@ -558,6 +559,12 @@ async function onPaymentSuccess(ref){
 
   // Check for #register hash
   if(location.hash === '#register') showTab('register');
+
+  // Back from the registration-fee payment → straight to the SportyBet step
+  if(location.hash === '#sporty' && VE.isMember()){
+    showStep('step-sporty');
+    updateSportyHint();
+  }
 
   // Carry over the email typed on the landing page (if any)
   const prefill = localStorage.getItem('ve_prefill_email');
