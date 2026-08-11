@@ -350,8 +350,18 @@ app.post('/api/me/picks/:id/consume', auth('member'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* The registration fee is enforced HERE, not just by page redirects — going
+   straight to the connect step (login.html#sporty) must not skip payment. */
+async function regFeeUnpaid(email) {
+  const { rows } = await query('SELECT reg_fee_paid FROM users WHERE email=$1', [email]);
+  return rows.length ? rows[0].reg_fee_paid === false : false;
+}
+
 // link a SportyBet account number (first-time setup after registration) + email the user
 app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
+  if (await regFeeUnpaid(req.user.email)) {
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee first.' });
+  }
   const account = String(req.body.account || '').trim();
   if (!account) return res.status(400).json({ error: 'Enter your SportyBet account number.' });
   const { rows } = await query(
@@ -399,6 +409,9 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
   predictions = v.credits;     // gateway is the source of truth
   pkg = v.pkg || pkg;
+  if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
+  }
 
   // Credit exactly once (atomic; safe against the webhook racing this).
   const r = await creditPurchaseOnce(req.user.email, pkg, reference, predictions);
@@ -425,6 +438,10 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const credits = CLAIM_PACKAGES[pkg];
   if (credits === undefined) {
     return res.status(400).json({ error: 'Unknown package — please refresh the page and try again.' });
+  }
+  // packages are locked until the registration fee is paid (the fee itself is exempt)
+  if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);

@@ -445,6 +445,7 @@ async function connectSporty(){
       setTimeout(() => { window.location.href = 'pricing.html'; }, 2000);
     }, 1200);
   } catch(e){
+    if(e && e.status === 402){ window.location.href = 'pricing.html'; return; }   // fee not paid
     document.getElementById('sporty-loading').style.display = 'none';
     document.getElementById('sporty-form').style.display = '';
     errEl.textContent = e.message || 'Could not connect your account. Try again.'; errEl.style.display='';
@@ -560,10 +561,16 @@ async function onPaymentSuccess(ref){
   // Check for #register hash
   if(location.hash === '#register') showTab('register');
 
-  // Back from the registration-fee payment → straight to the SportyBet step
+  // Back from the registration-fee payment → straight to the SportyBet step.
+  // Verify the fee server-side first — arriving here unpaid gets sent back.
   if(location.hash === '#sporty' && VE.isMember()){
-    showStep('step-sporty');
-    updateSportyHint();
+    (async () => {
+      let me = null;
+      try { me = await VE.me(); } catch(e){}
+      if(me && me.user && me.user.regFeePaid === false){ window.location.href = 'pricing.html'; return; }
+      showStep('step-sporty');
+      updateSportyHint();
+    })();
   }
 
   // Carry over the email typed on the landing page (if any)
