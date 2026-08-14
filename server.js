@@ -726,13 +726,18 @@ app.get('/api/admin/scan-usage', auth('admin'), wrap(async (req, res) => {
   res.json({ used: Number(r.used), remaining: Number(r.remaining) });
 }));
 
-// top up (or correct) the scans-remaining counter; positive adds, negative subtracts
+// correct the scan counters: `amount` adds/subtracts from remaining,
+// `used` (optional) sets the used total to an absolute value
 app.post('/api/admin/scan-topup', auth('admin'), wrap(async (req, res) => {
   const amount = parseInt(req.body.amount, 10);
-  if (isNaN(amount)) return res.status(400).json({ error: 'Enter a number of scans.' });
+  const used = parseInt(req.body.used, 10);
+  if (isNaN(amount) && isNaN(used)) return res.status(400).json({ error: 'Enter a number of scans.' });
   const { rows } = await query(
-    'UPDATE scan_meter SET remaining = GREATEST(0, remaining + $1) WHERE id=1 RETURNING used, remaining',
-    [amount]
+    `UPDATE scan_meter SET
+       remaining = GREATEST(0, remaining + $1),
+       used = COALESCE($2, used)
+     WHERE id=1 RETURNING used, remaining`,
+    [isNaN(amount) ? 0 : amount, isNaN(used) || used < 0 ? null : used]
   );
   const r = rows[0] || { used: 0, remaining: 0 };
   res.json({ ok: true, used: Number(r.used), remaining: Number(r.remaining) });
