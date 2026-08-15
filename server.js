@@ -776,6 +776,26 @@ app.post('/api/admin/revenue-clear', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* Factual per-day takings for the last 7 days (today included, Ghana = UTC).
+   Deliberately ignores the clear-revenue marker — this is a report of what
+   actually came in each day. */
+app.get('/api/admin/revenue-daily', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query(
+    "SELECT pkg, created_at FROM purchases WHERE created_at > now() - interval '7 days'");
+  const byDay = {};
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const key = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push(key);
+    byDay[key] = { day: key, revenue: 0, count: 0 };
+  }
+  rows.forEach((r) => {
+    const key = new Date(r.created_at).toISOString().slice(0, 10);
+    if (byDay[key]) { byDay[key].revenue += parsePrice(r.pkg); byDay[key].count++; }
+  });
+  res.json(days.map((k) => byDay[k]));
+}));
+
 app.get('/api/admin/purchases', auth('admin'), wrap(async (req, res) => {
   const since = await adminRevenueSince();
   const { rows } = await query('SELECT * FROM purchases WHERE created_at > $1 ORDER BY created_at DESC', [since]);

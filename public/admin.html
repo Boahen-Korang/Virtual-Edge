@@ -389,6 +389,15 @@
       </div>
       <div class="stats" id="stats"></div>
 
+      <!-- Per-day takings, independent of the clear-revenue counter -->
+      <div class="panel" style="margin-bottom:24px">
+        <div class="panel-head">
+          <h2>Daily Revenue</h2>
+          <span class="count">last 7 days</span>
+        </div>
+        <div class="panel-body" id="daily-rev" style="padding:14px 20px"></div>
+      </div>
+
       <div class="ov-grid">
         <div class="panel">
           <div class="panel-head">
@@ -773,7 +782,7 @@ const PACKAGES = [
 
 /* ---- Data access (cached from the API; loadAll() refreshes them) ---- */
 const read = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || fb); } catch(e){ return JSON.parse(fb); } };
-let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [], _fx = {};
+let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [], _fx = {}, _daily = [];
 const getUsers     = () => _users;
 const getCredits   = () => _credits;
 const getPurchases = () => _purchases;
@@ -785,12 +794,14 @@ const getClaims    = () => _claims;
 /* Fetch everything the dashboard needs, then re-render */
 async function loadAll(){
   try {
-    const [users, partners, purchases, picks, claims, fx] = await Promise.all([
+    const [users, partners, purchases, picks, claims, fx, daily] = await Promise.all([
       VE.adminUsers(), VE.adminPartners(), VE.adminPurchases(), VE.adminPicks(),
       VE.adminManualClaims().catch(() => []),
-      VE.fxRates().catch(() => ({}))
+      VE.fxRates().catch(() => ({})),
+      VE.adminRevenueDaily().catch(() => [])
     ]);
     _fx = fx || {};
+    _daily = daily || [];
     _users = {}; _credits = {};
     users.forEach(u => { _users[u.email] = u; _credits[u.email] = u.credits || 0; });
     _partners = partners;
@@ -935,9 +946,12 @@ function renderStats(){
   const ngSub = ngPurchases.length + ' transaction' + (ngPurchases.length===1?'':'s')
     + (ngRate ? ' · ≈ ₦' + Math.round(ngRevenue * ngRate).toLocaleString() : '');
 
+  const today = (_daily && _daily.length) ? _daily[_daily.length - 1] : { revenue: 0, count: 0 };
+
   const cards = [
     { label:'Total Members', val: totalUsers, cls:'', ico:'☷', sub: active+' active subscription'+(active===1?'':'s') },
     { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'₵', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
+    { label:"Today's Revenue", val: fmtMoney(today.revenue), cls:'gold', ico:'📅', icoCls:'gold', sub: today.count+' transaction'+(today.count===1?'':'s')+' today' },
     { label:'Nigeria Revenue', val: fmtMoney(ngRevenue), cls:'', ico:'🇳🇬', sub: ngSub },
     { label:'Transactions', val: txCount, cls:'crimson', ico:'⇄', sub:'all-time purchases' },
     { label:'Credits Live', val: outstanding + (hasUnlim?' +∞':''), cls:'', ico:'⚡', sub:'unused predictions' },
@@ -953,7 +967,32 @@ function renderStats(){
       <div class="stat-foot"><span class="sub">${esc(c.sub)}</span></div>
     </div>`).join('');
 
+  renderDailyRevenue();
   renderOverview();
+}
+
+/* ---- Daily revenue bars (single series; values printed on every row) ---- */
+function renderDailyRevenue(){
+  const el = document.getElementById('daily-rev');
+  if(!el) return;
+  const days = _daily || [];
+  if(!days.length){ el.innerHTML = '<div class="empty">No revenue data yet.</div>'; return; }
+  const max = Math.max(1, ...days.map(d => d.revenue));
+  const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  el.innerHTML = days.map((d, i) => {
+    const dt = new Date(d.day + 'T00:00:00Z');
+    const isToday = i === days.length - 1;
+    const label = isToday ? 'Today' : names[dt.getUTCDay()] + ' ' + dt.getUTCDate();
+    const w = Math.max(d.revenue > 0 ? 2 : 0, Math.round(d.revenue / max * 100));
+    return `<div style="display:flex;align-items:center;gap:12px;padding:7px 0">
+      <div style="width:66px;flex:0 0 auto;font-family:var(--ui);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:${isToday ? '600' : '400'};color:${isToday ? 'var(--crimson)' : 'var(--ash)'}">${label}</div>
+      <div style="flex:1;height:14px;background:rgba(25,28,34,.05);border-radius:4px;overflow:hidden">
+        <div style="width:${w}%;height:100%;background:#1F9E48;border-radius:0 4px 4px 0"></div>
+      </div>
+      <div style="width:130px;flex:0 0 auto;text-align:right;font-size:13px;font-weight:700;color:var(--bone)">${esc(fmtMoney(d.revenue))}
+        <span style="color:var(--ash-dim);font-weight:400;font-size:11px">· ${d.count} tx</span></div>
+    </div>`;
+  }).join('');
 }
 
 /* ================= Overview activity lists ================= */
