@@ -90,7 +90,7 @@
 
     /* ---- shared ---- */
     accounts: () => req('GET', '/accounts'),
-    scan: (image) => req('POST', '/scan', { image }),
+    scan: (image, game) => req('POST', '/scan', { image, game }),
 
     /* ---- admin ---- */
     async adminLogin(email, password) {

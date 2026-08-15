@@ -1052,6 +1052,28 @@ const SCAN_PROMPT =
   'Respond with ONLY compact JSON: {"header":"Instant Virtuals","isInstant":true,"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}. ' +
   'Returning EVERY match in "matches", the exact "header" text and "isInstant" are all required.';
 
+/* ---- Red/Black instant game: read the results-history strip ---- */
+const RB_PROMPT =
+  'This is a screenshot of the SportyBet "Red/Black" instant card game (light or dark theme). ' +
+  'It shows a history strip of recent round results as red or black cards/markers, sometimes with a special ' +
+  'joker/bonus result that is neither red nor black. ' +
+  'Transcribe the visible recent results IN ORDER from MOST RECENT to oldest as an array of ' +
+  '"red", "black" or "joker". If no history strip is visible, return an empty array. ' +
+  'Set "isRedBlack" true ONLY if this is clearly the Red/Black game interface ' +
+  '(red and black bet buttons, playing-card graphics, a results history strip). ' +
+  'Anything else — football, other games, non-betting screens — is false. ' +
+  'Respond with ONLY compact JSON: {"isRedBlack":true,"history":["red","black","joker"]}.';
+
+const RB_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    isRedBlack: { type: 'boolean' },
+    history: { type: 'array', items: { type: 'string', enum: ['red', 'black', 'joker'] } },
+  },
+  required: ['isRedBlack', 'history'],
+};
+
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
 // JSON shape Claude must return (structured outputs guarantee it parses)
@@ -1100,17 +1122,21 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
   const base64 = m[2];
 
+  // which game's screenshot this is — football (default) or the Red/Black card game
+  const game = String(req.body.game || 'football');
+  const isRB = game === 'redblack';
+
   let text = '';
   try {
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2048,
-      output_config: { format: { type: 'json_schema', schema: SCAN_SCHEMA } },
+      output_config: { format: { type: 'json_schema', schema: isRB ? RB_SCHEMA : SCAN_SCHEMA } },
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: SCAN_PROMPT },
+          { type: 'text', text: isRB ? RB_PROMPT : SCAN_PROMPT },
         ],
       }],
     });
@@ -1126,6 +1152,15 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   let parsed;
   try { parsed = JSON.parse(text); }
   catch { const j = text.match(/\{[\s\S]*\}/); parsed = j ? JSON.parse(j[0]) : {}; }
+
+  if (isRB) {
+    const history = (Array.isArray(parsed.history) ? parsed.history : [])
+      .filter((h) => h === 'red' || h === 'black' || h === 'joker')
+      .slice(0, 40);
+    query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
+    return res.json({ redblack: parsed.isRedBlack === true, history });
+  }
+
   let arr = [];
   if (Array.isArray(parsed.matches)) arr = parsed.matches;
   else if (Array.isArray(parsed)) arr = parsed;

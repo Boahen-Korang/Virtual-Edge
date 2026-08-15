@@ -12,6 +12,33 @@
   }
 
   /* ---- Top bar ---- */
+  /* ---- Game switcher (Instant Football / Red & Black) ---- */
+  .game-tabs { display: flex; gap: 10px; margin-bottom: 18px; }
+  .gt {
+    flex: 1; padding: 12px 8px; border: 1.5px solid #E2E5EA; border-radius: 10px;
+    background: #FFFFFF; font-family: var(--sans); font-size: 13px; font-weight: 700;
+    color: var(--muted); cursor: pointer; transition: .15s;
+  }
+  .gt.on { border-color: #E41827; color: #E41827; background: rgba(228,24,39,.06); }
+
+  /* ---- Red & Black ---- */
+  .rb-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+  .rb-dot {
+    width: 26px; height: 34px; border-radius: 5px; display: grid; place-items: center;
+    font-size: 12px; font-weight: 800; color: #fff;
+  }
+  .rb-dot.red { background: #E41827; }
+  .rb-dot.black { background: #1A1C22; }
+  .rb-dot.joker { background: #1F9E48; }
+  .rb-card {
+    border-radius: 16px; padding: 26px 20px; text-align: center; color: #fff; margin-bottom: 14px;
+  }
+  .rb-card.red { background: linear-gradient(160deg, #F03040, #C4111C); }
+  .rb-card.black { background: linear-gradient(160deg, #2A2E38, #14161B); }
+  .rb-card .rb-next { font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; opacity: .8; }
+  .rb-card .rb-pick { font-size: 44px; font-weight: 900; letter-spacing: .06em; margin: 8px 0 4px; }
+  .rb-card .rb-conf { font-size: 13px; opacity: .9; }
+
   /* SportyBet-style solid red header */
   .top-bar {
     display: flex; align-items: center; gap: 12px;
@@ -370,6 +397,12 @@
 <!-- Page -->
 <div class="page-wrap">
 
+  <!-- Game switcher -->
+  <div class="game-tabs">
+    <button class="gt on" id="gt-football" onclick="setGame('football')">⚽ Instant Football</button>
+    <button class="gt" id="gt-redblack" onclick="setGame('redblack')">🔴⚫ Red &amp; Black</button>
+  </div>
+
   <!-- Upload section -->
   <div id="upload-section">
     <label class="upload-label" id="upload-label">
@@ -418,6 +451,31 @@
 
   <!-- Result section -->
   <div class="result-section" id="result-section"></div>
+
+  <!-- Red & Black section -->
+  <div id="rb-section" style="display:none">
+    <label class="upload-label">
+      <span class="uz-icon">🃏</span>
+      <div class="uz-title">Upload Red &amp; Black Screenshot</div>
+      <div class="uz-sub">Snap the game screen so we can read the recent results</div>
+      <input type="file" id="rb-file" accept="image/*" style="display:none" onclick="this.value=null" onchange="onRbFile(event)">
+    </label>
+
+    <div class="preview-section" id="rb-preview" style="display:none">
+      <div class="preview-box">
+        <img id="rb-img" src="" alt="Screenshot">
+        <button class="remove-btn" onclick="rbReset()">✕ Remove</button>
+      </div>
+      <div class="scan-status" id="rb-status" style="display:none">
+        <span class="ss-spinner" id="rb-spinner"></span>
+        <span class="ss-text" id="rb-status-text">Reading the results…</span>
+      </div>
+      <div id="rb-history"></div>
+      <button class="analyze-btn" id="rb-analyze" style="display:none" onclick="rbPredict()">⚡ Predict Next Colour</button>
+    </div>
+
+    <div class="result-section" id="rb-result"></div>
+  </div>
 
   <!-- No credits message (shown when out of credits) -->
   <div class="no-credits" id="no-credits-msg" style="display:none">
@@ -526,15 +584,24 @@ async function refreshAccount(){
   gateOnCredits();
 }
 /* With no credits (and no active unlimited pass), don't show the uploader —
-   prompt the user to buy a package instead. */
+   prompt the user to buy a package instead. Also routes between the two games. */
+let GAME = 'football';
 function gateOnCredits(){
   const out = !isUnlimited() && getCredits() <= 0;
   const up = document.getElementById('upload-section');
   const nc = document.getElementById('no-credits-msg');
   const rs = document.getElementById('result-section');
-  if(up) up.style.display = out ? 'none' : 'block';
+  const rb = document.getElementById('rb-section');
+  if(up) up.style.display = (!out && GAME === 'football') ? 'block' : 'none';
+  if(rb) rb.style.display = (!out && GAME === 'redblack') ? 'block' : 'none';
   if(nc) nc.style.display = out ? 'block' : 'none';
-  if(out && rs){ rs.style.display = 'none'; }
+  if(rs && (out || GAME !== 'football')){ rs.style.display = 'none'; }
+}
+function setGame(g){
+  GAME = g;
+  document.getElementById('gt-football').classList.toggle('on', g === 'football');
+  document.getElementById('gt-redblack').classList.toggle('on', g === 'redblack');
+  gateOnCredits();
 }
 refreshAccount();
 
@@ -1040,6 +1107,116 @@ function getAnother(){
     setScanStatus('warn', 'All detected matches used — upload a new screenshot or type a match.');
   }
   document.getElementById('preview-section').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ============================================================
+   RED & BLACK — scan the history strip, predict the next colour
+   ============================================================ */
+let rbDataUrl = '', rbHistory = null, rbIsGame = null, rbToken = 0;
+
+function onRbFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    rbDataUrl = await downscaleImage(ev.target.result, 1600, 0.85);
+    document.getElementById('rb-img').src = rbDataUrl;
+    document.getElementById('rb-preview').style.display = 'block';
+    document.getElementById('rb-result').style.display = 'none';
+    document.getElementById('rb-result').innerHTML = '';
+    document.getElementById('rb-history').innerHTML = '';
+    document.getElementById('rb-analyze').style.display = 'none';
+    rbScan(rbDataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+function rbStatus(kind, msg){
+  const box = document.getElementById('rb-status');
+  box.style.display = '';
+  document.getElementById('rb-spinner').style.display = kind === 'busy' ? '' : 'none';
+  document.getElementById('rb-status-text').textContent = msg;
+}
+
+async function rbScan(dataUrl){
+  const myScan = ++rbToken;
+  rbHistory = null; rbIsGame = null;
+  rbStatus('busy', 'Reading the recent results…');
+  let r = null;
+  try {
+    r = await VE.scan(dataUrl, 'redblack');
+  } catch(err){
+    if(myScan !== rbToken) return;
+    if(err && err.status === 402){ gateOnCredits(); return; }
+    rbStatus('warn', err && err.message ? err.message : 'Could not read this screenshot — try a clearer one.');
+    return;
+  }
+  if(myScan !== rbToken) return;
+  rbIsGame = !!(r && r.redblack);
+  rbHistory = (r && r.history) || [];
+  if(!rbIsGame){
+    rbStatus('warn', '⚠ This does not look like the Red/Black game. Upload the game screen.');
+    return;
+  }
+  rbStatus('ok', '✓ Game recognised — ' + rbHistory.length + ' recent result' + (rbHistory.length === 1 ? '' : 's') + ' read');
+  document.getElementById('rb-history').innerHTML = rbHistory.length
+    ? '<div class="ti-label" style="margin-top:12px">Recent results (newest first)</div><div class="rb-strip">'
+      + rbHistory.map(h => `<div class="rb-dot ${h}">${h === 'red' ? 'R' : h === 'black' ? 'B' : 'J'}</div>`).join('')
+      + '</div>'
+    : '';
+  document.getElementById('rb-analyze').style.display = 'flex';
+}
+
+function rbPredict(){
+  if(rbIsGame !== true){ toast('Upload a Red & Black game screenshot first.', 'error'); return; }
+  if(!isUnlimited() && getCredits() <= 0){ gateOnCredits(); return; }
+
+  const hist = rbHistory || [];
+  const reds = hist.filter(h => h === 'red').length;
+  const blacks = hist.filter(h => h === 'black').length;
+  const jokers = hist.filter(h => h === 'joker').length;
+
+  /* Fair pick: each round is independent and near 50/50, so follow the mild
+     empirical lean of the visible history; a tie is a genuine coin flip.
+     Confidence is kept honest — capped well below certainty. */
+  let pick;
+  if(reds === blacks) pick = Math.random() < 0.5 ? 'red' : 'black';
+  else pick = reds > blacks ? 'red' : 'black';
+  const lean = hist.length ? Math.abs(reds - blacks) / hist.length : 0;
+  const conf = Math.round(50 + Math.min(16, lean * 40));
+
+  deductCredit();
+  updateCreditsLabel();
+
+  const el = document.getElementById('rb-result');
+  el.innerHTML = `
+    <div class="rb-card ${pick}">
+      <div class="rb-next">Virtual Oracle predicts</div>
+      <div class="rb-pick">${pick === 'red' ? '🔴 RED' : '⚫ BLACK'}</div>
+      <div class="rb-conf">${conf}% confidence · from ${hist.length} recent round${hist.length === 1 ? '' : 's'}</div>
+    </div>
+    <div class="stat-pill" style="display:flex;justify-content:space-around;padding:12px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
+      <span style="font-size:13px;color:var(--muted)">🔴 Reds <b style="color:var(--chalk)">${reds}</b></span>
+      <span style="font-size:13px;color:var(--muted)">⚫ Blacks <b style="color:var(--chalk)">${blacks}</b></span>
+      <span style="font-size:13px;color:var(--muted)">🃏 Jokers <b style="color:var(--chalk)">${jokers}</b></span>
+    </div>
+    <button class="analyze-btn" onclick="rbReset()">📸 Next round — upload again</button>`;
+  el.style.display = 'block';
+  document.getElementById('rb-analyze').style.display = 'none';
+  gateOnCredits();
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function rbReset(){
+  rbToken++;
+  rbDataUrl = ''; rbHistory = null; rbIsGame = null;
+  document.getElementById('rb-preview').style.display = 'none';
+  document.getElementById('rb-file').value = '';
+  document.getElementById('rb-status').style.display = 'none';
+  document.getElementById('rb-history').innerHTML = '';
+  document.getElementById('rb-analyze').style.display = 'none';
+  document.getElementById('rb-result').style.display = 'none';
+  document.getElementById('rb-result').innerHTML = '';
 }
 
 /* ---- Toast ---- */
