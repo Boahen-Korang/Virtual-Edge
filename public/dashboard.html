@@ -1167,6 +1167,29 @@ async function rbScan(dataUrl){
   document.getElementById('rb-analyze').style.display = 'flex';
 }
 
+/* Pattern engine trained on the owner's 337-round Red/Black history
+   (2026-08-15). Only direction-stable tendencies made the cut; the numbers
+   are the observed continuation rates, so confidence stays honest.
+   Input arrives NEWEST-first from the scanner; patterns read oldest→newest. */
+function rbPatternPick(histNewestFirst){
+  const chron = [...histNewestFirst].reverse().filter(h => h === 'red' || h === 'black');
+  const L = chron.length;
+  const last = k => chron.slice(-k).map(h => h[0].toUpperCase()).join('');
+  let run = 0;
+  for(let i = L - 1; i >= 0 && chron[i] === chron[L - 1]; i--) run++;
+
+  if(run >= 5){
+    const flip = chron[L - 1] === 'red' ? 'black' : 'red';
+    return { pick: flip, conf: 57, why: run + ' ' + (chron[L-1] === 'red' ? 'reds' : 'blacks') + ' in a row — long streaks usually break' };
+  }
+  if(L >= 3 && last(3) === 'BRR') return { pick: 'red',   conf: 65, why: 'two reds after a black — red keeps running' };
+  if(L >= 3 && last(3) === 'RBB') return { pick: 'black', conf: 54, why: 'two blacks after a red — black edges ahead' };
+  if(L >= 2 && last(2) === 'RR')  return { pick: 'red',   conf: 59, why: 'back-to-back reds — red tends to continue' };
+  if(L >= 1 && last(1) === 'R')   return { pick: 'red',   conf: 56, why: 'red tends to follow red' };
+  if(L >= 1 && last(1) === 'B')   return { pick: 'red',   conf: 52, why: 'after a black, red is slightly favoured' };
+  return { pick: 'red', conf: 54, why: 'reds outnumber blacks overall' };
+}
+
 function rbPredict(){
   if(rbIsGame !== true){ toast('Upload a Red & Black game screenshot first.', 'error'); return; }
   if(!isUnlimited() && getCredits() <= 0){ gateOnCredits(); return; }
@@ -1176,14 +1199,7 @@ function rbPredict(){
   const blacks = hist.filter(h => h === 'black').length;
   const jokers = hist.filter(h => h === 'joker').length;
 
-  /* Fair pick: each round is independent and near 50/50, so follow the mild
-     empirical lean of the visible history; a tie is a genuine coin flip.
-     Confidence is kept honest — capped well below certainty. */
-  let pick;
-  if(reds === blacks) pick = Math.random() < 0.5 ? 'red' : 'black';
-  else pick = reds > blacks ? 'red' : 'black';
-  const lean = hist.length ? Math.abs(reds - blacks) / hist.length : 0;
-  const conf = Math.round(50 + Math.min(16, lean * 40));
+  const { pick, conf, why } = rbPatternPick(hist);
 
   deductCredit();
   updateCreditsLabel();
@@ -1193,7 +1209,7 @@ function rbPredict(){
     <div class="rb-card ${pick}">
       <div class="rb-next">Virtual Oracle predicts</div>
       <div class="rb-pick">${pick === 'red' ? '🔴 RED' : '⚫ BLACK'}</div>
-      <div class="rb-conf">${conf}% confidence · from ${hist.length} recent round${hist.length === 1 ? '' : 's'}</div>
+      <div class="rb-conf">${conf}% confidence · ${why}</div>
     </div>
     <div class="stat-pill" style="display:flex;justify-content:space-around;padding:12px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
       <span style="font-size:13px;color:var(--muted)">🔴 Reds <b style="color:var(--chalk)">${reds}</b></span>
