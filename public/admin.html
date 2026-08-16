@@ -1336,7 +1336,9 @@ function renderPartners(){
         <td><span class="credits-num">${refs}</span></td>
         <td>${esc(fmtMoney(rev))}</td>
         <td><div class="name">${rate}% <button class="act" title="Change this partner's commission" onclick="editCommission('${esc(p.code)}')" style="margin-left:5px">✎</button></div>
-            <div class="email" title="What this partner has earned">${esc(fmtMoney(earn))} earned</div></td>
+            <div class="email" title="What this partner has earned">${esc(fmtMoney(earn))} earned</div>
+            <div class="email" style="margin-top:4px" title="Credits this partner can still hand out">🎟 ${p.creditAllowance || 0} allowance
+              <button class="act" title="Set this partner's credit allowance" onclick="editAllowance('${esc(p.code)}')" style="margin-left:4px">✎</button></div></td>
         <td><div class="row-actions">${actions}</div></td>
       </tr>`;
   }).join('');
@@ -1376,6 +1378,21 @@ async function clearPartnerRevenue(code){
     toast((p.name || code) + '’s revenue reset — counting from now.', 'success');
     await loadAll(); refresh();
   } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not reset revenue.', 'error'); }
+}
+
+async function editAllowance(code){
+  const p = pById(code);
+  if(!p.id) return;
+  const cur = p.creditAllowance || 0;
+  const raw = prompt('Credit allowance for ' + (p.name || code) + '?\n\nThis is how many credits they can hand out to their own members. Currently ' + cur + ' left.', cur);
+  if(raw == null) return;
+  const amount = parseInt(raw, 10);
+  if(isNaN(amount) || amount < 0){ toast('Enter a number of credits (0 or more).', 'error'); return; }
+  try {
+    await VE.adminPartnerAction(p.id, 'allowance', { amount });
+    toast((p.name || code) + ' can now hand out ' + amount + ' credits', 'success');
+    await loadAll(); refresh();
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not set the allowance.', 'error'); }
 }
 
 async function editCommission(code){

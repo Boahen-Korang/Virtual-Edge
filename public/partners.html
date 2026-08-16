@@ -233,6 +233,7 @@
       <a class="nav-item" data-view="send" onclick="showView('send')"><span class="ico">⊕</span>Send Prediction</a>
       <a class="nav-item" data-view="sent" onclick="showView('sent')"><span class="ico">✦</span>Sent Picks<span class="badge" id="nav-sent-badge" style="display:none">0</span></a>
       <a class="nav-item" data-view="referrals" onclick="showView('referrals')"><span class="ico">☷</span>Referrals<span class="badge" id="nav-ref-badge" style="display:none">0</span></a>
+      <a class="nav-item" data-view="accounts" onclick="showView('accounts')"><span class="ico">✚</span>Create Account<span class="badge" id="nav-allow-badge" style="display:none">0</span></a>
     </nav>
     <div class="side-foot">
       <button class="tbtn" onclick="refreshP()"><span class="ico">↻</span>Refresh</button>
@@ -335,6 +336,57 @@
       </div>
     </section>
 
+    <!-- Create member accounts + hand out credits from the allowance -->
+    <section class="view" id="view-accounts" hidden>
+      <div class="page-eyebrow">Partner Portal</div>
+
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-head">
+          <h2>Credit Allowance</h2>
+          <span class="count" id="allow-count">0 left</span>
+        </div>
+        <div class="panel-body" style="padding:14px 20px">
+          <span style="font-size:13px;color:var(--ash)">Credits you can hand out to your own members. When it runs out, ask the admin to top you up.</span>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-head"><h2>Create a Member Account</h2></div>
+        <div class="panel-body" style="padding:16px 20px">
+          <div class="form-grid">
+            <div class="field"><label>Full name</label><input id="na-name" type="text" placeholder="John Mensah" autocomplete="off"></div>
+            <div class="field"><label>Email</label><input id="na-email" type="text" placeholder="member@email.com" autocomplete="off" spellcheck="false"></div>
+            <div class="field"><label>Password</label><input id="na-pw" type="text" placeholder="Min. 6 characters" autocomplete="off"></div>
+          </div>
+          <div class="save-row" style="margin-top:12px">
+            <button class="mini" type="button" onclick="createMemberAccount()">Create account</button>
+          </div>
+          <div style="font-size:12px;color:var(--ash-dim);margin-top:10px">
+            The account is credited to your referral code and activated straight away — no GHS 50 fee. Give the member their email &amp; password to sign in.
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Give Credits</h2></div>
+        <div class="panel-body" style="padding:16px 20px">
+          <div class="form-grid">
+            <div class="field"><label>Member</label><select class="sel" id="gc-email"></select></div>
+            <div class="field"><label>Game</label>
+              <select class="sel" id="gc-game">
+                <option value="football">⚽ Instant Football</option>
+                <option value="rb">🔴⚫ Red &amp; Black</option>
+              </select>
+            </div>
+            <div class="field"><label>Credits</label><input id="gc-amount" type="number" min="1" placeholder="e.g. 3" autocomplete="off"></div>
+          </div>
+          <div class="save-row" style="margin-top:12px">
+            <button class="mini" type="button" onclick="givePartnerCredits()">Give credits</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -413,6 +465,9 @@ async function render(){
       <div class="val ${c.cls}">${c.val}</div>
       <div class="stat-foot"><span class="sub">${esc(c.sub)}</span></div>
     </div>`).join('');
+
+  /* Allowance + the member picker on the Create Account view */
+  renderAllowance(members);
 
   /* Members table */
   document.getElementById('ref-count').textContent = total;
@@ -727,6 +782,54 @@ function toast(msg, type=''){
   el.textContent = msg; el.className = 'toast' + (type ? ' '+type : '');
   void el.offsetWidth; el.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ---- Create accounts & hand out credits (bounded by the admin's allowance) ---- */
+function renderAllowance(members){
+  const left = (CURRENT && CURRENT.creditAllowance) || 0;
+  const el = document.getElementById('allow-count');
+  if(el) el.textContent = left + ' left';
+  const badge = document.getElementById('nav-allow-badge');
+  if(badge){ badge.textContent = left; badge.style.display = left ? 'inline-block' : 'none'; }
+  const sel = document.getElementById('gc-email');
+  if(sel && Array.isArray(members)){
+    const keep = sel.value;
+    sel.innerHTML = members.length
+      ? members.map(m => `<option value="${esc(m.email)}">${esc(m.name || m.email)} — ${esc(m.email)}</option>`).join('')
+      : '<option value="">No members yet — create one above</option>';
+    if(keep) sel.value = keep;
+  }
+}
+
+async function createMemberAccount(){
+  const name = document.getElementById('na-name').value.trim();
+  const email = document.getElementById('na-email').value.trim();
+  const pw = document.getElementById('na-pw').value;
+  if(!name || !email || !pw){ toast('Fill in name, email and password.'); return; }
+  if(pw.length < 6){ toast('Password must be at least 6 characters.'); return; }
+  try {
+    await VE.partnerCreateMember({ name, email, password: pw });
+    toast('Account created for ' + email, 'success');
+    document.getElementById('na-name').value = '';
+    document.getElementById('na-email').value = '';
+    document.getElementById('na-pw').value = '';
+    await render();
+  } catch(e){ toast(e.message || 'Could not create the account.'); }
+}
+
+async function givePartnerCredits(){
+  const email = document.getElementById('gc-email').value;
+  const game = document.getElementById('gc-game').value;
+  const amount = parseInt(document.getElementById('gc-amount').value, 10);
+  if(!email){ toast('Create a member account first.'); return; }
+  if(isNaN(amount) || amount <= 0){ toast('Enter how many credits to give.'); return; }
+  try {
+    const r = await VE.partnerGrantCredits(email, amount, game);
+    if(CURRENT) CURRENT.creditAllowance = r.allowance;
+    toast('Gave ' + amount + (game === 'rb' ? ' Red & Black' : '') + ' credit' + (amount===1?'':'s') + ' to ' + email, 'success');
+    document.getElementById('gc-amount').value = '';
+    await render();
+  } catch(e){ toast(e.message || 'Could not give credits.'); }
 }
 
 /* Re-fetch everything from the server and repaint */

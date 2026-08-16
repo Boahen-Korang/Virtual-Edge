@@ -246,6 +246,7 @@ async function creditPurchaseOnce(email, pkg, reference, predictions) {
 const partnerOut = (r) => r && ({
   id: r.id, name: r.name, email: r.email, code: r.code, status: r.status,
   locked: r.locked, commission: r.commission != null ? Number(r.commission) : 10,
+  creditAllowance: r.credit_allowance != null ? Number(r.credit_allowance) : 0,
   revenueClearedAt: r.revenue_cleared_at || null,
   created: r.created_at, approvedAt: r.approved_at, lockedAt: r.locked_at,
 });
@@ -603,6 +604,76 @@ app.get('/api/partner/referrals', auth('partner'), wrap(async (req, res) => {
   res.json(u.rows.map((r) => ({ ...userOut(r), spend: spend[r.email] || 0 })));
 }));
 
+/* ---- Partner-managed member accounts ----
+   A partner can register members under their code and hand them credits out of
+   the allowance the admin granted. Everything is bounded by that allowance so a
+   partner can never mint unlimited free product. */
+async function activePartner(code) {
+  const p = await loadPartner(code);
+  if (!p || p.status !== 'approved' || p.locked) return null;
+  return p;
+}
+
+app.post('/api/partner/members', auth('partner'), wrap(async (req, res) => {
+  const p = await activePartner(req.user.code);
+  if (!p) return res.status(403).json({ error: 'Account unavailable' });
+  const name = String(req.body.name || '').trim();
+  const email = norm(req.body.email);
+  const password = String(req.body.password || '');
+  if (!name) return res.status(400).json({ error: 'Enter the member\'s name.' });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const exists = await query('SELECT 1 FROM users WHERE email=$1', [email]);
+  if (exists.rows.length) return res.status(409).json({ error: 'An account with this email already exists.' });
+
+  // attributed to the partner, and activated (the partner collects the fee offline)
+  const { rows } = await query(
+    'INSERT INTO users (email,name,pw_hash,ref,partner,reg_fee_paid) VALUES ($1,$2,$3,$4,$4,true) RETURNING *',
+    [email, name, hash(password), p.code]);
+  await query('INSERT INTO credits (email,amount) VALUES ($1,0) ON CONFLICT (email) DO NOTHING', [email]);
+  res.json({ ok: true, user: userOut(rows[0]) });
+}));
+
+// grant credits to one of the partner's own members, out of their allowance
+app.post('/api/partner/credits', auth('partner'), wrap(async (req, res) => {
+  const p = await activePartner(req.user.code);
+  if (!p) return res.status(403).json({ error: 'Account unavailable' });
+  const email = norm(req.body.email);
+  const amount = parseInt(req.body.amount, 10);
+  const rb = String(req.body.game || '') === 'rb';
+  if (!email || !isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Choose a member and a positive number of credits.' });
+  if (amount > 500) return res.status(400).json({ error: 'Grant at most 500 credits at a time.' });
+
+  const owner = await query('SELECT partner FROM users WHERE email=$1', [email]);
+  if (!owner.rows.length) return res.status(404).json({ error: 'Member not found.' });
+  if ((owner.rows[0].partner || '') !== p.code) return res.status(403).json({ error: 'That member is not one of your referrals.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // only succeeds while the allowance covers it — guards double-spend
+    const dec = await client.query(
+      'UPDATE partners SET credit_allowance = credit_allowance - $2 WHERE code=$1 AND credit_allowance >= $2 RETURNING credit_allowance',
+      [p.code, amount]);
+    if (!dec.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(402).json({ error: 'Not enough allowance left. Ask the admin to top you up.' });
+    }
+    const col = rb ? 'rb_amount' : 'amount';
+    await client.query(
+      `INSERT INTO credits (email,${col}) VALUES ($1,$2)
+       ON CONFLICT (email) DO UPDATE SET ${col} = credits.${col} + EXCLUDED.${col}`,
+      [email, amount]);
+    await client.query('COMMIT');
+    res.json({ ok: true, allowance: Number(dec.rows[0].credit_allowance) });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
 // reset the partner's own revenue/earnings display to zero (data is kept)
 app.post('/api/partner/revenue-clear', auth('partner'), wrap(async (req, res) => {
   await query('UPDATE partners SET revenue_cleared_at=now() WHERE code=$1', [req.user.code]);
@@ -713,6 +784,12 @@ app.patch('/api/admin/partners/:id', auth('admin'), wrap(async (req, res) => {
     const rate = Number(req.body.rate);
     if (!isFinite(rate) || rate < 0 || rate > 100) return res.status(400).json({ error: 'Commission must be between 0 and 100 percent.' });
     const { rows } = await query('UPDATE partners SET commission=$2 WHERE id=$1 RETURNING *', [id, rate]);
+    return res.json({ partner: partnerOut(rows[0]) });
+  }
+  if (action === 'allowance') {
+    const amount = parseInt(req.body.amount, 10);
+    if (!isFinite(amount) || amount < 0 || amount > 100000) return res.status(400).json({ error: 'Allowance must be between 0 and 100000 credits.' });
+    const { rows } = await query('UPDATE partners SET credit_allowance=$2 WHERE id=$1 RETURNING *', [id, amount]);
     return res.json({ partner: partnerOut(rows[0]) });
   }
   const map = {

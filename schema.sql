@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS partners (
 ALTER TABLE partners ADD COLUMN IF NOT EXISTS commission NUMERIC NOT NULL DEFAULT 10;
 -- partner's own revenue counter reset point (display only; purchases stay stored)
 ALTER TABLE partners ADD COLUMN IF NOT EXISTS revenue_cleared_at TIMESTAMPTZ;
+-- credits the admin has allocated for this partner to hand out (remaining balance)
+ALTER TABLE partners ADD COLUMN IF NOT EXISTS credit_allowance INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS pushed_picks (
   id            SERIAL PRIMARY KEY,
