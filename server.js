@@ -1052,15 +1052,20 @@ const SCAN_PROMPT =
   'Respond with ONLY compact JSON: {"header":"Instant Virtuals","isInstant":true,"matches":[{"home":"Home","away":"Away","oddsHome":1.85,"oddsDraw":3.20,"oddsAway":2.10}]}. ' +
   'Returning EVERY match in "matches", the exact "header" text and "isInstant" are all required.';
 
-/* ---- Red/Black instant game: read the results-history strip ---- */
+/* ---- Red/Black instant game: read round results from the screenshot ---- */
 const RB_PROMPT =
-  'This is a screenshot of the SportyBet "Red/Black" instant card game (light or dark theme). ' +
-  'It shows a history strip of recent round results as red or black cards/markers, sometimes with a special ' +
-  'joker/bonus result that is neither red nor black. ' +
-  'Transcribe the visible recent results IN ORDER from MOST RECENT to oldest as an array of ' +
-  '"red", "black" or "joker". If no history strip is visible, return an empty array. ' +
-  'Set "isRedBlack" true ONLY if this is clearly the Red/Black game interface ' +
-  '(red and black bet buttons, playing-card graphics, a results history strip). ' +
+  'This is a screenshot from the SportyBet "Red-Black" instant card game (green-themed app; light or dark phone theme). ' +
+  'It is usually the BET HISTORY panel: a vertical list of past rounds, NEWEST AT THE TOP, where each entry shows ' +
+  'Time/Stake/Status, a "Your Pick" line, and a "Your Card" playing card — the card IS the round result. ' +
+  'Read the RESULT of each visible round from its card: hearts or diamonds (red suits) = "red"; ' +
+  'spades or clubs (black suits) = "black"; a Joker card = "joker". ' +
+  'IGNORE the "Your Pick" text completely — that is what the player bet, NOT the result. ' +
+  'Ignore Status/win/lost amounts too. If the screenshot instead shows a horizontal results strip of ' +
+  'red/black markers, read that the same way. ' +
+  'Return the results IN ORDER from MOST RECENT to oldest (top of the list first). ' +
+  'Only include rounds whose card is actually visible; if none are visible, return an empty array. ' +
+  'Set "isRedBlack" true ONLY if this is clearly the Red-Black game: signs include a "Red-Black" title, ' +
+  '"Your Card" / "Your Pick" entries, or RED and BLACK bet buttons with playing cards. ' +
   'Anything else — football, other games, non-betting screens — is false. ' +
   'Respond with ONLY compact JSON: {"isRedBlack":true,"history":["red","black","joker"]}.';
 
