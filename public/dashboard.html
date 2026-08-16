@@ -626,8 +626,35 @@ function setGame(g){
   gateOnCredits();
 }
 refreshAccount();
-/* Coming from the pricing page's free Red & Black package */
+/* Coming from the pricing page's Red & Black package */
 if(location.hash === '#redblack') setGame('redblack');
+
+/* Admin game toggles: hide switched-off games (server refuses them anyway) */
+(async function applyGameToggles(){
+  let cfg = null;
+  try { cfg = await VE.paymentConfigPublic(); } catch(e){ return; }
+  if(!cfg || !cfg.games) return;
+  const fOn = cfg.games.football !== false, rOn = cfg.games.redblack !== false;
+  const tf = document.getElementById('gt-football'), tr = document.getElementById('gt-redblack');
+  if(!fOn && tf) tf.style.display = 'none';
+  if(!rOn && tr) tr.style.display = 'none';
+  if(fOn && rOn) return;
+  const tabs = document.querySelector('.game-tabs');
+  if(tabs && (!fOn || !rOn)) tabs.style.display = (fOn || rOn) ? 'none' : 'none';
+  if(!fOn && rOn && GAME === 'football') setGame('redblack');
+  if(fOn && !rOn && GAME === 'redblack') setGame('football');
+  if(!fOn && !rOn){
+    GAME = 'football';
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('rb-section').style.display = 'none';
+    const nc = document.getElementById('no-credits-msg');
+    if(nc){
+      nc.style.display = 'block';
+      const h = nc.querySelector('h3'); if(h) h.textContent = 'Temporarily unavailable';
+      const p = nc.querySelector('p'); if(p) p.textContent = 'Predictions are switched off right now. Please check back soon.';
+    }
+  }
+})();
 
 /* ---- Stored screenshot data URL (for loading screen) ---- */
 let screenshotDataUrl = '';

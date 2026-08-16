@@ -500,6 +500,17 @@ if(!SESSION) throw new Error('redirect');
           && (m.id !== 'manual' || PAY_MOMO_ACCOUNTS.length)
           && (m.id !== 'bank' || PAY_BANK_ACCOUNTS.length));
       }
+      // admin game toggles: hide whatever is switched off
+      if(cfg.games){
+        const fOn = cfg.games.football !== false, rOn = cfg.games.redblack !== false;
+        const gpF = document.getElementById('gp-football'), gpR = document.getElementById('gp-rb');
+        if(!fOn && gpF) gpF.style.display = 'none';
+        if(!rOn && gpR) gpR.style.display = 'none';
+        const gp = document.getElementById('gpick');
+        if(!fOn && !rOn){ if(gp) gp.style.display = 'none'; setPriceGame('football'); document.getElementById('packages-list').innerHTML = '<div style="text-align:center;color:var(--ash);padding:30px">Packages are temporarily unavailable. Please check back soon.</div>'; }
+        else if(!fOn){ setPriceGame('redblack'); }
+        else if(!rOn){ setPriceGame('football'); if(gp) gp.style.display = 'none'; }
+      }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
         : ((window.VEPay && VEPay.providerForKey(PAYSTACK_PUBLIC_KEY)) || 'paystack');

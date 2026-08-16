@@ -459,6 +459,12 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
     return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
+  // no buying packages for a game the admin has switched off (fee exempt)
+  if (pkg !== REG_FEE_PKG) {
+    const ge = await gamesEnabled();
+    if (isRBPackage(pkg) && !ge.redblack) return res.status(400).json({ error: 'Red & Black is currently unavailable.' });
+    if (!isRBPackage(pkg) && !ge.football) return res.status(400).json({ error: 'Instant Football packages are currently unavailable.' });
+  }
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   const method = String(req.body.method || '').slice(0, 10);
@@ -785,6 +791,19 @@ app.delete('/api/admin/users/:email', auth('admin'), wrap(async (req, res) => {
 
 /* "Clear revenue" is a display reset, not a deletion: dashboards only count
    purchases made after the marker; the rows stay in the database. */
+/* Which games the admin has switched on (defaults keep everything on) */
+async function gamesEnabled() {
+  const { rows } = await query('SELECT games_enabled FROM payment_config WHERE id=1');
+  const g = (rows[0] && rows[0].games_enabled) || {};
+  return { football: g.football !== false, redblack: g.redblack !== false };
+}
+
+app.post('/api/admin/games', auth('admin'), wrap(async (req, res) => {
+  const g = { football: req.body.football !== false, redblack: req.body.redblack !== false };
+  await query('UPDATE payment_config SET games_enabled=$1::jsonb WHERE id=1', [JSON.stringify(g)]);
+  res.json({ ok: true, games: g });
+}));
+
 const adminRevenueSince = async () => {
   const { rows } = await query('SELECT revenue_cleared_at FROM payment_config WHERE id=1');
   return (rows[0] && rows[0].revenue_cleared_at) || new Date(0);
@@ -1167,6 +1186,11 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   const game = String(req.body.game || 'football');
   const isRB = game === 'redblack';
 
+  // admin can switch either game off entirely
+  const ge = await gamesEnabled();
+  if (isRB && !ge.redblack) return res.status(403).json({ error: 'Red & Black is currently turned off.' });
+  if (!isRB && !ge.football) return res.status(403).json({ error: 'Instant Football is currently turned off.' });
+
   // Each scan costs real API money — members need credits for the game they're
   // scanning: Red & Black uses its own pool, football its own (or unlimited).
   if (req.user.role === 'member') {
@@ -1274,13 +1298,15 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,bank_accounts,providers FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,bank_accounts,providers,games_enabled FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   const provs = providersOut(r);   // never sent raw — secrets stay server-side
   const methods = PROVIDER_IDS.filter((id) => provs[id].enabled)
     .map((id) => ({ id, key: (id === 'manual' || id === 'bank') ? '' : provs[id].key }));
+  const ge = (r.games_enabled || {});
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
-    momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods });
+    momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods,
+    games: { football: ge.football !== false, redblack: ge.redblack !== false } });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

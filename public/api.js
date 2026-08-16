@@ -110,6 +110,7 @@
     adminPurchases: () => req('GET', '/admin/purchases', null, 'admin'),
     adminClearPurchases: () => req('DELETE', '/admin/purchases', null, 'admin'),
     adminClearRevenue: () => req('POST', '/admin/revenue-clear', {}, 'admin'),
+    adminSetGames: (g) => req('POST', '/admin/games', g, 'admin'),
     adminRevenueDaily: () => req('GET', '/admin/revenue-daily', null, 'admin'),
     adminDeletePurchase: (key, revoke) => req('DELETE', '/admin/purchases/' + encodeURIComponent(key) + (revoke ? '?revoke=1' : ''), null, 'admin'),
     adminAlerts: () => req('GET', '/admin/alerts', null, 'admin'),
