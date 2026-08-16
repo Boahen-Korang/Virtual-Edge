@@ -67,7 +67,7 @@
     recordPurchase: (p) => req('POST', '/me/purchases', p, 'member'),
     manualClaim: (p) => req('POST', '/me/manual-claims', p, 'member'),
     manualClaimStatus: (id) => req('GET', '/me/manual-claims/' + id, null, 'member'),
-    spendCredit: (amount) => req('POST', '/me/credits/spend', { amount: amount || 1 }, 'member'),
+    spendCredit: (amount, game) => req('POST', '/me/credits/spend', { amount: amount || 1, game }, 'member'),
     cachedMe: () => { try { return JSON.parse(localStorage.getItem('ve_me') || 'null'); } catch { return null; } },
     signOutMember() { setTok('member', null); localStorage.removeItem('ve_me'); },
 
@@ -103,7 +103,7 @@
     adminAddPartner: (p) => req('POST', '/admin/partners', p, 'admin'),
     adminPartnerAction: (id, action, extra) => req('PATCH', '/admin/partners/' + id, Object.assign({ action }, extra || {}), 'admin'),
     adminDeletePartner: (id) => req('DELETE', '/admin/partners/' + id, null, 'admin'),
-    adminGrantCredits: (email, amount) => req('POST', '/admin/credits', { email, amount }, 'admin'),
+    adminGrantCredits: (email, amount, game) => req('POST', '/admin/credits', { email, amount, game }, 'admin'),
     adminScanUsage: () => req('GET', '/admin/scan-usage', null, 'admin'),
     adminScanTopup: (amount) => req('POST', '/admin/scan-topup', { amount }, 'admin'),
     adminDeleteUser: (email) => req('DELETE', '/admin/users/' + encodeURIComponent(email), null, 'admin'),

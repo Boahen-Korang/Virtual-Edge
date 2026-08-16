@@ -199,6 +199,9 @@ const markFeeIfPaid = (email, pkg) => {
    tier (>=9999) grants 24h of unlimited predictions (stacking); otherwise it adds
    prediction credits. Returns { credited, duplicate }. */
 const DAY_MS = 24 * 60 * 60 * 1000;
+/* Which credit pool a package funds: Red & Black packages feed rb_amount,
+   everything else feeds the Instant Football pool. */
+const isRBPackage = (pkg) => /red\s*&\s*black/i.test(String(pkg || ''));
 async function creditPurchaseOnce(email, pkg, reference, predictions) {
   const client = await pool.connect();
   try {
@@ -216,10 +219,15 @@ async function creditPurchaseOnce(email, pkg, reference, predictions) {
         'UPDATE users SET unlimited_until = GREATEST(COALESCE(unlimited_until, 0), $2) + $3 WHERE email=$1',
         [email, Date.now(), DAY_MS]);
     } else if (predictions > 0) {
+      // separate pools: RB packages fund rb_amount, football packages fund amount
+      const fb = isRBPackage(pkg) ? 0 : predictions;
+      const rb = isRBPackage(pkg) ? predictions : 0;
       await client.query(
-        `INSERT INTO credits (email,amount) VALUES ($1,$2)
-         ON CONFLICT (email) DO UPDATE SET amount = credits.amount + EXCLUDED.amount`,
-        [email, predictions]);
+        `INSERT INTO credits (email,amount,rb_amount) VALUES ($1,$2,$3)
+         ON CONFLICT (email) DO UPDATE SET
+           amount = credits.amount + EXCLUDED.amount,
+           rb_amount = credits.rb_amount + EXCLUDED.rb_amount`,
+        [email, fb, rb]);
     }
     await client.query('COMMIT');
     return { credited: true, duplicate: false };
@@ -330,8 +338,10 @@ app.post('/api/auth/reset', wrap(async (req, res) => {
 app.get('/api/me', auth('member'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [req.user.email]);
   if (!rows.length) return res.status(404).json({ error: 'Not found' });
-  const c = await query('SELECT amount FROM credits WHERE email=$1', [req.user.email]);
-  res.json({ user: userOut(rows[0]), credits: c.rows[0] ? c.rows[0].amount : 0 });
+  const c = await query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]);
+  res.json({ user: userOut(rows[0]),
+    credits: c.rows[0] ? c.rows[0].amount : 0,
+    rbCredits: c.rows[0] ? c.rows[0].rb_amount : 0 });
 }));
 
 // member's pushed picks (optionally only pending)
@@ -420,8 +430,10 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
     await query('UPDATE users SET plan=COALESCE($2,plan), plan_end=COALESCE($3,plan_end) WHERE email=$1',
       [req.user.email, plan, planEnd]);
   }
-  const c = await query('SELECT amount FROM credits WHERE email=$1', [req.user.email]);
-  res.json({ ok: true, duplicate: r.duplicate, credits: c.rows[0] ? c.rows[0].amount : 0 });
+  const c = await query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]);
+  res.json({ ok: true, duplicate: r.duplicate,
+    credits: c.rows[0] ? c.rows[0].amount : 0,
+    rbCredits: c.rows[0] ? c.rows[0].rb_amount : 0 });
 }));
 
 /* ---- Direct MoMo payment claim: "I've sent the money to your number" ----
@@ -516,11 +528,12 @@ app.get('/api/me/manual-claims/:id', auth('member'), wrap(async (req, res) => {
 // spend a credit (when generating a prediction)
 app.post('/api/me/credits/spend', auth('member'), wrap(async (req, res) => {
   const n = parseInt(req.body.amount, 10) || 1;
+  const col = String(req.body.game || '') === 'rb' ? 'rb_amount' : 'amount';
   const { rows } = await query(
-    'UPDATE credits SET amount = GREATEST(0, amount - $2) WHERE email=$1 RETURNING amount',
+    `UPDATE credits SET ${col} = GREATEST(0, ${col} - $2) WHERE email=$1 RETURNING amount, rb_amount`,
     [req.user.email, n]
   );
-  res.json({ credits: rows[0] ? rows[0].amount : 0 });
+  res.json({ credits: rows[0] ? rows[0].amount : 0, rbCredits: rows[0] ? rows[0].rb_amount : 0 });
 }));
 
 /* ============================ PARTNER AUTH ============================ */
@@ -649,10 +662,10 @@ app.post('/api/admin/login', wrap(async (req, res) => {
 
 app.get('/api/admin/users', auth('admin'), wrap(async (req, res) => {
   const u = await query('SELECT * FROM users ORDER BY created_at DESC');
-  const c = await query('SELECT email, amount FROM credits');
-  const credits = {};
-  c.rows.forEach((r) => { credits[r.email] = r.amount; });
-  res.json(u.rows.map((r) => ({ ...userOut(r), credits: credits[r.email] || 0 })));
+  const c = await query('SELECT email, amount, rb_amount FROM credits');
+  const credits = {}, rbCredits = {};
+  c.rows.forEach((r) => { credits[r.email] = r.amount; rbCredits[r.email] = r.rb_amount; });
+  res.json(u.rows.map((r) => ({ ...userOut(r), credits: credits[r.email] || 0, rbCredits: rbCredits[r.email] || 0 })));
 }));
 
 app.get('/api/admin/partners', auth('admin'), wrap(async (req, res) => {
@@ -709,14 +722,16 @@ app.delete('/api/admin/partners/:id', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// grant (or deduct) prediction credits for a member
+// grant (or deduct) prediction credits for a member; game:'rb' targets the
+// Red & Black pool, otherwise the Instant Football pool
 app.post('/api/admin/credits', auth('admin'), wrap(async (req, res) => {
   const email = norm(req.body.email);
   const amount = parseInt(req.body.amount, 10);
   if (!email || isNaN(amount)) return res.status(400).json({ error: 'Email and a numeric amount are required.' });
+  const col = String(req.body.game || '') === 'rb' ? 'rb_amount' : 'amount';
   const { rows } = await query(
-    `INSERT INTO credits (email,amount) VALUES ($1,$2)
-     ON CONFLICT (email) DO UPDATE SET amount = GREATEST(0, credits.amount + EXCLUDED.amount)
+    `INSERT INTO credits (email,${col}) VALUES ($1,$2)
+     ON CONFLICT (email) DO UPDATE SET ${col} = GREATEST(0, credits.${col} + EXCLUDED.${col})
      RETURNING amount`,
     [email, amount]
   );
@@ -824,7 +839,7 @@ app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => 
   const revoke = String(req.query.revoke || '') === '1';
   const where = byId ? 'id=$1' : 'reference=$1';
 
-  const sel = await query('SELECT email, predictions FROM purchases WHERE ' + where, [key]);
+  const sel = await query('SELECT email, predictions, pkg FROM purchases WHERE ' + where, [key]);
   const row = sel.rows[0];
   if (!row) return res.json({ ok: true, deleted: 0, revoked: 0 });
 
@@ -836,7 +851,8 @@ app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => 
         [row.email, DAY_MS]);
       revoked = -1;
     } else if (preds > 0) {
-      await query('UPDATE credits SET amount = GREATEST(0, amount - $2) WHERE email=$1', [row.email, preds]);
+      const col = isRBPackage(row.pkg) ? 'rb_amount' : 'amount';
+      await query(`UPDATE credits SET ${col} = GREATEST(0, ${col} - $2) WHERE email=$1`, [row.email, preds]);
       revoked = preds;
     }
   }
@@ -1151,15 +1167,19 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   const game = String(req.body.game || 'football');
   const isRB = game === 'redblack';
 
-  // Each scan costs real API money — members need credits for either game.
+  // Each scan costs real API money — members need credits for the game they're
+  // scanning: Red & Black uses its own pool, football its own (or unlimited).
   if (req.user.role === 'member') {
     const [c, u] = await Promise.all([
-      query('SELECT amount FROM credits WHERE email=$1', [req.user.email]),
+      query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]),
       query('SELECT unlimited_until FROM users WHERE email=$1', [req.user.email]),
     ]);
     const credits = c.rows[0] ? c.rows[0].amount : 0;
+    const rbCredits = c.rows[0] ? c.rows[0].rb_amount : 0;
     const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
-    if (!credits && !unlimited) {
+    if (isRB) {
+      if (rbCredits <= 0) return res.status(402).json({ error: 'You need Red & Black credits — buy the Red & Black package first.' });
+    } else if (!credits && !unlimited) {
       return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
     }
   }

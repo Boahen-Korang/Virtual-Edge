@@ -519,11 +519,14 @@ function showUserEmail(){
 }
 showUserEmail();
 
-/* ---- Credits (mirrored from the server, refreshed at init) ---- */
+/* ---- Credits (mirrored from the server, refreshed at init) ----
+   Two separate pools: football credits and Red & Black credits. */
 let creditsCount = 0;
-let unlimitedUntil = 0;                       // epoch ms; unlimited while now < this
+let rbCreditsCount = 0;
+let unlimitedUntil = 0;                       // epoch ms; unlimited (football) while now < this
 function isUnlimited(){ return unlimitedUntil > Date.now(); }
 function getCredits(){ return creditsCount; }
+function getRbCredits(){ return rbCreditsCount; }
 function deductCredit(){
   if(isUnlimited()) return;                   // 24h unlimited — don't burn credits
   creditsCount = Math.max(0, creditsCount - 1);
@@ -535,6 +538,11 @@ function fmtRemaining(ms){
 }
 function updateCreditsLabel(){
   const el = document.getElementById('credits-label');
+  if(GAME === 'redblack'){
+    const n = getRbCredits();
+    el.textContent = `${n} R&B credit${n===1?'':'s'}`;
+    return;
+  }
   if(isUnlimited()){ el.textContent = 'Unlimited · ' + fmtRemaining(unlimitedUntil - Date.now()); return; }
   const n = getCredits();
   el.textContent = `${n} credit${n===1?'':'s'}`;
@@ -579,6 +587,7 @@ async function refreshAccount(){
   try {
     const me = await VE.me();
     creditsCount = me.credits || 0;
+    rbCreditsCount = me.rbCredits || 0;
     if(me.user){ SESSION.name = me.user.name; SESSION.email = me.user.email || SESSION.email; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; unlimitedUntil = me.user.unlimitedUntil || 0; }
     showUserEmail();
   } catch(e){}
@@ -590,20 +599,30 @@ async function refreshAccount(){
    prompt the user to buy a package instead. Also routes between the two games. */
 let GAME = 'football';
 function gateOnCredits(){
-  const out = !isUnlimited() && getCredits() <= 0;
+  // each game gates on its own pool (an R&B session needs 3 R&B credits)
+  const out = GAME === 'redblack'
+    ? getRbCredits() < 3
+    : (!isUnlimited() && getCredits() <= 0);
   const up = document.getElementById('upload-section');
   const nc = document.getElementById('no-credits-msg');
   const rs = document.getElementById('result-section');
   const rb = document.getElementById('rb-section');
   if(up) up.style.display = (!out && GAME === 'football') ? 'block' : 'none';
   if(rb) rb.style.display = (!out && GAME === 'redblack') ? 'block' : 'none';
-  if(nc) nc.style.display = out ? 'block' : 'none';
+  if(nc){
+    nc.style.display = out ? 'block' : 'none';
+    const p = nc.querySelector('p');
+    if(p) p.textContent = GAME === 'redblack'
+      ? 'A Red & Black session needs 3 R&B credits. Buy the Red & Black package to continue.'
+      : "You don't have any predictions yet. Buy a package to start scanning your screenshots.";
+  }
   if(rs && (out || GAME !== 'football')){ rs.style.display = 'none'; }
 }
 function setGame(g){
   GAME = g;
   document.getElementById('gt-football').classList.toggle('on', g === 'football');
   document.getElementById('gt-redblack').classList.toggle('on', g === 'redblack');
+  updateCreditsLabel();   // the header chip shows the active game's balance
   gateOnCredits();
 }
 refreshAccount();
@@ -1231,16 +1250,14 @@ function rbPredict(){
     toast('Upload ' + (RB_SHOTS_REQUIRED - rbShots.length) + ' more screenshot' + (RB_SHOTS_REQUIRED - rbShots.length === 1 ? '' : 's') + ' first.', 'error');
     return;
   }
-  if(!isUnlimited() && getCredits() < 3){
-    toast('You need 3 prediction credits for a Red & Black session — buy the Red & Black package.', 'error');
+  if(getRbCredits() < 3){
+    toast('You need 3 Red & Black credits for a session — buy the Red & Black package.', 'error');
     gateOnCredits();
     return;
   }
-  if(!isUnlimited()){
-    creditsCount = Math.max(0, creditsCount - 3);
-    VE.spendCredit(3).catch(()=>{});
-    updateCreditsLabel();
-  }
+  rbCreditsCount = Math.max(0, rbCreditsCount - 3);
+  VE.spendCredit(3, 'rb').catch(()=>{});
+  updateCreditsLabel();
   const hist = rbCombined();
   const reds = hist.filter(h => h === 'red').length;
   const blacks = hist.filter(h => h === 'black').length;
