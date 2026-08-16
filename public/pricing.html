@@ -389,7 +389,7 @@
 <!-- Which game's pricing -->
 <div class="gpick" id="gpick">
   <button class="gp on" id="gp-football" onclick="setPriceGame('football')">⚽ Instant Football</button>
-  <button class="gp" id="gp-rb" onclick="setPriceGame('redblack')">🔴⚫ Red &amp; Black<span class="free-tag">FREE</span></button>
+  <button class="gp" id="gp-rb" onclick="setPriceGame('redblack')">🔴⚫ Red &amp; Black</button>
 </div>
 
 <!-- Step indicator -->
@@ -420,25 +420,24 @@
   <!-- rendered by JS -->
 </div>
 
-<!-- Red & Black pricing (free for now) -->
+<!-- Red & Black pricing -->
 <div class="packages" id="rb-pricing" style="display:none">
   <div class="pkg-card selected">
     <div class="pkg-top">
       <div>
-        <div class="pkg-price" style="color:#157A36">FREE</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Red &amp; Black predictions</div>
+        <div class="pkg-price">GHS 500</div>
+        <div class="pkg-local" id="rb-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
       </div>
-      <span class="pkg-avail">Launch offer</span>
+      <span class="pkg-avail">Available</span>
       <div class="pkg-icon">🃏</div>
     </div>
     <div class="pkg-desc">Upload 3 screenshots of your Red &amp; Black bet history — we scan them and predict your next 3 colours.</div>
     <div class="pkg-tags">
       <span class="pkg-tag">3 screenshots</span>
       <span class="pkg-tag">3 predictions</span>
-      <span class="pkg-tag">No credits needed</span>
     </div>
-    <button class="pkg-btn" onclick="window.location.href='dashboard.html#redblack'">
-      <span class="arrow">→</span> START FREE
+    <button class="pkg-btn" onclick="payFor(RB_PKG)">
+      <span class="arrow">→</span> GET RED &amp; BLACK
     </button>
   </div>
 </div>
@@ -541,6 +540,8 @@ function applyLocalCurrency(sportyAccount){
     const el = document.getElementById('pkg-local-' + i);
     if(el) el.textContent = cur.sym + Math.round(p.price * cur.rate).toLocaleString() + ' ' + cur.code;
   });
+  const rbl = document.getElementById('rb-local');
+  if(rbl) rbl.textContent = cur.sym + Math.round(RB_PKG.price * cur.rate).toLocaleString() + ' ' + cur.code;
 }
 
 /* Load the member's balance + show local-currency prices (from their country) */
@@ -584,8 +585,10 @@ const FEE_PKG = { id:'fee', price:50, label:'GHS 50', preds:0, desc:'One-time re
 let FEE_DUE = false;
 
 /* ---- Packages ----
-   NOTE: if you change prices/credits here, update CLAIM_PACKAGES in server.js
-   too — direct-payment (MoMo/bank) claims are validated against that list. */
+   NOTE: if you change prices/credits here (or RB_PKG below), update
+   CLAIM_PACKAGES in server.js too — direct-payment (MoMo/bank) claims are
+   validated against that list. */
+const RB_PKG = { id:'rb500', price:500, label:'GHS 500 · Red & Black', preds:3, desc:'Red & Black — 3 screenshots, 3 predictions', icon:'🃏', tag:'Red & Black' };
 const PACKAGES = [
   { id:'p250', price:250, label:'GHS 250', preds:2, desc:'2 predictions per screenshot', icon:'⚡', tag:'2 predictions' },
   { id:'p350', price:350, label:'GHS 350', preds:3, desc:'3 predictions per screenshot', icon:'🔥', tag:'3 predictions' },

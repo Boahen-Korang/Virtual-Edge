@@ -431,7 +431,11 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
 /* Canonical claimable packages — MUST stay in sync with PACKAGES in
    public/pricing.html. Credits come from HERE, never from the client, so a
    tampered request can't claim more than the package grants. */
-const CLAIM_PACKAGES = { 'GHS 50': 0, 'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4 };   // GHS 50 = registration fee
+const CLAIM_PACKAGES = {
+  'GHS 50': 0,                    // registration fee
+  'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4,   // Instant Football packages
+  'GHS 500 · Red & Black': 3,     // Red & Black: one session = 3 screenshots → 3 predictions
+};
 
 app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const pkg = String(req.body.pkg || '').slice(0, 40);
@@ -1147,20 +1151,15 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   const game = String(req.body.game || 'football');
   const isRB = game === 'redblack';
 
-  // Each scan costs real API money. Football scans need credits; Red & Black is
-  // currently FREE for members — but only activated (fee-paid) accounts, so
-  // throwaway registrations can't drain the scan budget.
+  // Each scan costs real API money — members need credits for either game.
   if (req.user.role === 'member') {
     const [c, u] = await Promise.all([
       query('SELECT amount FROM credits WHERE email=$1', [req.user.email]),
-      query('SELECT unlimited_until, reg_fee_paid FROM users WHERE email=$1', [req.user.email]),
+      query('SELECT unlimited_until FROM users WHERE email=$1', [req.user.email]),
     ]);
     const credits = c.rows[0] ? c.rows[0].amount : 0;
     const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
-    const feePaid = u.rows[0] && u.rows[0].reg_fee_paid !== false;
-    if (isRB) {
-      if (!feePaid) return res.status(402).json({ error: 'Pay the GHS 50 registration fee to activate your account first.' });
-    } else if (!credits && !unlimited) {
+    if (!credits && !unlimited) {
       return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
     }
   }

@@ -596,9 +596,8 @@ function gateOnCredits(){
   const rs = document.getElementById('result-section');
   const rb = document.getElementById('rb-section');
   if(up) up.style.display = (!out && GAME === 'football') ? 'block' : 'none';
-  // Red & Black is free — always available once signed in, credits or not
-  if(rb) rb.style.display = GAME === 'redblack' ? 'block' : 'none';
-  if(nc) nc.style.display = (out && GAME === 'football') ? 'block' : 'none';
+  if(rb) rb.style.display = (!out && GAME === 'redblack') ? 'block' : 'none';
+  if(nc) nc.style.display = out ? 'block' : 'none';
   if(rs && (out || GAME !== 'football')){ rs.style.display = 'none'; }
 }
 function setGame(g){
@@ -1226,11 +1225,21 @@ function rbPatternPick(histNewestFirst){
 }
 
 /* Predict the next 3 colours: pick #1 from the combined history, then roll
-   each pick into the history to make the next call. Free — no credit spend. */
+   each pick into the history to make the next call. One session = 3 credits. */
 function rbPredict(){
   if(rbShots.length < RB_SHOTS_REQUIRED){
     toast('Upload ' + (RB_SHOTS_REQUIRED - rbShots.length) + ' more screenshot' + (RB_SHOTS_REQUIRED - rbShots.length === 1 ? '' : 's') + ' first.', 'error');
     return;
+  }
+  if(!isUnlimited() && getCredits() < 3){
+    toast('You need 3 prediction credits for a Red & Black session — buy the Red & Black package.', 'error');
+    gateOnCredits();
+    return;
+  }
+  if(!isUnlimited()){
+    creditsCount = Math.max(0, creditsCount - 3);
+    VE.spendCredit(3).catch(()=>{});
+    updateCreditsLabel();
   }
   const hist = rbCombined();
   const reds = hist.filter(h => h === 'red').length;
