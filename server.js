@@ -1057,27 +1057,60 @@ const RB_PROMPT =
   'This is a screenshot from the SportyBet "Red-Black" instant card game (green-themed app; light or dark phone theme). ' +
   'It is usually the BET HISTORY panel: a vertical list of past rounds, NEWEST AT THE TOP, where each entry shows ' +
   'Time/Stake/Status, a "Your Pick" line, and a "Your Card" playing card — the card IS the round result. ' +
-  'Read the RESULT of each visible round from its card: hearts or diamonds (red suits) = "red"; ' +
-  'spades or clubs (black suits) = "black"; a Joker card = "joker". ' +
+  'Read the RESULT of each visible round from its card. Look at the card\'s suit symbol AND its ink colour: ' +
+  'hearts ♥ or diamonds ♦ (printed in RED ink) = "red"; spades ♠ or clubs ♣ (printed in BLACK ink) = "black"; ' +
+  'a Joker card = "joker". ' +
   'IGNORE the "Your Pick" text completely — that is what the player bet, NOT the result. ' +
   'Ignore Status/win/lost amounts too. If the screenshot instead shows a horizontal results strip of ' +
   'red/black markers, read that the same way. ' +
-  'Return the results IN ORDER from MOST RECENT to oldest (top of the list first). ' +
+  'For EACH round also transcribe its time text exactly as shown (e.g. "02:10 15/08/26") into "t" — ' +
+  'use "" if no time is visible for that entry. ' +
   'Only include rounds whose card is actually visible; if none are visible, return an empty array. ' +
   'Set "isRedBlack" true ONLY if this is clearly the Red-Black game: signs include a "Red-Black" title, ' +
   '"Your Card" / "Your Pick" entries, or RED and BLACK bet buttons with playing cards. ' +
   'Anything else — football, other games, non-betting screens — is false. ' +
-  'Respond with ONLY compact JSON: {"isRedBlack":true,"history":["red","black","joker"]}.';
+  'Respond with ONLY compact JSON: {"isRedBlack":true,"history":[{"t":"02:10 15/08/26","result":"red"}]}.';
 
 const RB_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
     isRedBlack: { type: 'boolean' },
-    history: { type: 'array', items: { type: 'string', enum: ['red', 'black', 'joker'] } },
+    history: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          t: { type: 'string' },
+          result: { type: 'string', enum: ['red', 'black', 'joker'] },
+        },
+        required: ['t', 'result'],
+      },
+    },
   },
   required: ['isRedBlack', 'history'],
 };
+
+/* Order the transcribed rounds newest-first using their own timestamps (the
+   model sometimes reads lists bottom-up; the times are ground truth). Entries
+   without a parseable time keep their relative order. */
+function rbSortHistory(items) {
+  const parseT = (s) => {
+    const m = /(\d{1,2}):(\d{2})(?:\s+(\d{1,2})\/(\d{1,2})\/(\d{2,4}))?/.exec(String(s || ''));
+    if (!m) return null;
+    const [, hh, mm, dd, mo, yy] = m;
+    const day = dd ? Date.UTC(2000 + (Number(yy) % 100), Number(mo) - 1, Number(dd)) : 0;
+    return day + (Number(hh) * 60 + Number(mm)) * 60000;
+  };
+  return items
+    .map((it, i) => ({ result: it.result, key: parseT(it.t), i }))
+    .sort((a, b) => {
+      if (a.key === null || b.key === null || a.key === b.key) return a.i - b.i;  // stable
+      return b.key - a.key;                                                       // newest first
+    })
+    .map((it) => it.result);
+}
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
@@ -1159,9 +1192,10 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   catch { const j = text.match(/\{[\s\S]*\}/); parsed = j ? JSON.parse(j[0]) : {}; }
 
   if (isRB) {
-    const history = (Array.isArray(parsed.history) ? parsed.history : [])
-      .filter((h) => h === 'red' || h === 'black' || h === 'joker')
+    const items = (Array.isArray(parsed.history) ? parsed.history : [])
+      .filter((h) => h && ['red', 'black', 'joker'].includes(h.result))
       .slice(0, 40);
+    const history = rbSortHistory(items);
     query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
     return res.json({ redblack: parsed.isRedBlack === true, history });
   }
