@@ -153,12 +153,17 @@ const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   res.status(500).json({ error: 'Server error' });
 });
 
+/* "GHS 500" -> 500, "GHS 1.5k" -> 1500, "GHS 500 · Red & Black" -> 500.
+   The k multiplier only counts when it sits right after the number — a "k"
+   elsewhere in the label (e.g. "Black") must not multiply the price. */
 function parsePrice(label) {
   if (!label) return 0;
   const s = String(label).replace(/ghs/i, '').trim();
-  let n = parseFloat(s);
-  if (/k/i.test(s)) n *= 1000;
-  return isNaN(n) ? 0 : n;
+  const m = /^([\d.,]+)\s*(k)?/i.exec(s);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(/,/g, ''));
+  if (isNaN(n)) return 0;
+  return m[2] ? n * 1000 : n;
 }
 
 function genCode(name) {

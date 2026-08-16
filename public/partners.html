@@ -349,12 +349,16 @@
    ================================================================ */
 let accountsCache = [];   // [{email,name,partner}] for the send dropdown + name lookups
 
+/* k only multiplies when it directly follows the number ("1.5k"), never when
+   it merely appears in the label text (e.g. "Red & Black"). */
 function parsePrice(label){
   if(!label) return 0;
   const s = String(label).replace(/ghs/i,'').trim();
-  let n = parseFloat(s);
-  if(/k/i.test(s)) n *= 1000;
-  return isNaN(n) ? 0 : n;
+  const m = /^([\d.,]+)\s*(k)?/i.exec(s);
+  if(!m) return 0;
+  const n = parseFloat(m[1].replace(/,/g,''));
+  if(isNaN(n)) return 0;
+  return m[2] ? n * 1000 : n;
 }
 const fmtMoney = n => 'GHS ' + n.toLocaleString('en-US');
 function fmtDate(ts){
