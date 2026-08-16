@@ -301,6 +301,19 @@
   }
   .momo-title { font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--bone); margin: 0 0 4px; }
   .momo-amt { font-family: var(--display); font-weight: 900; font-size: 32px; color: #157A36; margin: 10px 0 14px; }
+  /* ---- Game division picker (football / red & black) ---- */
+  .gpick { display: flex; gap: 12px; max-width: 520px; margin: 0 auto 6px; padding: 0 18px; position: relative; z-index: 2; }
+  .gp {
+    flex: 1; padding: 15px 10px; border: 1.5px solid rgba(25,28,34,.14); border-radius: 10px;
+    background: #FFFFFF; font-family: var(--ui); font-size: 13px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ash); cursor: pointer; transition: .15s;
+  }
+  .gp.on { border-color: var(--crimson); color: var(--crimson); background: rgba(228,24,39,.06); }
+  .gp .free-tag {
+    display: inline-block; margin-left: 6px; background: #1F9E48; color: #fff;
+    font-size: 10px; padding: 2px 7px; border-radius: 10px; letter-spacing: .1em;
+  }
+
   .pay-opt {
     width: 100%; text-align: left; display: flex; align-items: center; gap: 12px;
     background: rgba(243,245,248,.5); border: 1px solid rgba(25,28,34,.16); border-radius: 6px;
@@ -373,6 +386,12 @@
   <button class="logout" onclick="logout()">Log out</button>
 </div>
 
+<!-- Which game's pricing -->
+<div class="gpick" id="gpick">
+  <button class="gp on" id="gp-football" onclick="setPriceGame('football')">⚽ Instant Football</button>
+  <button class="gp" id="gp-rb" onclick="setPriceGame('redblack')">🔴⚫ Red &amp; Black<span class="free-tag">FREE</span></button>
+</div>
+
 <!-- Step indicator -->
 <div class="steps-wrap">
   <div class="steps" id="steps-row">
@@ -399,6 +418,29 @@
 <!-- Package cards -->
 <div class="packages" id="packages-list">
   <!-- rendered by JS -->
+</div>
+
+<!-- Red & Black pricing (free for now) -->
+<div class="packages" id="rb-pricing" style="display:none">
+  <div class="pkg-card selected">
+    <div class="pkg-top">
+      <div>
+        <div class="pkg-price" style="color:#157A36">FREE</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Red &amp; Black predictions</div>
+      </div>
+      <span class="pkg-avail">Launch offer</span>
+      <div class="pkg-icon">🃏</div>
+    </div>
+    <div class="pkg-desc">Upload 3 screenshots of your Red &amp; Black bet history — we scan them and predict your next 3 colours.</div>
+    <div class="pkg-tags">
+      <span class="pkg-tag">3 screenshots</span>
+      <span class="pkg-tag">3 predictions</span>
+      <span class="pkg-tag">No credits needed</span>
+    </div>
+    <button class="pkg-btn" onclick="window.location.href='dashboard.html#redblack'">
+      <span class="arrow">→</span> START FREE
+    </button>
+  </div>
 </div>
 
 <!-- Payment overlay -->
@@ -603,8 +645,19 @@ function selectPackage(i){
    signup (connect SportyBet); package buyers go to the dashboard. */
 const postPayUrl = () => (FEE_DUE ? 'login.html#sporty' : 'dashboard.html');
 
+/* ---- Which game's pricing is on show ---- */
+function setPriceGame(g){
+  document.getElementById('gp-football').classList.toggle('on', g === 'football');
+  document.getElementById('gp-rb').classList.toggle('on', g === 'redblack');
+  document.querySelector('.steps-wrap').style.display = g === 'football' ? '' : 'none';
+  document.getElementById('packages-list').style.display = g === 'football' ? '' : 'none';
+  document.getElementById('rb-pricing').style.display = g === 'redblack' ? '' : 'none';
+}
+
 /* Fee-mode screen: one card, no packages, no step indicator */
 function renderFeeMode(){
+  const gp = document.getElementById('gpick'); if(gp) gp.style.display = 'none';
+  const rbp = document.getElementById('rb-pricing'); if(rbp) rbp.style.display = 'none';
   const sw = document.querySelector('.steps-wrap'); if(sw) sw.style.display = 'none';
   const bb = document.getElementById('balance-banner'); if(bb) bb.style.display = 'none';
   const h = document.querySelector('.pkg-header h2'); if(h) h.textContent = 'Activate Your Account';

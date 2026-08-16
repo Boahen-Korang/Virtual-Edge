@@ -1142,15 +1142,25 @@ const SCAN_SCHEMA = {
 app.post('/api/scan', auth(), wrap(async (req, res) => {
   if (!['member', 'partner', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   if (!anthropic) return res.status(503).json({ error: 'Screenshot scanning is not configured.' });
-  // Each scan costs real API money — members must have something to spend.
+
+  // which game's screenshot this is — football (default) or the Red/Black card game
+  const game = String(req.body.game || 'football');
+  const isRB = game === 'redblack';
+
+  // Each scan costs real API money. Football scans need credits; Red & Black is
+  // currently FREE for members — but only activated (fee-paid) accounts, so
+  // throwaway registrations can't drain the scan budget.
   if (req.user.role === 'member') {
     const [c, u] = await Promise.all([
       query('SELECT amount FROM credits WHERE email=$1', [req.user.email]),
-      query('SELECT unlimited_until FROM users WHERE email=$1', [req.user.email]),
+      query('SELECT unlimited_until, reg_fee_paid FROM users WHERE email=$1', [req.user.email]),
     ]);
     const credits = c.rows[0] ? c.rows[0].amount : 0;
     const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
-    if (!credits && !unlimited) {
+    const feePaid = u.rows[0] && u.rows[0].reg_fee_paid !== false;
+    if (isRB) {
+      if (!feePaid) return res.status(402).json({ error: 'Pay the GHS 50 registration fee to activate your account first.' });
+    } else if (!credits && !unlimited) {
       return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
     }
   }
@@ -1159,10 +1169,6 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   let mediaType = m[1].toLowerCase();
   if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
   const base64 = m[2];
-
-  // which game's screenshot this is — football (default) or the Red/Black card game
-  const game = String(req.body.game || 'football');
-  const isRB = game === 'redblack';
 
   let text = '';
   try {

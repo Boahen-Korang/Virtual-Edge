@@ -454,10 +454,13 @@
 
   <!-- Red & Black section -->
   <div id="rb-section" style="display:none">
-    <label class="upload-label">
+    <div class="ti-label" id="rb-progress" style="margin-bottom:10px;text-align:center">
+      Upload screenshot <b>1 of 3</b> — your most recent Red &amp; Black results
+    </div>
+    <label class="upload-label" id="rb-upload-label">
       <span class="uz-icon">🃏</span>
-      <div class="uz-title">Upload Red &amp; Black Screenshot</div>
-      <div class="uz-sub">Snap the game screen so we can read the recent results</div>
+      <div class="uz-title" id="rb-upload-title">Upload Red &amp; Black Screenshot (1/3)</div>
+      <div class="uz-sub">Open your bet history in the game and screenshot it</div>
       <input type="file" id="rb-file" accept="image/*" style="display:none" onclick="this.value=null" onchange="onRbFile(event)">
     </label>
 
@@ -471,7 +474,7 @@
         <span class="ss-text" id="rb-status-text">Reading the results…</span>
       </div>
       <div id="rb-history"></div>
-      <button class="analyze-btn" id="rb-analyze" style="display:none" onclick="rbPredict()">⚡ Predict Next Colour</button>
+      <button class="analyze-btn" id="rb-analyze" style="display:none" onclick="rbPredict()">⚡ Predict My Next 3 Colours</button>
     </div>
 
     <div class="result-section" id="rb-result"></div>
@@ -593,8 +596,9 @@ function gateOnCredits(){
   const rs = document.getElementById('result-section');
   const rb = document.getElementById('rb-section');
   if(up) up.style.display = (!out && GAME === 'football') ? 'block' : 'none';
-  if(rb) rb.style.display = (!out && GAME === 'redblack') ? 'block' : 'none';
-  if(nc) nc.style.display = out ? 'block' : 'none';
+  // Red & Black is free — always available once signed in, credits or not
+  if(rb) rb.style.display = GAME === 'redblack' ? 'block' : 'none';
+  if(nc) nc.style.display = (out && GAME === 'football') ? 'block' : 'none';
   if(rs && (out || GAME !== 'football')){ rs.style.display = 'none'; }
 }
 function setGame(g){
@@ -604,6 +608,8 @@ function setGame(g){
   gateOnCredits();
 }
 refreshAccount();
+/* Coming from the pricing page's free Red & Black package */
+if(location.hash === '#redblack') setGame('redblack');
 
 /* ---- Stored screenshot data URL (for loading screen) ---- */
 let screenshotDataUrl = '';
@@ -1113,6 +1119,36 @@ function getAnother(){
    RED & BLACK — scan the history strip, predict the next colour
    ============================================================ */
 let rbDataUrl = '', rbHistory = null, rbIsGame = null, rbToken = 0;
+const RB_SHOTS_REQUIRED = 3;
+let rbShots = [];    // one history array per accepted screenshot, upload order = newest block first
+
+function rbCombined(){ return [].concat(...rbShots); }
+
+function rbUpdateProgress(){
+  const n = rbShots.length;
+  const prog = document.getElementById('rb-progress');
+  const title = document.getElementById('rb-upload-title');
+  const up = document.getElementById('rb-upload-label');
+  if(n >= RB_SHOTS_REQUIRED){
+    prog.innerHTML = '✓ All <b>3 screenshots</b> scanned — ready to predict your next 3 colours';
+    if(up) up.style.display = 'none';
+    document.getElementById('rb-analyze').style.display = 'flex';
+  } else {
+    const hints = ['your most recent Red & Black results',
+                   'scroll down to older results and screenshot again',
+                   'scroll further — one more batch of older results'];
+    prog.innerHTML = (n ? '✓ ' + n + ' saved — u' : 'U') + 'pload screenshot <b>' + (n + 1) + ' of 3</b> — ' + hints[n];
+    if(title) title.textContent = 'Upload Red & Black Screenshot (' + (n + 1) + '/3)';
+    if(up) up.style.display = 'block';
+    document.getElementById('rb-analyze').style.display = 'none';
+  }
+  const strip = rbCombined();
+  document.getElementById('rb-history').innerHTML = strip.length
+    ? '<div class="ti-label" style="margin-top:12px">Results collected so far · ' + strip.length + ' rounds (newest first)</div><div class="rb-strip">'
+      + strip.map(h => `<div class="rb-dot ${h}">${h === 'red' ? 'R' : h === 'black' ? 'B' : 'J'}</div>`).join('')
+      + '</div>'
+    : '';
+}
 
 function onRbFile(e){
   const file = e.target.files[0];
@@ -1155,16 +1191,16 @@ async function rbScan(dataUrl){
   rbIsGame = !!(r && r.redblack);
   rbHistory = (r && r.history) || [];
   if(!rbIsGame){
-    rbStatus('warn', '⚠ This does not look like the Red/Black game. Upload the game screen.');
+    rbStatus('warn', '⚠ This does not look like the Red/Black game — that screenshot was not counted. Upload the bet-history screen.');
     return;
   }
-  rbStatus('ok', '✓ Game recognised — ' + rbHistory.length + ' recent result' + (rbHistory.length === 1 ? '' : 's') + ' read');
-  document.getElementById('rb-history').innerHTML = rbHistory.length
-    ? '<div class="ti-label" style="margin-top:12px">Recent results (newest first)</div><div class="rb-strip">'
-      + rbHistory.map(h => `<div class="rb-dot ${h}">${h === 'red' ? 'R' : h === 'black' ? 'B' : 'J'}</div>`).join('')
-      + '</div>'
-    : '';
-  document.getElementById('rb-analyze').style.display = 'flex';
+  if(!rbHistory.length){
+    rbStatus('warn', '⚠ No result cards visible in that screenshot — not counted. Make sure the cards show, then try again.');
+    return;
+  }
+  rbShots.push(rbHistory);
+  rbStatus('ok', '✓ Screenshot ' + rbShots.length + ' of 3 scanned — ' + rbHistory.length + ' round' + (rbHistory.length === 1 ? '' : 's') + ' read');
+  rbUpdateProgress();
 }
 
 /* Pattern engine trained on the owner's 337-round Red/Black history
@@ -1190,42 +1226,56 @@ function rbPatternPick(histNewestFirst){
   return { pick: 'red', conf: 54, why: 'reds outnumber blacks overall' };
 }
 
+/* Predict the next 3 colours: pick #1 from the combined history, then roll
+   each pick into the history to make the next call. Free — no credit spend. */
 function rbPredict(){
-  if(rbIsGame !== true){ toast('Upload a Red & Black game screenshot first.', 'error'); return; }
-  if(!isUnlimited() && getCredits() <= 0){ gateOnCredits(); return; }
-
-  const hist = rbHistory || [];
+  if(rbShots.length < RB_SHOTS_REQUIRED){
+    toast('Upload ' + (RB_SHOTS_REQUIRED - rbShots.length) + ' more screenshot' + (RB_SHOTS_REQUIRED - rbShots.length === 1 ? '' : 's') + ' first.', 'error');
+    return;
+  }
+  const hist = rbCombined();
   const reds = hist.filter(h => h === 'red').length;
   const blacks = hist.filter(h => h === 'black').length;
   const jokers = hist.filter(h => h === 'joker').length;
 
-  const { pick, conf, why } = rbPatternPick(hist);
-
-  deductCredit();
-  updateCreditsLabel();
+  let seq = hist.slice();
+  const picks = [];
+  for(let i = 0; i < 3; i++){
+    const p = rbPatternPick(seq);
+    picks.push(p);
+    seq = [p.pick, ...seq];   // assume it lands, then call the one after
+  }
 
   const el = document.getElementById('rb-result');
   el.innerHTML = `
-    <div class="rb-card ${pick}">
-      <div class="rb-next">Virtual Oracle predicts</div>
-      <div class="rb-pick">${pick === 'red' ? '🔴 RED' : '⚫ BLACK'}</div>
-      <div class="rb-conf">${conf}% confidence · ${why}</div>
+    <div class="rb-card ${picks[0].pick}">
+      <div class="rb-next">Next round</div>
+      <div class="rb-pick">${picks[0].pick === 'red' ? '🔴 RED' : '⚫ BLACK'}</div>
+      <div class="rb-conf">${picks[0].conf}% confidence · ${picks[0].why}</div>
     </div>
+    ${picks.slice(1).map((p, i) => `
+      <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
+        <div style="width:30px;height:40px;border-radius:6px;background:${p.pick === 'red' ? '#E41827' : '#1A1C22'};color:#fff;display:grid;place-items:center;font-weight:800">${p.pick === 'red' ? 'R' : 'B'}</div>
+        <div style="flex:1">
+          <div style="font-weight:800;color:var(--chalk)">${p.pick === 'red' ? 'RED' : 'BLACK'}</div>
+          <div style="font-size:11.5px;color:var(--muted)">${p.conf}% · ${p.why}</div>
+        </div>
+      </div>`).join('')}
     <div class="stat-pill" style="display:flex;justify-content:space-around;padding:12px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
       <span style="font-size:13px;color:var(--muted)">🔴 Reds <b style="color:var(--chalk)">${reds}</b></span>
       <span style="font-size:13px;color:var(--muted)">⚫ Blacks <b style="color:var(--chalk)">${blacks}</b></span>
       <span style="font-size:13px;color:var(--muted)">🃏 Jokers <b style="color:var(--chalk)">${jokers}</b></span>
     </div>
-    <button class="analyze-btn" onclick="rbReset()">📸 Next round — upload again</button>`;
+    <button class="analyze-btn" onclick="rbReset()">📸 Start over — new screenshots</button>`;
   el.style.display = 'block';
   document.getElementById('rb-analyze').style.display = 'none';
-  gateOnCredits();
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function rbReset(){
   rbToken++;
-  rbDataUrl = ''; rbHistory = null; rbIsGame = null;
+  rbDataUrl = ''; rbHistory = null; rbIsGame = null; rbShots = [];
   document.getElementById('rb-preview').style.display = 'none';
   document.getElementById('rb-file').value = '';
   document.getElementById('rb-status').style.display = 'none';
@@ -1233,6 +1283,7 @@ function rbReset(){
   document.getElementById('rb-analyze').style.display = 'none';
   document.getElementById('rb-result').style.display = 'none';
   document.getElementById('rb-result').innerHTML = '';
+  rbUpdateProgress();
 }
 
 /* ---- Toast ---- */
