@@ -470,8 +470,6 @@ async function render(){
   const total    = members.length;
   const active   = members.filter(m => m.planEnd && m.planEnd > now).length;
   const revenue  = members.reduce((a,m) => a + (spendByEmail[m.email]||0), 0);
-  const rate     = (CURRENT && CURRENT.commission != null) ? Number(CURRENT.commission) : 10;
-  const earnings = revenue * rate / 100;
 
   /* Per-day takings (live today + the last 7 days) */
   let daily = [];
@@ -482,9 +480,8 @@ async function render(){
   /* Stat cards */
   const cards = [
     { label:'Referred Members', val: total,  ico:'☷', cls:'',     sub: active+' currently active' },
-    { label:"Today's Revenue", val: fmtMoney(today.revenue), ico:'📅', cls:'', sub: today.count+' sale'+(today.count===1?'':'s')+' today · '+fmtMoney(today.earnings)+' earned' },
-    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'', sub:'from your referrals' },
-    { label:'Your Earnings',    val: fmtMoney(earnings), ico:'★', cls:'gold', icoCls:'gold', sub: rate + '% commission on referred revenue' },
+    { label:"Today's Revenue", val: fmtMoney(today.revenue), ico:'📅', cls:'', sub: today.count+' sale'+(today.count===1?'':'s')+' today' },
+    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'gold', icoCls:'gold', sub:'from your referrals' },
   ];
   document.getElementById('stats').innerHTML = cards.map(c => `
     <div class="stat">
@@ -828,8 +825,8 @@ function renderPartnerDaily(days){
       <div style="flex:1;height:14px;background:rgba(25,28,34,.05);border-radius:4px;overflow:hidden">
         <div style="width:${w}%;height:100%;background:#1F9E48;border-radius:0 4px 4px 0"></div>
       </div>
-      <div style="width:170px;flex:0 0 auto;text-align:right;font-size:13px;font-weight:700;color:var(--bone)">${esc(fmtMoney(d.revenue))}
-        <span style="color:var(--sulfur);font-weight:600;font-size:11.5px">· ${esc(fmtMoney(d.earnings))} yours</span></div>
+      <div style="width:150px;flex:0 0 auto;text-align:right;font-size:13px;font-weight:700;color:var(--bone)">${esc(fmtMoney(d.revenue))}
+        <span style="color:var(--ash-dim);font-weight:400;font-size:11px">· ${d.count} sale${d.count===1?'':'s'}</span></div>
     </div>`;
   }).join('');
 }
@@ -889,10 +886,10 @@ async function refreshP(){
   toast('Refreshed');
 }
 
-/* Reset MY revenue/earnings display to zero (nothing is deleted; the admin's
-   totals are unaffected) */
+/* Reset MY revenue display to zero (nothing is deleted; the admin's totals
+   are unaffected) */
 async function clearRevenueP(){
-  if(!confirm('Reset your revenue and earnings display to GHS 0?\n\nCounting starts fresh from now. This only affects your dashboard.')) return;
+  if(!confirm('Reset your revenue display to GHS 0?\n\nCounting starts fresh from now. This only affects your dashboard.')) return;
   try {
     await VE.partnerClearRevenue();
     await render();
