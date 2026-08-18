@@ -675,6 +675,31 @@ app.post('/api/partner/credits', auth('partner'), wrap(async (req, res) => {
   }
 }));
 
+/* The partner's own takings per day for the last 7 days. Like the admin
+   version this reports what actually came in — the clear-revenue marker only
+   resets their running total, never this history. */
+app.get('/api/partner/revenue-daily', auth('partner'), wrap(async (req, res) => {
+  const { rows } = await query(
+    `SELECT pkg, created_at FROM purchases
+      WHERE created_at > now() - interval '7 days'
+        AND email IN (SELECT email FROM users WHERE partner=$1)`,
+    [req.user.code]);
+  const p = await loadPartner(req.user.code);
+  const rate = p && p.commission != null ? Number(p.commission) : 10;
+  const byDay = {}, days = [];
+  for (let i = 6; i >= 0; i--) {
+    const key = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push(key);
+    byDay[key] = { day: key, revenue: 0, earnings: 0, count: 0 };
+  }
+  rows.forEach((r) => {
+    const key = new Date(r.created_at).toISOString().slice(0, 10);
+    if (byDay[key]) { byDay[key].revenue += parsePrice(r.pkg); byDay[key].count++; }
+  });
+  days.forEach((k) => { byDay[k].earnings = +(byDay[k].revenue * rate / 100).toFixed(2); });
+  res.json(days.map((k) => byDay[k]));
+}));
+
 // reset the partner's own revenue/earnings display to zero (data is kept)
 app.post('/api/partner/revenue-clear', auth('partner'), wrap(async (req, res) => {
   await query('UPDATE partners SET revenue_cleared_at=now() WHERE code=$1', [req.user.code]);
