@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Oracle — Login / Register</title>
+<!-- Arriving at #sporty (back from paying the fee) does an async check that can
+     bounce to pricing — keep the form hidden until that settles. -->
+<style>html.booting body{visibility:hidden}</style>
+<script>
+(function(){
+  if(location.hash !== '#sporty') return;
+  document.documentElement.className += ' booting';
+  setTimeout(function(){ document.documentElement.classList.remove('booting'); }, 2500);  // never hang
+})();
+function pageReady(){ document.documentElement.classList.remove('booting'); }
+</script>
 <link rel="stylesheet" href="style.css">
 <style>
   body {
@@ -567,9 +578,10 @@ async function onPaymentSuccess(ref){
     (async () => {
       let me = null;
       try { me = await VE.me(); } catch(e){}
-      if(me && me.user && me.user.regFeePaid === false){ window.location.href = 'pricing.html'; return; }
+      if(me && me.user && me.user.regFeePaid === false){ location.replace('pricing.html'); return; }  // stay hidden
       showStep('step-sporty');
       updateSportyHint();
+      pageReady();
     })();
   }
 

@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Oracle — Admin</title>
+<!-- Guard BEFORE the page paints: signed-out visitors go straight to the
+     admin login instead of glimpsing the control room first. -->
+<style>html.booting body{visibility:hidden}</style>
+<script>
+(function(){
+  document.documentElement.className += ' booting';   /* hide first, so the redirect itself never flashes */
+  try { if(!localStorage.getItem('ve_atok')){ location.replace('admin-login.html'); return; } } catch(e){}
+  setTimeout(function(){ document.documentElement.classList.remove('booting'); }, 2500);  // never hang
+})();
+function pageReady(){ document.documentElement.classList.remove('booting'); }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;1,400&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
@@ -2012,7 +2023,8 @@ function toast(msg, type=''){
 
 /* ---- Init: not signed in → dedicated login page ---- */
 (function init(){
-  if(!VE.isAdmin()){ location.replace('admin-login.html'); return; }
+  if(!VE.isAdmin()){ location.replace('admin-login.html'); return; }   // stay hidden — we're leaving
+  pageReady();
   loadAll();
 })();
 </script>

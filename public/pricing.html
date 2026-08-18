@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Oracle — Choose Package</title>
+<!-- Guard BEFORE the page paints: bounce signed-out visitors and keep the
+     page hidden until we know whether to show packages or the fee card. -->
+<style>html.booting body{visibility:hidden}</style>
+<script>
+(function(){
+  document.documentElement.className += ' booting';   /* hide first, so the redirect itself never flashes */
+  try { if(!localStorage.getItem('ve_tok')){ location.replace('login.html'); return; } } catch(e){}
+  setTimeout(function(){ document.documentElement.classList.remove('booting'); }, 2500);  // never hang
+})();
+function pageReady(){ document.documentElement.classList.remove('booting'); }
+</script>
 <link rel="stylesheet" href="style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -479,7 +490,7 @@ let PAY_METHODS = [];         // enabled methods [{id,key}] — buyer picks one 
 
 /* ---- Auth guard ---- */
 const SESSION = (()=>{
-  if(!VE.isMember()){ window.location.href = 'login.html'; return null; }
+  if(!VE.isMember()){ location.replace('login.html'); return null; }
   return VE.cachedMe() || {};
 })();
 if(!SESSION) throw new Error('redirect');
@@ -564,7 +575,7 @@ function applyLocalCurrency(sportyAccount){
   } catch(e){}
 
   let me;
-  try { me = await VE.me(); } catch(e){ return; }
+  try { me = await VE.me(); } catch(e){ pageReady(); return; }
   setBuyerCountry(me.user && me.user.sportyAccount);
   applyLocalCurrency(me.user && me.user.sportyAccount);
 
@@ -572,8 +583,10 @@ function applyLocalCurrency(sportyAccount){
   if(me.user && me.user.regFeePaid === false){
     FEE_DUE = true;
     renderFeeMode();
+    pageReady();
     return;
   }
+  pageReady();   // packages are the right view — safe to show
 
   const credits = me.credits || 0;
   const uu = (me.user && me.user.unlimitedUntil) || 0;
