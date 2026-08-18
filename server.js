@@ -188,6 +188,7 @@ const userOut = (r) => r && ({
   sportyAccount: r.sporty_account || null,
   unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
   regFeePaid: !!r.reg_fee_paid,
+  created: r.created_at || null,
 });
 
 /* The one-time registration fee is sold as the "GHS 50" package (0 credits).

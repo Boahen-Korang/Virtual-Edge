@@ -450,7 +450,7 @@
         <div class="tbl-scroll">
           <table>
             <thead><tr>
-              <th>Member</th><th>Plan</th><th>Status</th><th>Credits</th><th>Referred By</th><th>Actions</th>
+              <th>Member</th><th>Joined</th><th>Status</th><th>Credits</th><th>Referred By</th><th>Actions</th>
             </tr></thead>
             <tbody id="users-body"></tbody>
           </table>
@@ -1149,17 +1149,12 @@ function renderUsers(){
 
   const { items, total } = pageItems(rows, 'users', q);
   body.innerHTML = items.map(r => {
-    const isActive = r.planEnd && r.planEnd > now;
-    const status = (r.plan == null && !r.planEnd)
-      ? `<span class="pill none">No plan</span>`
-      : isActive ? `<span class="pill active">Active</span>` : `<span class="pill expired">Expired</span>`;
-    const exp = r.planEnd ? new Date(r.planEnd).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const inf = r.credits >= 9999 ? ' inf' : '';
     return `
       <tr>
         <td><div class="name">${esc(r.name||'—')}</div><div class="email">${esc(r.email)}</div></td>
-        <td>${esc(r.plan || '—')}</td>
-        <td>${status}<div class="email" style="margin-top:4px">exp ${exp}</div></td>
+        <td><span class="ref">${esc(fmtDate(r.created))}</span></td>
+        <td>${r.regFeePaid ? '<span class="pill active">Activated</span>' : '<span class="pill pending">Fee unpaid</span>'}</td>
         <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span> <span class="email">⚽</span>
             <div class="email" style="margin-top:3px">🃏 ${r.rbCredits || 0} R&B</div></td>
         <td>${r.partner
@@ -1671,10 +1666,11 @@ function downloadCSV(filename, rows){
 }
 function exportUsers(){
   const users = getUsers(), credits = getCredits();
-  const rows = [['Name','Email','Plan','PlanEnd','Credits','ReferredBy']];
+  const rows = [['Name','Email','Joined','FeePaid','Credits','RBCredits','ReferredBy']];
   Object.keys(users).forEach(e => {
     const u = users[e];
-    rows.push([u.name||'', e, u.plan||'', u.planEnd ? new Date(u.planEnd).toISOString() : '', credits[e]||0, referredByLabel(u.partner)]);
+    rows.push([u.name||'', e, u.created || '', u.regFeePaid ? 'yes' : 'no',
+      credits[e]||0, u.rbCredits||0, referredByLabel(u.partner)]);
   });
   downloadCSV('virtual-oracle-members.csv', rows);
   toast('Members exported', 'success');
