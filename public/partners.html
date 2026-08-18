@@ -470,6 +470,8 @@ async function render(){
   const total    = members.length;
   const active   = members.filter(m => m.planEnd && m.planEnd > now).length;
   const revenue  = members.reduce((a,m) => a + (spendByEmail[m.email]||0), 0);
+  const rate     = (CURRENT && CURRENT.commission != null) ? Number(CURRENT.commission) : 10;
+  const earnings = revenue * rate / 100;
 
   /* Per-day takings (live today + the last 7 days) */
   let daily = [];
@@ -480,8 +482,9 @@ async function render(){
   /* Stat cards */
   const cards = [
     { label:'Referred Members', val: total,  ico:'☷', cls:'',     sub: active+' currently active' },
-    { label:"Today's Revenue", val: fmtMoney(today.revenue), ico:'📅', cls:'', sub: today.count+' sale'+(today.count===1?'':'s')+' today' },
-    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'gold', icoCls:'gold', sub:'from your referrals' },
+    { label:"Today's Revenue", val: fmtMoney(today.revenue), ico:'📅', cls:'', sub: today.count+' sale'+(today.count===1?'':'s')+' today · '+fmtMoney(today.earnings)+' yours' },
+    { label:'Revenue Brought In',val: fmtMoney(revenue), ico:'₵', cls:'', sub:'total paid by your referrals' },
+    { label:'Your Earnings · '+rate+'%', val: fmtMoney(earnings), ico:'★', cls:'gold', icoCls:'gold', sub:'you keep '+rate+'% of every deposit they make' },
   ];
   document.getElementById('stats').innerHTML = cards.map(c => `
     <div class="stat">
@@ -825,8 +828,8 @@ function renderPartnerDaily(days){
       <div style="flex:1;height:14px;background:rgba(25,28,34,.05);border-radius:4px;overflow:hidden">
         <div style="width:${w}%;height:100%;background:#1F9E48;border-radius:0 4px 4px 0"></div>
       </div>
-      <div style="width:150px;flex:0 0 auto;text-align:right;font-size:13px;font-weight:700;color:var(--bone)">${esc(fmtMoney(d.revenue))}
-        <span style="color:var(--ash-dim);font-weight:400;font-size:11px">· ${d.count} sale${d.count===1?'':'s'}</span></div>
+      <div style="width:175px;flex:0 0 auto;text-align:right;font-size:13px;font-weight:700;color:var(--bone)">${esc(fmtMoney(d.revenue))}
+        <span style="color:var(--sulfur);font-weight:700;font-size:12px">· ${esc(fmtMoney(d.earnings))} yours</span></div>
     </div>`;
   }).join('');
 }
