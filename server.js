@@ -903,7 +903,7 @@ app.delete('/api/admin/users/:email', auth('admin'), wrap(async (req, res) => {
 async function gamesEnabled() {
   const { rows } = await query('SELECT games_enabled FROM payment_config WHERE id=1');
   const g = (rows[0] && rows[0].games_enabled) || {};
-  return { football: g.football !== false, redblack: g.redblack !== false };
+  return { football: g.football !== false, redblack: g.redblack !== false, spin: g.spin !== false };
 }
 
 app.post('/api/admin/games', auth('admin'), wrap(async (req, res) => {
@@ -1323,14 +1323,16 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   if (!['member', 'partner', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   if (!anthropic) return res.status(503).json({ error: 'Screenshot scanning is not configured.' });
 
-  // which game's screenshot this is — football (default) or the Red/Black card game
+  // which game's screenshot this is — football (default), Red/Black or Spin the Bottle
   const game = String(req.body.game || 'football');
   const isRB = game === 'redblack';
+  const isSpin = game === 'spin';
 
-  // admin can switch either game off entirely
+  // admin can switch any game off entirely
   const ge = await gamesEnabled();
   if (isRB && !ge.redblack) return res.status(403).json({ error: 'Red & Black is currently turned off.' });
-  if (!isRB && !ge.football) return res.status(403).json({ error: 'Instant Football is currently turned off.' });
+  if (isSpin && !ge.spin) return res.status(403).json({ error: 'Spin the Bottle is currently turned off.' });
+  if (!isRB && !isSpin && !ge.football) return res.status(403).json({ error: 'Instant Football is currently turned off.' });
 
   // Each scan costs real API money — members need credits for the game they're
   // scanning: Red & Black uses its own pool, football its own (or unlimited).
@@ -1385,6 +1387,16 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   let parsed;
   try { parsed = JSON.parse(text); }
   catch { const j = text.match(/\{[\s\S]*\}/); parsed = j ? JSON.parse(j[0]) : {}; }
+
+  if (isSpin) {
+    const items = (Array.isArray(parsed.history) ? parsed.history : [])
+      .filter((h) => h && String(h.result || '').trim())
+      .map((h) => ({ t: h.t, result: String(h.result).trim().slice(0, 24) }))
+      .slice(0, 40);
+    const history = rbSortHistory(items);
+    query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
+    return res.json({ spin: parsed.isSpin === true, history });
+  }
 
   if (isRB) {
     const items = (Array.isArray(parsed.history) ? parsed.history : [])
