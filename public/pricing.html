@@ -401,6 +401,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <div class="gpick" id="gpick">
   <button class="gp on" id="gp-football" onclick="setPriceGame('football')">⚽ Instant Football</button>
   <button class="gp" id="gp-rb" onclick="setPriceGame('redblack')">🔴⚫ Red &amp; Black</button>
+  <button class="gp" id="gp-spin" onclick="setPriceGame('spin')">🍾 Spin the Bottle<span class="free-tag">FREE</span></button>
 </div>
 
 <!-- Step indicator -->
@@ -449,6 +450,28 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
     </div>
     <button class="pkg-btn" onclick="payFor(RB_PKG)">
       <span class="arrow">→</span> GET RED &amp; BLACK
+    </button>
+  </div>
+</div>
+
+<!-- Spin the Bottle pricing (free for now) -->
+<div class="packages" id="spin-pricing" style="display:none">
+  <div class="pkg-card selected">
+    <div class="pkg-top">
+      <div>
+        <div class="pkg-price" style="color:#157A36">FREE</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Spin the Bottle predictions</div>
+      </div>
+      <span class="pkg-avail">Launch offer</span>
+      <div class="pkg-icon">🍾</div>
+    </div>
+    <div class="pkg-desc">Upload a screenshot of your Spin the Bottle results — we read the recent spins and predict what lands next.</div>
+    <div class="pkg-tags">
+      <span class="pkg-tag">Upload a screenshot</span>
+      <span class="pkg-tag">No credits needed</span>
+    </div>
+    <button class="pkg-btn" onclick="window.location.href='dashboard.html#spin'">
+      <span class="arrow">→</span> START FREE
     </button>
   </div>
 </div>
@@ -513,14 +536,19 @@ if(!SESSION) throw new Error('redirect');
       }
       // admin game toggles: hide whatever is switched off
       if(cfg.games){
-        const fOn = cfg.games.football !== false, rOn = cfg.games.redblack !== false;
-        const gpF = document.getElementById('gp-football'), gpR = document.getElementById('gp-rb');
-        if(!fOn && gpF) gpF.style.display = 'none';
-        if(!rOn && gpR) gpR.style.display = 'none';
+        const on = { football: cfg.games.football !== false, redblack: cfg.games.redblack !== false, spin: cfg.games.spin !== false };
+        const tabs = { football:'gp-football', redblack:'gp-rb', spin:'gp-spin' };
+        Object.keys(tabs).forEach(k => { const el = document.getElementById(tabs[k]); if(el && !on[k]) el.style.display = 'none'; });
+        const live = Object.keys(on).filter(k => on[k]);
         const gp = document.getElementById('gpick');
-        if(!fOn && !rOn){ if(gp) gp.style.display = 'none'; setPriceGame('football'); document.getElementById('packages-list').innerHTML = '<div style="text-align:center;color:var(--ash);padding:30px">Packages are temporarily unavailable. Please check back soon.</div>'; }
-        else if(!fOn){ setPriceGame('redblack'); }
-        else if(!rOn){ setPriceGame('football'); if(gp) gp.style.display = 'none'; }
+        if(!live.length){
+          if(gp) gp.style.display = 'none';
+          setPriceGame('football');
+          document.getElementById('packages-list').innerHTML = '<div style="text-align:center;color:var(--ash);padding:30px">Packages are temporarily unavailable. Please check back soon.</div>';
+        } else {
+          if(live.length === 1 && gp) gp.style.display = 'none';   // nothing to choose between
+          setPriceGame(live[0]);
+        }
       }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
@@ -676,9 +704,11 @@ const postPayUrl = () => (FEE_DUE ? 'login.html#sporty' : 'dashboard.html');
 function setPriceGame(g){
   document.getElementById('gp-football').classList.toggle('on', g === 'football');
   document.getElementById('gp-rb').classList.toggle('on', g === 'redblack');
+  const gs = document.getElementById('gp-spin'); if(gs) gs.classList.toggle('on', g === 'spin');
   document.querySelector('.steps-wrap').style.display = g === 'football' ? '' : 'none';
   document.getElementById('packages-list').style.display = g === 'football' ? '' : 'none';
   document.getElementById('rb-pricing').style.display = g === 'redblack' ? '' : 'none';
+  const sp = document.getElementById('spin-pricing'); if(sp) sp.style.display = g === 'spin' ? '' : 'none';
 }
 
 /* Fee-mode screen: one card, no packages, no step indicator */

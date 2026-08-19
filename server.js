@@ -907,7 +907,7 @@ async function gamesEnabled() {
 }
 
 app.post('/api/admin/games', auth('admin'), wrap(async (req, res) => {
-  const g = { football: req.body.football !== false, redblack: req.body.redblack !== false };
+  const g = { football: req.body.football !== false, redblack: req.body.redblack !== false, spin: req.body.spin !== false };
   await query('UPDATE payment_config SET games_enabled=$1::jsonb WHERE id=1', [JSON.stringify(g)]);
   res.json({ ok: true, games: g });
 }));
@@ -1259,6 +1259,39 @@ function rbSortHistory(items) {
     .map((it) => it.result);
 }
 
+/* ---- Spin the Bottle: read the results history ---- */
+const SPIN_PROMPT =
+  'This is a screenshot from the SportyBet "Spin the Bottle" instant game (light or dark phone theme). ' +
+  'Find the RESULTS HISTORY — the outcomes of recent rounds, usually a strip or list showing what the ' +
+  'bottle landed on each spin. ' +
+  'Transcribe each visible outcome EXACTLY as printed — it may be a colour, a number, a multiplier ' +
+  'like "2x", a segment label or a player/seat name. Do not translate or normalise it. ' +
+  'For EACH round also transcribe its time text exactly as shown (e.g. "02:10 15/08/26") into "t" — ' +
+  'use "" if no time is visible for that entry. ' +
+  'Ignore any bet or pick the player made, and any win/lose amounts — only the round RESULT matters. ' +
+  'Set "isSpin" true ONLY if this is clearly the Spin the Bottle game (a bottle/wheel graphic, a spin ' +
+  'countdown, or a results history of spin outcomes). Football, cards, other games or non-betting ' +
+  'screens are false. ' +
+  'Respond with ONLY compact JSON: {"isSpin":true,"history":[{"t":"02:10 15/08/26","result":"Red"}]}.';
+
+const SPIN_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    isSpin: { type: 'boolean' },
+    history: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { t: { type: 'string' }, result: { type: 'string' } },
+        required: ['t', 'result'],
+      },
+    },
+  },
+  required: ['isSpin', 'history'],
+};
+
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).trim();
 
 // JSON shape Claude must return (structured outputs guarantee it parses)
@@ -1326,12 +1359,12 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2048,
-      output_config: { format: { type: 'json_schema', schema: isRB ? RB_SCHEMA : SCAN_SCHEMA } },
+      output_config: { format: { type: 'json_schema', schema: isSpin ? SPIN_SCHEMA : isRB ? RB_SCHEMA : SCAN_SCHEMA } },
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: isRB ? RB_PROMPT : SCAN_PROMPT },
+          { type: 'text', text: isSpin ? SPIN_PROMPT : isRB ? RB_PROMPT : SCAN_PROMPT },
         ],
       }],
     });
@@ -1414,7 +1447,7 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
   const ge = (r.games_enabled || {});
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
     momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods,
-    games: { football: ge.football !== false, redblack: ge.redblack !== false } });
+    games: { football: ge.football !== false, redblack: ge.redblack !== false, spin: ge.spin !== false } });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */

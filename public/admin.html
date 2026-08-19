@@ -415,6 +415,10 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
             <span style="font-weight:700;color:var(--bone)">🔴⚫ Red &amp; Black</span>
             <label class="switch"><input type="checkbox" id="game-redblack" onchange="saveGames()"><span class="sl"></span></label>
           </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-weight:700;color:var(--bone)">🍾 Spin the Bottle</span>
+            <label class="switch"><input type="checkbox" id="game-spin" onchange="saveGames()"><span class="sl"></span></label>
+          </div>
           <span class="email" style="flex-basis:100%">Turning a game off hides it from members immediately — no scans, no purchases — until you switch it back on.</span>
         </div>
       </div>
@@ -833,7 +837,7 @@ async function loadAll(){
     ]);
     _fx = fx || {};
     _daily = daily || [];
-    renderGames((pubCfg && pubCfg.games) || { football: true, redblack: true });
+    renderGames((pubCfg && pubCfg.games) || { football: true, redblack: true, spin: true });
     _users = {}; _credits = {};
     users.forEach(u => { _users[u.email] = u; _credits[u.email] = u.credits || 0; });
     _partners = partners;
@@ -1011,24 +1015,27 @@ function renderStats(){
 function renderGames(g){
   const f = document.getElementById('game-football');
   const r = document.getElementById('game-redblack');
+  const s = document.getElementById('game-spin');
   if(f) f.checked = g.football !== false;
   if(r) r.checked = g.redblack !== false;
+  if(s) s.checked = g.spin !== false;
   const st = document.getElementById('games-state');
   if(st){
-    const on = [g.football !== false ? 'Football on' : 'Football OFF',
-                g.redblack !== false ? 'R&B on' : 'R&B OFF'];
-    st.textContent = on.join(' · ');
+    st.textContent = [g.football !== false ? 'Football on' : 'Football OFF',
+                      g.redblack !== false ? 'R&B on' : 'R&B OFF',
+                      g.spin !== false ? 'Spin on' : 'Spin OFF'].join(' · ');
   }
 }
 async function saveGames(){
   const g = {
     football: document.getElementById('game-football').checked,
     redblack: document.getElementById('game-redblack').checked,
+    spin: document.getElementById('game-spin').checked,
   };
   try {
     const r = await VE.adminSetGames(g);
     renderGames(r.games || g);
-    toast('Games updated — ' + (g.football ? 'Football on' : 'Football off') + ', ' + (g.redblack ? 'R&B on' : 'R&B off'), 'success');
+    toast('Games updated — ' + (g.football ? 'Football on' : 'Football off') + ', ' + (g.redblack ? 'R&B on' : 'R&B off') + ', ' + (g.spin ? 'Spin on' : 'Spin off'), 'success');
   } catch(e){
     if(!authGuard(e)) toast(e.message || 'Could not update games.', 'error');
     loadAll();
