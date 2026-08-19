@@ -372,8 +372,13 @@ async function doLogin(){
     if(me && !u.sportyAccount){ showStep('step-sporty'); updateSportyHint(); return; }
     // Then: predictions left → dashboard, otherwise the packages page
     const credits = (me && me.credits) || 0;
+    const rbCredits = (me && me.rbCredits) || 0;
+    const spinCredits = (me && me.spinCredits) || 0;
     const unlimited = !!(u.unlimitedUntil && Date.now() < u.unlimitedUntil);
-    window.location.href = (credits > 0 || unlimited) ? 'dashboard.html' : 'pricing.html';
+    window.location.href = (credits > 0 || unlimited) ? 'dashboard.html'
+      : rbCredits > 0 ? 'dashboard.html#redblack'
+      : spinCredits > 0 ? 'dashboard.html#spin'
+      : 'pricing.html';
   } catch(e){
     errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='';
   }

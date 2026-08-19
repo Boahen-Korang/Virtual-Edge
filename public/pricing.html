@@ -701,7 +701,19 @@ function selectPackage(i){
 /* ---- Payment ---- */
 /* Where to send the buyer once this payment lands: fee payers continue the
    signup (connect SportyBet); package buyers go to the dashboard. */
-const postPayUrl = () => (FEE_DUE ? 'login.html#sporty' : 'dashboard.html');
+let LAST_PKG = null;                       // what this visit is buying
+const gameHashFor = (label) => {
+  const s = String(label || '').toLowerCase();
+  if(s.includes('spin the bottle')) return 'dashboard.html#spin';
+  if(s.includes('red & black') || s.includes('red and black')) return 'dashboard.html#redblack';
+  return 'dashboard.html';
+};
+const postPayUrl = () => {
+  if(FEE_DUE) return 'login.html#sporty';
+  let label = LAST_PKG && LAST_PKG.label;
+  if(!label){ try { label = localStorage.getItem('ve_pending_pkg') || ''; } catch(e){} }
+  return gameHashFor(label);
+};
 
 /* ---- Which game's pricing is on show ---- */
 function setPriceGame(g){
@@ -758,6 +770,8 @@ function buyPackage(e, i){
 }
 
 function payFor(pkg){
+  LAST_PKG = pkg;
+  try { localStorage.setItem('ve_pending_pkg', pkg.label || ''); } catch(e){}
   if(FEE_DUE && pkg.id !== 'fee'){ toast('Please pay the one-time registration fee first.', 'error'); pkg = FEE_PKG; }
   // Methods the admin has toggled on; older configs fall back to the single provider.
   let methods = PAY_METHODS.length ? PAY_METHODS
