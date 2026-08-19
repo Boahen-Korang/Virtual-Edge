@@ -515,7 +515,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
         <span class="ss-text" id="spin-status-text">Reading the results…</span>
       </div>
       <div id="spin-history"></div>
-      <button class="analyze-btn" id="spin-analyze" style="display:none" onclick="spinPredict()">⚡ Predict My Next Spin</button>
+      <button class="analyze-btn" id="spin-analyze" style="display:none" onclick="spinPredict()">⚡ Predict My Next 3 Spins</button>
     </div>
 
     <div class="result-section" id="spin-result"></div>
@@ -1402,7 +1402,7 @@ function spinUpdateProgress(){
   const title = document.getElementById('spin-upload-title');
   const up = document.getElementById('spin-upload-label');
   if(n >= SPIN_SHOTS_REQUIRED){
-    prog.innerHTML = '✓ All <b>3 screenshots</b> scanned — ready to predict your next spin';
+    prog.innerHTML = '✓ All <b>3 screenshots</b> scanned — ready to predict your next 3 spins';
     if(up) up.style.display = 'none';
     document.getElementById('spin-analyze').style.display = 'flex';
   } else {
@@ -1514,17 +1514,29 @@ function spinPredict(){
   const hist = spinCombined();
   if(!hist.length) return;
 
-  const pick = spinPatternPick(hist);
+  let seq = hist.slice();          // newest first
+  const picks = [];
+  for(let i = 0; i < 3; i++){
+    const p = spinPatternPick(seq);
+    picks.push(p);
+    seq = [p, ...seq];             // assume it lands, then call the next
+  }
 
   const tally = {};
   hist.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
 
   const el = document.getElementById('spin-result');
   el.innerHTML = `
-    <div class="rb-card" style="background:linear-gradient(160deg, ${spinColour(pick)}, rgba(0,0,0,.35))">
+    <div class="rb-card" style="background:linear-gradient(160deg, ${spinColour(picks[0])}, rgba(0,0,0,.35))">
       <div class="rb-next">Next spin</div>
-      <div class="rb-pick" style="font-size:40px">${spinMeta(pick).short} ${spinMeta(pick).label}</div>
+      <div class="rb-pick" style="font-size:40px">${spinMeta(picks[0]).short} ${spinMeta(picks[0]).label}</div>
     </div>
+    ${picks.slice(1).map((p, i) => `
+      <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
+        <div style="width:34px;height:40px;border-radius:6px;background:${spinColour(p)};color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px">${spinMeta(p).short}</div>
+        <div style="flex:1"><div style="font-weight:800;color:var(--chalk)">${spinMeta(p).label}</div></div>
+      </div>`).join('')}
     <div style="padding:12px 14px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
       <div class="ti-label" style="margin-bottom:8px">What has been landing</div>
       ${['up','middle','down'].map(k => {
