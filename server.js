@@ -1334,15 +1334,20 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
 
   // Each scan costs real API money — members need credits for the game they're
   // scanning: Red & Black uses its own pool, football its own (or unlimited).
+  // Spin the Bottle is free while it launches, but only for activated accounts
+  // so throwaway registrations can't drain the scan budget.
   if (req.user.role === 'member') {
     const [c, u] = await Promise.all([
       query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]),
-      query('SELECT unlimited_until FROM users WHERE email=$1', [req.user.email]),
+      query('SELECT unlimited_until, reg_fee_paid FROM users WHERE email=$1', [req.user.email]),
     ]);
     const credits = c.rows[0] ? c.rows[0].amount : 0;
     const rbCredits = c.rows[0] ? c.rows[0].rb_amount : 0;
     const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
-    if (isRB) {
+    const feePaid = !(u.rows[0] && u.rows[0].reg_fee_paid === false);
+    if (isSpin) {
+      if (!feePaid) return res.status(402).json({ error: 'Pay the GHS 50 registration fee to activate your account first.' });
+    } else if (isRB) {
       if (rbCredits <= 0) return res.status(402).json({ error: 'You need Red & Black credits — buy the Red & Black package first.' });
     } else if (!credits && !unlimited) {
       return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
