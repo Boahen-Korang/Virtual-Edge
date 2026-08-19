@@ -208,6 +208,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /* Which credit pool a package funds: Red & Black packages feed rb_amount,
    everything else feeds the Instant Football pool. */
 const isRBPackage = (pkg) => /red\s*&\s*black/i.test(String(pkg || ''));
+const isSpinPackage = (pkg) => String(pkg || '').toLowerCase().includes('spin the bottle');
 async function creditPurchaseOnce(email, pkg, reference, predictions) {
   const client = await pool.connect();
   try {
@@ -226,14 +227,16 @@ async function creditPurchaseOnce(email, pkg, reference, predictions) {
         [email, Date.now(), DAY_MS]);
     } else if (predictions > 0) {
       // separate pools: RB packages fund rb_amount, football packages fund amount
-      const fb = isRBPackage(pkg) ? 0 : predictions;
       const rb = isRBPackage(pkg) ? predictions : 0;
+      const sp = isSpinPackage(pkg) ? predictions : 0;
+      const fb = (rb || sp) ? 0 : predictions;
       await client.query(
-        `INSERT INTO credits (email,amount,rb_amount) VALUES ($1,$2,$3)
+        `INSERT INTO credits (email,amount,rb_amount,spin_amount) VALUES ($1,$2,$3,$4)
          ON CONFLICT (email) DO UPDATE SET
            amount = credits.amount + EXCLUDED.amount,
-           rb_amount = credits.rb_amount + EXCLUDED.rb_amount`,
-        [email, fb, rb]);
+           rb_amount = credits.rb_amount + EXCLUDED.rb_amount,
+           spin_amount = credits.spin_amount + EXCLUDED.spin_amount`,
+        [email, fb, rb, sp]);
     }
     await client.query('COMMIT');
     return { credited: true, duplicate: false };
@@ -345,10 +348,11 @@ app.post('/api/auth/reset', wrap(async (req, res) => {
 app.get('/api/me', auth('member'), wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [req.user.email]);
   if (!rows.length) return res.status(404).json({ error: 'Not found' });
-  const c = await query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]);
+  const c = await query('SELECT amount, rb_amount, spin_amount FROM credits WHERE email=$1', [req.user.email]);
   res.json({ user: userOut(rows[0]),
     credits: c.rows[0] ? c.rows[0].amount : 0,
-    rbCredits: c.rows[0] ? c.rows[0].rb_amount : 0 });
+    rbCredits: c.rows[0] ? c.rows[0].rb_amount : 0,
+    spinCredits: c.rows[0] ? c.rows[0].spin_amount : 0 });
 }));
 
 // member's pushed picks (optionally only pending)
@@ -451,9 +455,11 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
    public/pricing.html. Credits come from HERE, never from the client, so a
    tampered request can't claim more than the package grants. */
 const CLAIM_PACKAGES = {
-  'GHS 50': 0,                    // registration fee
-  'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4,   // Instant Football packages
-  'GHS 500 · Red & Black': 3,     // Red & Black: one session = 3 screenshots → 3 predictions
+  'GHS 50': 0,                                 // registration fee
+  'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4,    // Instant Football packages
+  'GHS 350 · Red & Black': 3,                  // one session: 3 screenshots -> 3 predictions
+  'GHS 350 · Spin the Bottle': 3,              // same deal for the spin game
+  'GHS 500 · Red & Black': 3,                  // previous price, still honoured for cached pages
 };
 
 app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
@@ -541,12 +547,14 @@ app.get('/api/me/manual-claims/:id', auth('member'), wrap(async (req, res) => {
 // spend a credit (when generating a prediction)
 app.post('/api/me/credits/spend', auth('member'), wrap(async (req, res) => {
   const n = parseInt(req.body.amount, 10) || 1;
-  const col = String(req.body.game || '') === 'rb' ? 'rb_amount' : 'amount';
+  const g = String(req.body.game || '');
+  const col = g === 'rb' ? 'rb_amount' : g === 'spin' ? 'spin_amount' : 'amount';
   const { rows } = await query(
-    `UPDATE credits SET ${col} = GREATEST(0, ${col} - $2) WHERE email=$1 RETURNING amount, rb_amount`,
+    `UPDATE credits SET ${col} = GREATEST(0, ${col} - $2) WHERE email=$1 RETURNING amount, rb_amount, spin_amount`,
     [req.user.email, n]
   );
-  res.json({ credits: rows[0] ? rows[0].amount : 0, rbCredits: rows[0] ? rows[0].rb_amount : 0 });
+  res.json({ credits: rows[0] ? rows[0].amount : 0, rbCredits: rows[0] ? rows[0].rb_amount : 0,
+    spinCredits: rows[0] ? rows[0].spin_amount : 0 });
 }));
 
 /* ============================ PARTNER AUTH ============================ */
@@ -641,7 +649,7 @@ app.post('/api/partner/credits', auth('partner'), wrap(async (req, res) => {
   if (!p) return res.status(403).json({ error: 'Account unavailable' });
   const email = norm(req.body.email);
   const amount = parseInt(req.body.amount, 10);
-  const rb = String(req.body.game || '') === 'rb';
+  const pg = String(req.body.game || '');
   if (!email || !isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Choose a member and a positive number of credits.' });
   if (amount > 500) return res.status(400).json({ error: 'Grant at most 500 credits at a time.' });
 
@@ -660,7 +668,7 @@ app.post('/api/partner/credits', auth('partner'), wrap(async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(402).json({ error: 'Not enough allowance left. Ask the admin to top you up.' });
     }
-    const col = rb ? 'rb_amount' : 'amount';
+    const col = pg === 'rb' ? 'rb_amount' : pg === 'spin' ? 'spin_amount' : 'amount';
     await client.query(
       `INSERT INTO credits (email,${col}) VALUES ($1,$2)
        ON CONFLICT (email) DO UPDATE SET ${col} = credits.${col} + EXCLUDED.${col}`,
@@ -770,10 +778,10 @@ app.post('/api/admin/login', wrap(async (req, res) => {
 
 app.get('/api/admin/users', auth('admin'), wrap(async (req, res) => {
   const u = await query('SELECT * FROM users ORDER BY created_at DESC');
-  const c = await query('SELECT email, amount, rb_amount FROM credits');
-  const credits = {}, rbCredits = {};
-  c.rows.forEach((r) => { credits[r.email] = r.amount; rbCredits[r.email] = r.rb_amount; });
-  res.json(u.rows.map((r) => ({ ...userOut(r), credits: credits[r.email] || 0, rbCredits: rbCredits[r.email] || 0 })));
+  const c = await query('SELECT email, amount, rb_amount, spin_amount FROM credits');
+  const credits = {}, rbCredits = {}, spinCredits = {};
+  c.rows.forEach((r) => { credits[r.email] = r.amount; rbCredits[r.email] = r.rb_amount; spinCredits[r.email] = r.spin_amount; });
+  res.json(u.rows.map((r) => ({ ...userOut(r), credits: credits[r.email] || 0, rbCredits: rbCredits[r.email] || 0, spinCredits: spinCredits[r.email] || 0 })));
 }));
 
 app.get('/api/admin/partners', auth('admin'), wrap(async (req, res) => {
@@ -842,7 +850,8 @@ app.post('/api/admin/credits', auth('admin'), wrap(async (req, res) => {
   const email = norm(req.body.email);
   const amount = parseInt(req.body.amount, 10);
   if (!email || isNaN(amount)) return res.status(400).json({ error: 'Email and a numeric amount are required.' });
-  const col = String(req.body.game || '') === 'rb' ? 'rb_amount' : 'amount';
+  const g = String(req.body.game || '');
+  const col = g === 'rb' ? 'rb_amount' : g === 'spin' ? 'spin_amount' : 'amount';
   const { rows } = await query(
     `INSERT INTO credits (email,${col}) VALUES ($1,$2)
      ON CONFLICT (email) DO UPDATE SET ${col} = GREATEST(0, credits.${col} + EXCLUDED.${col})
@@ -978,7 +987,7 @@ app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => 
         [row.email, DAY_MS]);
       revoked = -1;
     } else if (preds > 0) {
-      const col = isRBPackage(row.pkg) ? 'rb_amount' : 'amount';
+      const col = isRBPackage(row.pkg) ? 'rb_amount' : isSpinPackage(row.pkg) ? 'spin_amount' : 'amount';
       await query(`UPDATE credits SET ${col} = GREATEST(0, ${col} - $2) WHERE email=$1`, [row.email, preds]);
       revoked = preds;
     }
@@ -1340,15 +1349,16 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   // so throwaway registrations can't drain the scan budget.
   if (req.user.role === 'member') {
     const [c, u] = await Promise.all([
-      query('SELECT amount, rb_amount FROM credits WHERE email=$1', [req.user.email]),
+      query('SELECT amount, rb_amount, spin_amount FROM credits WHERE email=$1', [req.user.email]),
       query('SELECT unlimited_until, reg_fee_paid FROM users WHERE email=$1', [req.user.email]),
     ]);
     const credits = c.rows[0] ? c.rows[0].amount : 0;
     const rbCredits = c.rows[0] ? c.rows[0].rb_amount : 0;
+    const spinCredits = c.rows[0] ? c.rows[0].spin_amount : 0;
     const unlimited = u.rows[0] && Number(u.rows[0].unlimited_until) > Date.now();
     const feePaid = !(u.rows[0] && u.rows[0].reg_fee_paid === false);
     if (isSpin) {
-      if (!feePaid) return res.status(402).json({ error: 'Pay the GHS 50 registration fee to activate your account first.' });
+      if (spinCredits <= 0) return res.status(402).json({ error: 'You need Spin the Bottle credits — buy the Spin the Bottle package first.' });
     } else if (isRB) {
       if (rbCredits <= 0) return res.status(402).json({ error: 'You need Red & Black credits — buy the Red & Black package first.' });
     } else if (!credits && !unlimited) {

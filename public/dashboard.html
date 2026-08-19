@@ -564,10 +564,12 @@ showUserEmail();
    Two separate pools: football credits and Red & Black credits. */
 let creditsCount = 0;
 let rbCreditsCount = 0;
+let spinCreditsCount = 0;
 let unlimitedUntil = 0;                       // epoch ms; unlimited (football) while now < this
 function isUnlimited(){ return unlimitedUntil > Date.now(); }
 function getCredits(){ return creditsCount; }
 function getRbCredits(){ return rbCreditsCount; }
+function getSpinCredits(){ return spinCreditsCount; }
 function deductCredit(){
   if(isUnlimited()) return;                   // 24h unlimited — don't burn credits
   creditsCount = Math.max(0, creditsCount - 1);
@@ -579,7 +581,7 @@ function fmtRemaining(ms){
 }
 function updateCreditsLabel(){
   const el = document.getElementById('credits-label');
-  if(GAME === 'spin'){ el.textContent = 'Spin · free'; return; }
+  if(GAME === 'spin'){ const n = getSpinCredits(); el.textContent = n + ' Spin credit' + (n===1?'':'s'); return; }
   if(GAME === 'redblack'){
     const n = getRbCredits();
     el.textContent = `${n} R&B credit${n===1?'':'s'}`;
@@ -630,6 +632,7 @@ async function refreshAccount(){
     const me = await VE.me();
     creditsCount = me.credits || 0;
     rbCreditsCount = me.rbCredits || 0;
+    spinCreditsCount = me.spinCredits || 0;
     if(me.user){ SESSION.name = me.user.name; SESSION.email = me.user.email || SESSION.email; SESSION.plan = me.user.plan; SESSION.planEnd = me.user.planEnd; unlimitedUntil = me.user.unlimitedUntil || 0; }
     showUserEmail();
   } catch(e){}
@@ -643,7 +646,7 @@ async function refreshAccount(){
 let GAME = 'football';
 function gateOnCredits(){
   // each game gates on its own pool (an R&B session needs 3 R&B credits)
-  const out = GAME === 'spin' ? false           // free while it launches
+  const out = GAME === 'spin' ? getSpinCredits() < 3
     : GAME === 'redblack' ? getRbCredits() < 3
     : (!isUnlimited() && getCredits() <= 0);
   const up = document.getElementById('upload-section');
@@ -659,6 +662,8 @@ function gateOnCredits(){
     const p = nc.querySelector('p');
     if(p) p.textContent = GAME === 'redblack'
       ? 'A Red & Black session needs 3 R&B credits. Buy the Red & Black package to continue.'
+      : GAME === 'spin'
+      ? 'A Spin the Bottle session needs 3 Spin credits. Buy the Spin the Bottle package to continue.'
       : "You don't have any predictions yet. Buy a package to start scanning your screenshots.";
   }
   if(rs && (out || GAME !== 'football')){ rs.style.display = 'none'; }
@@ -1511,8 +1516,16 @@ function spinPredict(){
     toast('Upload ' + left + ' more screenshot' + (left === 1 ? '' : 's') + ' first.', 'error');
     return;
   }
+  if(getSpinCredits() < 3){
+    toast('You need 3 Spin credits for a session — buy the Spin the Bottle package.', 'error');
+    gateOnCredits();
+    return;
+  }
   const hist = spinCombined();
   if(!hist.length) return;
+  spinCreditsCount = Math.max(0, spinCreditsCount - 3);
+  VE.spendCredit(3, 'spin').catch(()=>{});
+  updateCreditsLabel();
 
   let seq = hist.slice();          // newest first
   const picks = [];

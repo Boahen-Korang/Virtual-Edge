@@ -1174,7 +1174,7 @@ function renderUsers(){
         <td><span class="ref">${esc(fmtDate(r.created))}</span></td>
         <td>${r.regFeePaid ? '<span class="pill active">Activated</span>' : '<span class="pill pending">Fee unpaid</span>'}</td>
         <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span> <span class="email">⚽</span>
-            <div class="email" style="margin-top:3px">🃏 ${r.rbCredits || 0} R&B</div></td>
+            <div class="email" style="margin-top:3px">🃏 ${r.rbCredits || 0} R&B · 🍾 ${r.spinCredits || 0} Spin</div></td>
         <td>${r.partner
           ? `<span class="codechip">${esc(r.partner)}</span><div class="email" style="margin-top:4px">${esc((getPartners().find(x => x.code === r.partner) || {}).name || '')}</div>`
           : `<span class="ref">— direct</span>`}</td>
@@ -1656,14 +1656,16 @@ function renderGatewayStatus(){
 async function grantCredits(email){
   const raw = prompt('Add how many predictions to ' + email + '?\n' +
     '• plain number = Instant Football credits (9999 for unlimited)\n' +
-    '• prefix rb: for Red & Black credits, e.g. rb:3');
+    '• prefix rb: for Red & Black credits, e.g. rb:3\n' +
+    '• prefix spin: for Spin the Bottle credits, e.g. spin:3');
   if(raw == null) return;
   const isRb = /^rb:/i.test(raw.trim());
-  const add = parseInt(raw.trim().replace(/^rb:/i, ''), 10);
+  const isSpin = /^spin:/i.test(raw.trim());
+  const add = parseInt(raw.trim().replace(/^(rb|spin):/i, ''), 10);
   if(isNaN(add)){ toast('Enter a valid number.'); return; }
   try {
-    await VE.adminGrantCredits(email, add, isRb ? 'rb' : undefined);
-    toast('Added ' + add + (isRb ? ' Red & Black' : '') + ' credits to ' + email, 'success');
+    await VE.adminGrantCredits(email, add, isRb ? 'rb' : isSpin ? 'spin' : undefined);
+    toast('Added ' + add + (isRb ? ' Red & Black' : isSpin ? ' Spin the Bottle' : '') + ' credits to ' + email, 'success');
     await loadAll(); refresh();
   }
   catch(e){ if(!authGuard(e)) toast(e.message || 'Could not add credits.', 'error'); }

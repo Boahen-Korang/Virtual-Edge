@@ -396,6 +396,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
               <select class="sel" id="gc-game">
                 <option value="football">⚽ Instant Football</option>
                 <option value="rb">🔴⚫ Red &amp; Black</option>
+                <option value="spin">🍾 Spin the Bottle</option>
               </select>
             </div>
             <div class="field"><label>Credits</label><input id="gc-amount" type="number" min="1" placeholder="e.g. 3" autocomplete="off"></div>
@@ -876,7 +877,7 @@ async function givePartnerCredits(){
   try {
     const r = await VE.partnerGrantCredits(email, amount, game);
     if(CURRENT) CURRENT.creditAllowance = r.allowance;
-    toast('Gave ' + amount + (game === 'rb' ? ' Red & Black' : '') + ' credit' + (amount===1?'':'s') + ' to ' + email, 'success');
+    toast('Gave ' + amount + (game === 'rb' ? ' Red & Black' : game === 'spin' ? ' Spin the Bottle' : '') + ' credit' + (amount===1?'':'s') + ' to ' + email, 'success');
     document.getElementById('gc-amount').value = '';
     await render();
   } catch(e){ toast(e.message || 'Could not give credits.'); }

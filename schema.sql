@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS credits (
   rb_amount INTEGER NOT NULL DEFAULT 0    -- Red & Black credits (separate pool)
 );
 ALTER TABLE credits ADD COLUMN IF NOT EXISTS rb_amount INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE credits ADD COLUMN IF NOT EXISTS spin_amount INTEGER NOT NULL DEFAULT 0;
 
 -- Tracks screenshot-scan usage so the admin knows when to top up API credits.
 CREATE TABLE IF NOT EXISTS scan_meter (

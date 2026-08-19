@@ -401,7 +401,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <div class="gpick" id="gpick">
   <button class="gp on" id="gp-football" onclick="setPriceGame('football')">⚽ Instant Football</button>
   <button class="gp" id="gp-rb" onclick="setPriceGame('redblack')">🔴⚫ Red &amp; Black</button>
-  <button class="gp" id="gp-spin" onclick="setPriceGame('spin')">🍾 Spin the Bottle<span class="free-tag">FREE</span></button>
+  <button class="gp" id="gp-spin" onclick="setPriceGame('spin')">🍾 Spin the Bottle</button>
 </div>
 
 <!-- Step indicator -->
@@ -437,7 +437,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   <div class="pkg-card selected">
     <div class="pkg-top">
       <div>
-        <div class="pkg-price">GHS 500</div>
+        <div class="pkg-price">GHS 350</div>
         <div class="pkg-local" id="rb-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
       </div>
       <span class="pkg-avail">Available</span>
@@ -459,19 +459,19 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   <div class="pkg-card selected">
     <div class="pkg-top">
       <div>
-        <div class="pkg-price" style="color:#157A36">FREE</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Spin the Bottle predictions</div>
+        <div class="pkg-price">GHS 350</div>
+        <div class="pkg-local" id="spin-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
       </div>
-      <span class="pkg-avail">Launch offer</span>
+      <span class="pkg-avail">Available</span>
       <div class="pkg-icon">🍾</div>
     </div>
-    <div class="pkg-desc">Upload a screenshot of your Spin the Bottle results — we read the recent spins and predict what lands next.</div>
+    <div class="pkg-desc">Upload 3 screenshots of your Spin the Bottle results — we read the recent spins and predict your next 3.</div>
     <div class="pkg-tags">
-      <span class="pkg-tag">Upload a screenshot</span>
-      <span class="pkg-tag">No credits needed</span>
+      <span class="pkg-tag">3 screenshots</span>
+      <span class="pkg-tag">3 predictions</span>
     </div>
-    <button class="pkg-btn" onclick="window.location.href='dashboard.html#spin'">
-      <span class="arrow">→</span> START FREE
+    <button class="pkg-btn" onclick="payFor(SPIN_PKG)">
+      <span class="arrow">→</span> GET SPIN THE BOTTLE
     </button>
   </div>
 </div>
@@ -592,6 +592,8 @@ function applyLocalCurrency(sportyAccount){
   });
   const rbl = document.getElementById('rb-local');
   if(rbl) rbl.textContent = cur.sym + Math.round(RB_PKG.price * cur.rate).toLocaleString() + ' ' + cur.code;
+  const spl = document.getElementById('spin-local');
+  if(spl) spl.textContent = cur.sym + Math.round(SPIN_PKG.price * cur.rate).toLocaleString() + ' ' + cur.code;
 }
 
 /* Load the member's balance + show local-currency prices (from their country) */
@@ -640,7 +642,8 @@ let FEE_DUE = false;
    NOTE: if you change prices/credits here (or RB_PKG below), update
    CLAIM_PACKAGES in server.js too — direct-payment (MoMo/bank) claims are
    validated against that list. */
-const RB_PKG = { id:'rb500', price:500, label:'GHS 500 · Red & Black', preds:3, desc:'Red & Black — 3 screenshots, 3 predictions', icon:'🃏', tag:'Red & Black' };
+const RB_PKG   = { id:'rb350',   price:350, label:'GHS 350 · Red & Black',      preds:3, desc:'Red & Black — 3 screenshots, 3 predictions',      icon:'🃏', tag:'Red & Black' };
+const SPIN_PKG = { id:'spin350', price:350, label:'GHS 350 · Spin the Bottle', preds:3, desc:'Spin the Bottle — 3 screenshots, 3 predictions', icon:'🍾', tag:'Spin the Bottle' };
 const PACKAGES = [
   { id:'p250', price:250, label:'GHS 250', preds:2, desc:'2 predictions per screenshot', icon:'⚡', tag:'2 predictions' },
   { id:'p350', price:350, label:'GHS 350', preds:3, desc:'3 predictions per screenshot', icon:'🔥', tag:'3 predictions' },
