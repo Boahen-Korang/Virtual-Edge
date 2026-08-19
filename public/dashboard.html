@@ -495,9 +495,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 
   <!-- Spin the Bottle section (free) -->
   <div id="spin-section" style="display:none">
+    <div class="ti-label" id="spin-progress" style="margin-bottom:10px;text-align:center">
+      Upload screenshot <b>1 of 3</b> — your most recent Spin the Bottle results
+    </div>
     <label class="upload-label" id="spin-upload-label">
       <span class="uz-icon">🍾</span>
-      <div class="uz-title">Upload Spin the Bottle Screenshot</div>
+      <div class="uz-title" id="spin-upload-title">Upload Spin the Bottle Screenshot (1/3)</div>
       <div class="uz-sub">Show the recent results — we read each spin as Up, Middle or Down</div>
       <input type="file" id="spin-file" accept="image/*" style="display:none" onclick="this.value=null" onchange="onSpinFile(event)">
     </label>
@@ -512,7 +515,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
         <span class="ss-text" id="spin-status-text">Reading the results…</span>
       </div>
       <div id="spin-history"></div>
-      <button class="analyze-btn" id="spin-analyze" style="display:none" onclick="spinPredict()">⚡ Predict Next Spin</button>
+      <button class="analyze-btn" id="spin-analyze" style="display:none" onclick="spinPredict()">⚡ Predict My Next Spin</button>
     </div>
 
     <div class="result-section" id="spin-result"></div>
@@ -1388,6 +1391,37 @@ function rbReset(){
    or multiplier), so nothing here assumes a fixed set.
    ============================================================ */
 let spinDataUrl = '', spinHistory = null, spinIsGame = null, spinToken = 0;
+const SPIN_SHOTS_REQUIRED = 3;
+let spinShots = [];   // one history per accepted screenshot, newest batch first
+
+function spinCombined(){ return [].concat(...spinShots); }
+
+function spinUpdateProgress(){
+  const n = spinShots.length;
+  const prog = document.getElementById('spin-progress');
+  const title = document.getElementById('spin-upload-title');
+  const up = document.getElementById('spin-upload-label');
+  if(n >= SPIN_SHOTS_REQUIRED){
+    prog.innerHTML = '✓ All <b>3 screenshots</b> scanned — ready to predict your next spin';
+    if(up) up.style.display = 'none';
+    document.getElementById('spin-analyze').style.display = 'flex';
+  } else {
+    const hints = ['your most recent Spin the Bottle results',
+                   'scroll to older results and screenshot again',
+                   'scroll further — one more batch of older spins'];
+    prog.innerHTML = (n ? '✓ ' + n + ' saved — u' : 'U') + 'pload screenshot <b>' + (n + 1) + ' of 3</b> — ' + hints[n];
+    if(title) title.textContent = 'Upload Spin the Bottle Screenshot (' + (n + 1) + '/3)';
+    if(up) up.style.display = 'block';
+    document.getElementById('spin-analyze').style.display = 'none';
+  }
+  const strip = spinCombined();
+  document.getElementById('spin-history').innerHTML = strip.length
+    ? '<div class="ti-label" style="margin-top:12px">Spins collected so far · ' + strip.length + ' (newest first)</div>'
+      + '<div class="rb-strip">' + strip.map(h =>
+          `<div class="rb-dot" title="${spinMeta(h).label}" style="background:${spinColour(h)};width:auto;min-width:30px;padding:0 8px;font-size:13px">${spinMeta(h).short}</div>`
+        ).join('') + '</div>'
+    : '';
+}
 
 function onSpinFile(e){
   const file = e.target.files[0];
@@ -1438,27 +1472,27 @@ async function spinScan(dataUrl){
   spinIsGame = !!(r && r.spin);
   spinHistory = (r && r.history) || [];
   if(!spinIsGame){
-    spinStatus('warn', '⚠ This does not look like Spin the Bottle. Upload the game screen showing recent results.');
+    spinStatus('warn', '⚠ This does not look like Spin the Bottle — that screenshot was not counted. Upload the game screen showing recent results.');
     return;
   }
   if(!spinHistory.length){
-    spinStatus('warn', '⚠ No results visible in that screenshot. Make sure the recent spins show, then try again.');
+    spinStatus('warn', '⚠ No results visible in that screenshot — not counted. Make sure the recent spins show, then try again.');
     return;
   }
-  spinStatus('ok', '✓ Game recognised — ' + spinHistory.length + ' recent spin' + (spinHistory.length === 1 ? '' : 's') + ' read');
-  document.getElementById('spin-history').innerHTML =
-    '<div class="ti-label" style="margin-top:12px">Recent results (newest first)</div>' +
-    '<div class="rb-strip">' + spinHistory.map(h =>
-      `<div class="rb-dot" title="${spinMeta(h).label}" style="background:${spinColour(h)};width:auto;min-width:30px;padding:0 8px;font-size:13px">${spinMeta(h).short}</div>`
-    ).join('') + '</div>';
-  document.getElementById('spin-analyze').style.display = 'flex';
+  spinShots.push(spinHistory);
+  spinStatus('ok', '✓ Screenshot ' + spinShots.length + ' of 3 scanned — ' + spinHistory.length + ' spin' + (spinHistory.length === 1 ? '' : 's') + ' read');
+  spinUpdateProgress();
 }
 
 function escHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 function spinPredict(){
-  if(spinIsGame !== true){ toast('Upload a Spin the Bottle screenshot first.', 'error'); return; }
-  const hist = spinHistory || [];
+  if(spinShots.length < SPIN_SHOTS_REQUIRED){
+    const left = SPIN_SHOTS_REQUIRED - spinShots.length;
+    toast('Upload ' + left + ' more screenshot' + (left === 1 ? '' : 's') + ' first.', 'error');
+    return;
+  }
+  const hist = spinCombined();
   if(!hist.length) return;
 
   /* Weight recent spins more heavily than older ones, and don't back an
@@ -1492,7 +1526,7 @@ function spinPredict(){
         </div>`;
       }).join('')}
     </div>
-    <button class="analyze-btn" onclick="spinReset()">📸 Next round — upload again</button>`;
+    <button class="analyze-btn" onclick="spinReset()">📸 Start over — new screenshots</button>`;
   el.style.display = 'block';
   document.getElementById('spin-analyze').style.display = 'none';
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1500,7 +1534,7 @@ function spinPredict(){
 
 function spinReset(){
   spinToken++;
-  spinDataUrl = ''; spinHistory = null; spinIsGame = null;
+  spinDataUrl = ''; spinHistory = null; spinIsGame = null; spinShots = [];
   document.getElementById('spin-preview').style.display = 'none';
   document.getElementById('spin-file').value = '';
   document.getElementById('spin-status').style.display = 'none';
@@ -1508,6 +1542,7 @@ function spinReset(){
   document.getElementById('spin-analyze').style.display = 'none';
   document.getElementById('spin-result').style.display = 'none';
   document.getElementById('spin-result').innerHTML = '';
+  spinUpdateProgress();
 }
 
 /* ---- Toast ---- */
