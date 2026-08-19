@@ -498,7 +498,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
     <label class="upload-label" id="spin-upload-label">
       <span class="uz-icon">🍾</span>
       <div class="uz-title">Upload Spin the Bottle Screenshot</div>
-      <div class="uz-sub">Show the recent results so we can read the last spins</div>
+      <div class="uz-sub">Show the recent results — we read each spin as Up, Middle or Down</div>
       <input type="file" id="spin-file" accept="image/*" style="display:none" onclick="this.value=null" onchange="onSpinFile(event)">
     </label>
 
@@ -1412,13 +1412,14 @@ function spinStatus(kind, msg){
   document.getElementById('spin-status-text').textContent = msg;
 }
 
-/* one stable colour per distinct outcome label */
-const SPIN_COLOURS = ['#E41827','#1A1C22','#1F9E48','#2563EB','#B07E12','#7C3AED','#0891B2','#DB2777'];
-function spinColour(label){
-  const keys = [...new Set(spinHistory || [])];
-  const i = keys.indexOf(label);
-  return SPIN_COLOURS[(i < 0 ? 0 : i) % SPIN_COLOURS.length];
-}
+/* the bottle lands on one of three positions */
+const SPIN_META = {
+  up:     { label: 'UP',     short: '↑', colour: '#1F9E48' },
+  middle: { label: 'MIDDLE', short: '→', colour: '#B07E12' },
+  down:   { label: 'DOWN',   short: '↓', colour: '#E41827' },
+};
+const spinMeta = k => SPIN_META[k] || { label: String(k || '?').toUpperCase(), short: '?', colour: '#5B6472' };
+const spinColour = k => spinMeta(k).colour;
 
 async function spinScan(dataUrl){
   const mine = ++spinToken;
@@ -1448,7 +1449,7 @@ async function spinScan(dataUrl){
   document.getElementById('spin-history').innerHTML =
     '<div class="ti-label" style="margin-top:12px">Recent results (newest first)</div>' +
     '<div class="rb-strip">' + spinHistory.map(h =>
-      `<div class="rb-dot" style="background:${spinColour(h)};width:auto;min-width:26px;padding:0 7px;font-size:10px">${escHtml(h)}</div>`
+      `<div class="rb-dot" title="${spinMeta(h).label}" style="background:${spinColour(h)};width:auto;min-width:30px;padding:0 8px;font-size:13px">${spinMeta(h).short}</div>`
     ).join('') + '</div>';
   document.getElementById('spin-analyze').style.display = 'flex';
 }
@@ -1462,29 +1463,34 @@ function spinPredict(){
 
   /* Weight recent spins more heavily than older ones, and don't back an
      outcome that just landed twice in a row (spins rarely three-peat). */
-  const weights = {};
-  hist.forEach((h, i) => { weights[h] = (weights[h] || 0) + 1 / (1 + i * 0.15); });
+  const weights = { up: 0, middle: 0, down: 0 };
+  hist.forEach((h, i) => { if(weights[h] !== undefined) weights[h] += 1 / (1 + i * 0.15); });
   const twoInARow = hist.length > 1 && hist[0] === hist[1];
-  if(twoInARow) weights[hist[0]] *= 0.45;
-  const pick = Object.keys(weights).sort((a, b) => weights[b] - weights[a])[0];
+  if(twoInARow && weights[hist[0]] !== undefined) weights[hist[0]] *= 0.45;   // rarely three-peats
+  const pick = ['up','middle','down'].sort((a, b) => weights[b] - weights[a])[0];
 
   const tally = {};
   hist.forEach(h => { tally[h] = (tally[h] || 0) + 1; });
-  const rows = Object.entries(tally).sort((a, b) => b[1] - a[1]);
 
   const el = document.getElementById('spin-result');
   el.innerHTML = `
     <div class="rb-card" style="background:linear-gradient(160deg, ${spinColour(pick)}, rgba(0,0,0,.35))">
       <div class="rb-next">Next spin</div>
-      <div class="rb-pick" style="font-size:34px">${escHtml(pick)}</div>
+      <div class="rb-pick" style="font-size:40px">${spinMeta(pick).short} ${spinMeta(pick).label}</div>
     </div>
     <div style="padding:12px 14px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
       <div class="ti-label" style="margin-bottom:8px">What has been landing</div>
-      ${rows.map(([k, n]) => `<div style="display:flex;align-items:center;gap:10px;padding:4px 0">
-        <span style="width:14px;height:14px;border-radius:4px;background:${spinColour(k)};flex:0 0 auto"></span>
-        <span style="flex:1;font-size:13px;color:var(--chalk)">${escHtml(k)}</span>
-        <b style="font-size:13px;color:var(--chalk)">${n}</b>
-      </div>`).join('')}
+      ${['up','middle','down'].map(k => {
+        const c = tally[k] || 0;
+        const pct = hist.length ? Math.round(c / hist.length * 100) : 0;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+          <span style="width:22px;text-align:center;font-weight:800;color:${spinColour(k)}">${spinMeta(k).short}</span>
+          <span style="width:66px;font-size:13px;color:var(--chalk)">${spinMeta(k).label}</span>
+          <span style="flex:1;height:10px;background:rgba(25,28,34,.06);border-radius:4px;overflow:hidden">
+            <span style="display:block;width:${pct}%;height:100%;background:${spinColour(k)}"></span></span>
+          <b style="width:26px;text-align:right;font-size:13px;color:var(--chalk)">${c}</b>
+        </div>`;
+      }).join('')}
     </div>
     <button class="analyze-btn" onclick="spinReset()">📸 Next round — upload again</button>`;
   el.style.display = 'block';

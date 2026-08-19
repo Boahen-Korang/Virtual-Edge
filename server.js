@@ -1262,17 +1262,17 @@ function rbSortHistory(items) {
 /* ---- Spin the Bottle: read the results history ---- */
 const SPIN_PROMPT =
   'This is a screenshot from the SportyBet "Spin the Bottle" instant game (light or dark phone theme). ' +
-  'Find the RESULTS HISTORY — the outcomes of recent rounds, usually a strip or list showing what the ' +
-  'bottle landed on each spin. ' +
-  'Transcribe each visible outcome EXACTLY as printed — it may be a colour, a number, a multiplier ' +
-  'like "2x", a segment label or a player/seat name. Do not translate or normalise it. ' +
+  'Find the RESULTS HISTORY — the outcomes of recent rounds, usually a strip or list of past spins. ' +
+  'Every round lands on exactly ONE of THREE positions: UP, MIDDLE or DOWN. They may be drawn as ' +
+  'arrows (pointing up / sideways or middle / down), as the words Up, Middle, Down, as U/M/D, or as a ' +
+  'highlighted top, centre or bottom position. Map each result to exactly "up", "middle" or "down". ' +
   'For EACH round also transcribe its time text exactly as shown (e.g. "02:10 15/08/26") into "t" — ' +
   'use "" if no time is visible for that entry. ' +
   'Ignore any bet or pick the player made, and any win/lose amounts — only the round RESULT matters. ' +
   'Set "isSpin" true ONLY if this is clearly the Spin the Bottle game (a bottle/wheel graphic, a spin ' +
-  'countdown, or a results history of spin outcomes). Football, cards, other games or non-betting ' +
+  'countdown, or a history of up/middle/down results). Football, cards, other games or non-betting ' +
   'screens are false. ' +
-  'Respond with ONLY compact JSON: {"isSpin":true,"history":[{"t":"02:10 15/08/26","result":"Red"}]}.';
+  'Respond with ONLY compact JSON: {"isSpin":true,"history":[{"t":"02:10 15/08/26","result":"up"}]}.';
 
 const SPIN_SCHEMA = {
   type: 'object',
@@ -1284,7 +1284,7 @@ const SPIN_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        properties: { t: { type: 'string' }, result: { type: 'string' } },
+        properties: { t: { type: 'string' }, result: { type: 'string', enum: ['up', 'middle', 'down'] } },
         required: ['t', 'result'],
       },
     },
@@ -1390,8 +1390,8 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
 
   if (isSpin) {
     const items = (Array.isArray(parsed.history) ? parsed.history : [])
-      .filter((h) => h && String(h.result || '').trim())
-      .map((h) => ({ t: h.t, result: String(h.result).trim().slice(0, 24) }))
+      .filter((h) => h && ['up', 'middle', 'down'].includes(String(h.result || '').toLowerCase()))
+      .map((h) => ({ t: h.t, result: String(h.result).toLowerCase() }))
       .slice(0, 40);
     const history = rbSortHistory(items);
     query('UPDATE scan_meter SET used = used + 1, remaining = GREATEST(0, remaining - 1) WHERE id=1').catch(() => {});
