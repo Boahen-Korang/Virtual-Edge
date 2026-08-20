@@ -369,7 +369,7 @@ async function doLogin(){
     const u = (me && me.user) || {};
     // Signup gates first: registration fee, then a linked SportyBet account
     if(me && u.regFeePaid === false){ window.location.href = 'pricing.html'; return; }
-    if(me && !u.sportyAccount){ showStep('step-sporty'); updateSportyHint(); return; }
+    if(me && !u.sportyAccount){ showStep('step-sporty'); applyPayCountry(); updateSportyHint(); return; }
     // Then: predictions left → dashboard, otherwise the packages page
     const credits = (me && me.credits) || 0;
     const rbCredits = (me && me.rbCredits) || 0;
@@ -427,6 +427,17 @@ const CC_RULES = {
   '+260': { len: 10, name: 'Zambia',       ph: '0977123456'  },
   '+27':  { len: 10, name: 'South Africa', ph: '0821234567'  },
 };
+/* Preselect the country the member chose when paying the fee — otherwise the
+   dropdown sits on Ghana and a Nigerian silently links a +233 number, which
+   then routes them to the Ghanaian payment rail forever. */
+function applyPayCountry(){
+  let c = '';
+  try { c = localStorage.getItem('ve_pay_country') || ''; } catch(e){}
+  const cc = document.getElementById('sporty-cc');
+  if(cc && c === 'NG') cc.value = '+234';
+  if(cc && c === 'GH') cc.value = '+233';
+}
+
 function updateSportyHint(){
   const cc = document.getElementById('sporty-cc').value;
   const rule = CC_RULES[cc] || { len: 10, ph: '' };
@@ -585,6 +596,7 @@ async function onPaymentSuccess(ref){
       try { me = await VE.me(); } catch(e){}
       if(me && me.user && me.user.regFeePaid === false){ location.replace('pricing.html'); return; }  // stay hidden
       showStep('step-sporty');
+      applyPayCountry();
       updateSportyHint();
       pageReady();
     })();

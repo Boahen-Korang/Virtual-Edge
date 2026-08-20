@@ -760,6 +760,8 @@ function renderFeeMode(){
    that picks the direct rail exactly like the number prefix does later. */
 function feeCountry(c){
   BUYER_COUNTRY = c;
+  // carry the choice to the SportyBet step so the dialling code is right
+  try { localStorage.setItem('ve_pay_country', c); } catch(e){}
   payFor(FEE_PKG);
 }
 
