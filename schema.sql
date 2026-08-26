@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS credits (
 ALTER TABLE credits ADD COLUMN IF NOT EXISTS rb_amount INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE credits ADD COLUMN IF NOT EXISTS spin_amount INTEGER NOT NULL DEFAULT 0;
 
+-- Shared rate-limit counters. The service runs on more than one instance, so
+-- in-memory limits never agree; these rows are the one source of truth.
+CREATE TABLE IF NOT EXISTS rate_hits (
+  bucket TEXT NOT NULL,
+  at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rate_hits ON rate_hits(bucket, at DESC);
+
 -- Tracks screenshot-scan usage so the admin knows when to top up API credits.
 CREATE TABLE IF NOT EXISTS scan_meter (
   id        INTEGER PRIMARY KEY DEFAULT 1,

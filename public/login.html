@@ -295,7 +295,7 @@ async function doForgot(){
   const btn = document.getElementById('forgot-btn');
   errEl.style.display = 'none';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    errEl.textContent = 'Please enter a valid email.'; errEl.style.display=''; return;
+    errEl.textContent = 'Please enter a valid email.'; errEl.style.display='block'; return;
   }
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
@@ -303,7 +303,7 @@ async function doForgot(){
     document.getElementById('forgot-ask').style.display = 'none';
     document.getElementById('forgot-sent').style.display = '';
   } catch(e){
-    errEl.textContent = e.message || 'Could not send the reset email. Try again.'; errEl.style.display='';
+    errEl.textContent = e.message || 'Could not send the reset email. Try again.'; errEl.style.display='block';
   }
   btn.disabled = false; btn.textContent = 'Send reset link';
 }
@@ -313,7 +313,7 @@ async function doReset(){
   const btn = document.getElementById('reset-btn');
   errEl.style.display = 'none';
   if(pw.length < 6){
-    errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display=''; return;
+    errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display='block'; return;
   }
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -322,9 +322,9 @@ async function doReset(){
     showTab('login');
     const errL = document.getElementById('login-err');
     errL.textContent = '✓ Password updated — log in with your new password.';
-    errL.style.display = '';
+    errL.style.display = 'block';
   } catch(e){
-    errEl.textContent = e.message || 'Could not reset the password.'; errEl.style.display='';
+    errEl.textContent = e.message || 'Could not reset the password.'; errEl.style.display='block';
   }
   btn.disabled = false; btn.textContent = 'Set new password';
 }
@@ -359,7 +359,7 @@ async function doLogin(){
   errEl.style.display = 'none';
 
   if(!email || !pw){
-    errEl.textContent = 'Please fill in all fields.'; errEl.style.display=''; return;
+    errEl.textContent = 'Please fill in all fields.'; errEl.style.display='block'; return;
   }
 
   try {
@@ -380,7 +380,7 @@ async function doLogin(){
       : spinCredits > 0 ? 'dashboard.html#spin'
       : 'pricing.html';
   } catch(e){
-    errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='';
+    errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='block';
   }
 }
 
@@ -394,13 +394,13 @@ async function goToPlans(){
   errEl.style.display = 'none';
 
   if(!name || !email || !pw){
-    errEl.textContent = 'Please fill in all fields.'; errEl.style.display=''; return;
+    errEl.textContent = 'Please fill in all fields.'; errEl.style.display='block'; return;
   }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    errEl.textContent = 'Please enter a valid email.'; errEl.style.display=''; return;
+    errEl.textContent = 'Please enter a valid email.'; errEl.style.display='block'; return;
   }
   if(pw.length < 6){
-    errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display=''; return;
+    errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display='block'; return;
   }
 
   btn.disabled = true; btn.textContent = 'Creating account…';
@@ -413,7 +413,7 @@ async function goToPlans(){
     window.location.href = 'pricing.html';
   } catch(e){
     btn.disabled = false; btn.textContent = 'Create account →';
-    errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='';
+    errEl.textContent = e.message || 'Could not create account.'; errEl.style.display='block';
   }
 }
 
@@ -452,7 +452,7 @@ async function connectSporty(){
   const digits = document.getElementById('sporty-num').value.replace(/\D/g, '');
   const errEl  = document.getElementById('sporty-err');
   errEl.style.display = 'none';
-  if(!digits){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display=''; return; }
+  if(!digits){ errEl.textContent = 'Please enter your SportyBet account number.'; errEl.style.display='block'; return; }
   if(digits.length !== rule.len){
     errEl.textContent = `${rule.name} numbers must be exactly ${rule.len} digits.`;
     errEl.style.display = '';
@@ -475,7 +475,7 @@ async function connectSporty(){
     if(e && e.status === 402){ window.location.href = 'pricing.html'; return; }   // fee not paid
     document.getElementById('sporty-loading').style.display = 'none';
     document.getElementById('sporty-form').style.display = '';
-    errEl.textContent = e.message || 'Could not connect your account. Try again.'; errEl.style.display='';
+    errEl.textContent = e.message || 'Could not connect your account. Try again.'; errEl.style.display='block';
   }
 }
 

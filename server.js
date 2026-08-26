@@ -125,6 +125,33 @@ async function sendMail(to, subject, html) {
   return false;
 }
 
+/* ---------------------- shared rate limiting ----------------------
+   express-rate-limit keeps its counters in memory, and this service runs on
+   more than one instance, so those counters never see the full picture. These
+   helpers keep the count in Postgres, which every instance shares.
+   Returns true when the caller is over the limit. */
+const clientIp = (req) => {
+  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return fwd || req.ip || 'unknown';
+};
+
+async function overLimit(bucket, limit, windowSec) {
+  try {
+    await query('DELETE FROM rate_hits WHERE bucket=$1 AND at < now() - make_interval(secs => $2)', [bucket, windowSec]);
+    const { rows } = await query('SELECT COUNT(*)::int AS n FROM rate_hits WHERE bucket=$1', [bucket]);
+    if (rows[0].n >= limit) return true;
+    await query('INSERT INTO rate_hits (bucket) VALUES ($1)', [bucket]);
+    return false;
+  } catch (e) {
+    console.warn('[ratelimit] check failed, allowing:', e && e.message);
+    return false;   // never lock people out because the counter itself broke
+  }
+}
+// forget a bucket entirely — used when a login finally succeeds
+const clearLimit = (bucket) => query('DELETE FROM rate_hits WHERE bucket=$1', [bucket]).catch(() => {});
+// tidy abandoned buckets hourly so the table cannot grow unbounded
+setInterval(() => query("DELETE FROM rate_hits WHERE at < now() - interval '2 hours'").catch(() => {}), 30 * 60 * 1000).unref?.();
+
 /* ----------------------------- helpers ----------------------------- */
 const sign = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
 const norm = (e) => String(e || '').trim().toLowerCase();
@@ -270,6 +297,9 @@ app.post('/api/auth/register', wrap(async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email.' });
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
+  if (await overLimit('reg:' + clientIp(req), 60, 900)) {
+    return res.status(429).json({ error: 'Too many accounts created from this connection. Please wait 15 minutes.' });
+  }
   const exists = await query('SELECT 1 FROM users WHERE email=$1', [email]);
   if (exists.rows.length) return res.status(409).json({ error: 'An account with this email already exists.' });
 
@@ -291,9 +321,14 @@ app.post('/api/auth/register', wrap(async (req, res) => {
 app.post('/api/auth/login', wrap(async (req, res) => {
   const email = norm(req.body.email);
   const password = String(req.body.password || '');
+  // 10 failed tries per account and 40 per address in 15 minutes
+  if (await overLimit('login:' + email, 10, 900) || await overLimit('loginip:' + clientIp(req), 40, 900)) {
+    return res.status(429).json({ error: 'Too many failed sign-in attempts. Please wait 15 minutes and try again.' });
+  }
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [email]);
   const u = rows[0];
   if (!u || !check(password, u.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
+  clearLimit('login:' + email);   // a good password wipes the slate
   res.json({ token: sign({ email, role: 'member' }), user: userOut(u) });
 }));
 
@@ -578,6 +613,9 @@ app.post('/api/partner/register', wrap(async (req, res) => {
 app.post('/api/partner/login', wrap(async (req, res) => {
   const email = norm(req.body.email);
   const password = String(req.body.password || '');
+  if (await overLimit('plogin:' + email, 10, 900)) {
+    return res.status(429).json({ error: 'Too many failed sign-in attempts. Please wait 15 minutes and try again.' });
+  }
   const { rows } = await query('SELECT * FROM partners WHERE email=$1', [email]);
   const p = rows[0];
   if (!p || !check(password, p.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
@@ -768,6 +806,9 @@ app.post('/api/admin/login', wrap(async (req, res) => {
   }
   const email = norm(req.body.email);
   const password = String(req.body.password || '');
+  if (await overLimit('adminlogin:' + clientIp(req), 12, 900)) {
+    return res.status(429).json({ error: 'Too many attempts. Please wait 15 minutes.' });
+  }
   const ok = password && (
     (ADMIN_ENV_ACCOUNTS[email] !== undefined && password === ADMIN_ENV_ACCOUNTS[email]) ||
     (ADMIN_HASHES[email] !== undefined && check(password, ADMIN_HASHES[email]))
@@ -1388,6 +1429,9 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
     } else if (!credits && !unlimited) {
       return res.status(402).json({ error: 'You need prediction credits to scan — buy a package first.' });
     }
+  }
+  if (await overLimit('scan:' + (req.user.email || clientIp(req)), 40, 300)) {
+    return res.status(429).json({ error: 'Scanning too fast — wait a moment and try again.' });
   }
   const m = /^data:(image\/(?:png|jpe?g|gif|webp));base64,(.*)$/i.exec(String(req.body.image || ''));
   if (!m) return res.status(400).json({ error: 'Bad image data' });
