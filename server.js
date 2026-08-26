@@ -72,8 +72,8 @@ app.use((req, res, next) => {
 
 /* ----------------------------- rate limiting ----------------------------- */
 const rlMsg = (m) => ({ windowMs: m.windowMs, max: m.max, standardHeaders: true, legacyHeaders: false, message: { error: m.msg } });
-const authLimiter  = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 40, msg: 'Too many attempts. Please wait a few minutes and try again.' }));
-const loginLimiter = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 12, msg: 'Too many login attempts. Please wait 15 minutes.' }));
+const authLimiter  = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 300, msg: 'Too many attempts. Please wait a few minutes and try again.' }));
+const loginLimiter = rateLimit(rlMsg({ windowMs: 15 * 60 * 1000, max: 100, msg: 'Too many login attempts. Please wait 15 minutes.' }));
 const scanLimiter  = rateLimit(rlMsg({ windowMs: 60 * 1000,      max: 30, msg: 'Scanning too fast — wait a moment and try again.' }));
 app.use('/api/auth', authLimiter);               // register + login + forgot/reset
 app.use('/api/admin/login', loginLimiter);       // credential brute-force guard
@@ -322,7 +322,7 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   const email = norm(req.body.email);
   const password = String(req.body.password || '');
   // 10 failed tries per account and 40 per address in 15 minutes
-  if (await overLimit('login:' + email, 10, 900) || await overLimit('loginip:' + clientIp(req), 40, 900)) {
+  if (await overLimit('login:' + email, 10, 900) || await overLimit('loginip:' + clientIp(req), 120, 900)) {
     return res.status(429).json({ error: 'Too many failed sign-in attempts. Please wait 15 minutes and try again.' });
   }
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [email]);
