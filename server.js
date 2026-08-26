@@ -996,6 +996,30 @@ app.delete('/api/admin/purchases/:key', auth('admin'), wrap(async (req, res) => 
   res.json({ ok: true, deleted: 1, revoked });
 }));
 
+// how much room the database is using — storage fills up quietly, and receipt
+// screenshots are stored inline, so this shows what is actually taking space
+app.get('/api/admin/db-size', auth('admin'), wrap(async (req, res) => {
+  const db = await query(
+    "SELECT pg_database_size(current_database()) AS bytes, pg_size_pretty(pg_database_size(current_database())) AS pretty");
+  const tables = await query(`
+    SELECT c.relname AS name,
+           pg_total_relation_size(c.oid) AS bytes,
+           pg_size_pretty(pg_total_relation_size(c.oid)) AS pretty,
+           COALESCE(s.n_live_tup, 0) AS rows
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+     WHERE n.nspname = 'public' AND c.relkind = 'r'
+     ORDER BY pg_total_relation_size(c.oid) DESC`);
+  const proofs = await query(
+    "SELECT COUNT(*)::int AS n, COALESCE(SUM(LENGTH(proof)), 0)::bigint AS bytes FROM manual_claims WHERE proof IS NOT NULL");
+  res.json({
+    database: db.rows[0],
+    tables: tables.rows,
+    receiptScreenshots: { count: proofs.rows[0].n, bytes: Number(proofs.rows[0].bytes) },
+  });
+}));
+
 // security alerts (e.g. unverified purchase attempts)
 app.get('/api/admin/alerts', auth('admin'), wrap(async (req, res) => {
   const { rows } = await query('SELECT id,email,kind,detail,created_at FROM security_alerts ORDER BY created_at DESC LIMIT 100');
