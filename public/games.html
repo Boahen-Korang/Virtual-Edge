@@ -72,7 +72,7 @@
   <div class="topbar-in">
     <a class="brand" href="index.html"><span class="chip">CH</span>&nbsp;Casino Hacks</a>
     <div class="top-cta">
-      <a class="btn btn-ghost" href="dashboard.html">Dashboard</a>
+      <a class="btn btn-ghost" href="dashboard.html" id="dash-link" style="display:none">Dashboard</a>
       <button class="btn btn-ghost" onclick="VE.signOutMember();location.href='index.html'">Sign Out</button>
     </div>
   </div>
@@ -163,7 +163,7 @@
 <footer>
   <div class="wrap">
     <span>Play responsibly. 18+.</span>
-    <span><a href="dashboard.html">Dashboard</a> · <a href="index.html">Home</a></span>
+    <span><a href="dashboard.html" id="dash-link2" style="display:none">Dashboard · </a><a href="index.html">Home</a></span>
   </div>
 </footer>
 
@@ -194,6 +194,13 @@
       el.style.display = 'inline-block';
     }
   });
+
+  // the dashboard is only useful once there's something to scan with
+  const hasCredits = bals.football === '∞' || bals.football > 0 || bals.redblack > 0 || bals.spin > 0;
+  if(hasCredits){
+    const d1 = document.getElementById('dash-link');  if(d1) d1.style.display = '';
+    const d2 = document.getElementById('dash-link2'); if(d2) d2.style.display = '';
+  }
 
   // admin game toggles: hide whatever is switched off
   try {
