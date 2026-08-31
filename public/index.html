@@ -83,7 +83,7 @@
   .gcard{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .16s ease,box-shadow .16s ease}
   .gcard:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(14,20,32,.14)}
   .gart{height:170px;display:grid;place-items:center;position:relative;overflow:hidden}
-  .gart img{width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
+  .gart img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
   .gcard:hover .gart img{transform:scale(1.06)}
   .gtag{position:absolute;top:10px;left:10px;font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);padding:4px 9px;border-radius:20px}
   .gbody{padding:16px 16px 18px;display:flex;flex-direction:column;flex:1}
@@ -118,6 +118,9 @@
   footer a:hover{color:#fff}
 
   @media(max-width:920px){
+    /* full-width cards would crop square logos to a thin band — show them whole */
+    .gart{height:200px}
+    .gart img.sq{object-fit:contain;padding:12px}
     .hero-in{grid-template-columns:1fr;padding-top:44px}
     .ticket{max-width:460px}
     .games{grid-template-columns:repeat(2,1fr)}
@@ -197,7 +200,7 @@
       <article class="gcard">
         <div class="gart" style="background:linear-gradient(150deg,#0B7A3B,#064D25)">
           <span class="gtag">Virtuals</span>
-          <img src="oo.jpg" alt="Sporty Instant Football" loading="lazy">
+          <img src="oo.jpg" class="sq" alt="Sporty Instant Football" loading="lazy">
         </div>
         <div class="gbody">
           <h3>Instant Football</h3>
@@ -211,7 +214,7 @@
       <article class="gcard">
         <div class="gart" style="background:linear-gradient(150deg,#5A1220,#2A0810)">
           <span class="gtag">Cards</span>
-          <img src="casino.jpeg" alt="Red &amp; Black casino cards" loading="lazy">
+          <img src="casino.jpeg" style="object-position:50% 18%" alt="Red &amp; Black casino cards" loading="lazy">
         </div>
         <div class="gbody">
           <h3>Red &amp; Black</h3>
@@ -225,7 +228,7 @@
       <article class="gcard">
         <div class="gart" style="background:linear-gradient(150deg,#1B1226,#0E0812)">
           <span class="gtag">Crash</span>
-          <img src="avi.png" alt="Aviator" loading="lazy">
+          <img src="avi.png" class="sq" alt="Aviator" loading="lazy">
         </div>
         <div class="gbody">
           <h3>Aviator</h3>
@@ -239,7 +242,7 @@
       <article class="gcard">
         <div class="gart" style="background:linear-gradient(150deg,#123B63,#0A2038)">
           <span class="gtag">Instant</span>
-          <img src="spint%20da%20bottle.png" alt="Spin da Bottle" loading="lazy">
+          <img src="spint%20da%20bottle.png" class="sq" alt="Spin da Bottle" loading="lazy">
         </div>
         <div class="gbody">
           <h3>Spin da Bottle</h3>
