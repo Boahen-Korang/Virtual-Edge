@@ -909,6 +909,29 @@ app.get('/api/admin/scan-usage', auth('admin'), wrap(async (req, res) => {
   res.json({ used: Number(r.used), remaining: Number(r.remaining) });
 }));
 
+// is the scanner actually able to reach Claude? Sends the smallest possible
+// request and reports exactly what came back, so a broken key or an exhausted
+// API balance shows up here instead of as a generic "Scan failed".
+app.get('/api/admin/scan-health', auth('admin'), wrap(async (req, res) => {
+  if (!anthropic) return res.json({ ok: false, reason: 'No ANTHROPIC_API_KEY set on the server.' });
+  try {
+    await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4,
+      messages: [{ role: 'user', content: 'ok' }],
+    });
+    res.json({ ok: true, model: CLAUDE_MODEL });
+  } catch (e) {
+    res.json({
+      ok: false,
+      model: CLAUDE_MODEL,
+      status: (e && e.status) || null,
+      type: (e && e.error && e.error.error && e.error.error.type) || null,
+      reason: (e && e.error && e.error.error && e.error.error.message) || (e && e.message) || 'Unknown error',
+    });
+  }
+}));
+
 // correct the scan counters: `amount` adds/subtracts from remaining,
 // `used` (optional) sets the used total to an absolute value
 app.post('/api/admin/scan-topup', auth('admin'), wrap(async (req, res) => {
@@ -1458,8 +1481,13 @@ app.post('/api/scan', auth(), wrap(async (req, res) => {
   } catch (e) {
     // SDK auto-retries 429/5xx; if it still surfaces, tell the client it's busy
     if (e && e.status === 429) return res.status(429).json({ error: 'The scanner is busy (rate limit). Please wait a moment and try again.' });
-    console.warn('[scan] Claude error', e && e.status, e && e.message);
-    return res.status(502).json({ error: 'Scan failed' });
+    const upstream = (e && e.error && e.error.error && e.error.error.message) || (e && e.message) || '';
+    console.warn('[scan] Claude error', e && e.status, upstream);
+    // members get a plain message; an admin testing the scanner gets the cause
+    return res.status(502).json({
+      error: 'Scan failed',
+      ...(req.user.role === 'admin' ? { status: (e && e.status) || null, reason: upstream } : {}),
+    });
   }
 
   let parsed;
