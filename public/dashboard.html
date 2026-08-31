@@ -526,7 +526,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
     <div class="nc-icon">⚡</div>
     <h3>No predictions left</h3>
     <p>You don't have any predictions yet. Buy a package to start scanning your screenshots.</p>
-    <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy a package →</a>
+    <a href="pricing.html" onclick="this.href='pricing.html?game='+GAME" class="analyze-btn" style="text-decoration:none;display:flex">Buy a package →</a>
   </div>
 
 </div>
@@ -1185,14 +1185,14 @@ function showResult(pred){
            <div class="nc-icon">⚡</div>
            <h3>Out of credits</h3>
            <p>Buy a new package to get more predictions.</p>
-           <a href="pricing.html" class="analyze-btn" style="text-decoration:none;display:flex">Buy more →</a>
+           <a href="pricing.html?game=football" class="analyze-btn" style="text-decoration:none;display:flex">Buy more →</a>
          </div>`
     }`;
 }
 
 function getAnother(){
   /* Out of predictions → send the customer to the payment page */
-  if(!isUnlimited() && getCredits() <= 0){ window.location.href = 'pricing.html'; return; }
+  if(!isUnlimited() && getCredits() <= 0){ window.location.href = 'pricing.html?game=football'; return; }
   /* Still has predictions left → back to the team-selection screen
      so the user can choose/edit the teams, then hit Get Prediction */
   document.getElementById('result-section').style.display = 'none';

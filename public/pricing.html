@@ -548,12 +548,20 @@ if(!SESSION) throw new Error('redirect');
         } else {
           if(live.length === 1 && gp) gp.style.display = 'none';   // nothing to choose between
           const want = new URLSearchParams(location.search).get('game');
-          setPriceGame(live.includes(want) ? want : live[0]);
+          if(live.includes(want)){
+            setPriceGame(want);
+            if(gp) gp.style.display = 'none';   // came from a game logo — this visit is that game only
+          } else {
+            setPriceGame(live[0]);
+          }
         }
       }
       if(!cfg.games){
         const want = new URLSearchParams(location.search).get('game');
-        if(['football','redblack','spin'].includes(want)) setPriceGame(want);
+        if(['football','redblack','spin'].includes(want)){
+          setPriceGame(want);
+          const gp2 = document.getElementById('gpick'); if(gp2) gp2.style.display = 'none';
+        }
       }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider
