@@ -547,8 +547,13 @@ if(!SESSION) throw new Error('redirect');
           document.getElementById('packages-list').innerHTML = '<div style="text-align:center;color:var(--ash);padding:30px">Packages are temporarily unavailable. Please check back soon.</div>';
         } else {
           if(live.length === 1 && gp) gp.style.display = 'none';   // nothing to choose between
-          setPriceGame(live[0]);
+          const want = new URLSearchParams(location.search).get('game');
+          setPriceGame(live.includes(want) ? want : live[0]);
         }
+      }
+      if(!cfg.games){
+        const want = new URLSearchParams(location.search).get('game');
+        if(['football','redblack','spin'].includes(want)) setPriceGame(want);
       }
       PAY_PROVIDER = (cfg.provider && window.VEPay && VEPay.has(cfg.provider))
         ? cfg.provider

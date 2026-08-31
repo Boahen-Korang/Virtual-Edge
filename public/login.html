@@ -378,7 +378,7 @@ async function doLogin(){
     window.location.href = (credits > 0 || unlimited) ? 'dashboard.html'
       : rbCredits > 0 ? 'dashboard.html#redblack'
       : spinCredits > 0 ? 'dashboard.html#spin'
-      : 'pricing.html';
+      : 'games.html';
   } catch(e){
     errEl.textContent = e.message || 'Incorrect email or password.'; errEl.style.display='block';
   }
@@ -469,7 +469,7 @@ async function connectSporty(){
       document.getElementById('sporty-loading').style.display = 'none';
       document.getElementById('sporty-done').style.display = '';
       toast('Sporty account connected successfully', 'success');
-      setTimeout(() => { window.location.href = 'pricing.html'; }, 2000);
+      setTimeout(() => { window.location.href = 'games.html'; }, 2000);
     }, 1200);
   } catch(e){
     if(e && e.status === 402){ window.location.href = 'pricing.html'; return; }   // fee not paid

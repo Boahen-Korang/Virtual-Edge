@@ -511,7 +511,8 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   if (pkg !== REG_FEE_PKG) {
     const ge = await gamesEnabled();
     if (isRBPackage(pkg) && !ge.redblack) return res.status(400).json({ error: 'Red & Black is currently unavailable.' });
-    if (!isRBPackage(pkg) && !ge.football) return res.status(400).json({ error: 'Instant Football packages are currently unavailable.' });
+    if (isSpinPackage(pkg) && !ge.spin) return res.status(400).json({ error: 'Spin the Bottle is currently unavailable.' });
+    if (!isRBPackage(pkg) && !isSpinPackage(pkg) && !ge.football) return res.status(400).json({ error: 'Instant Football packages are currently unavailable.' });
   }
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
