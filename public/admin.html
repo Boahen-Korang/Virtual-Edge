@@ -1098,6 +1098,8 @@ function scCloseView(){
   clearInterval(scListTimer); clearInterval(scPollTimer);
   scListTimer = setInterval(scLoadList, 30000);   // keep the nav badge fresh
 }
+setTimeout(scLoadList, 1500);                     // badge on first load too
+scListTimer = setInterval(scLoadList, 30000);
 
 /* ================= Stats ================= */
 function renderStats(){
