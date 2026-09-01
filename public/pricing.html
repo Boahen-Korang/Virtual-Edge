@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Oracle — Choose Package</title>
+<title>Casino Hacks — Choose Package</title>
 <!-- Guard BEFORE the page paints: bounce signed-out visitors and keep the
      page hidden until we know whether to show packages or the fee card. -->
 <style>html.booting body{visibility:hidden}</style>
@@ -392,7 +392,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <!-- Top bar -->
 <div class="top-bar">
   <button class="back-btn" onclick="goBack()">&larr; Back</button>
-  <div class="brand"><span class="di">◆</span>Virtual Oracle</div>
+  <div class="brand"><span class="di">◆</span>Casino Hacks</div>
   <div class="spacer"></div>
   <button class="logout" onclick="logout()">Log out</button>
 </div>
@@ -500,12 +500,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <script src="api.js"></script>
 <script>
 /* ================================================================
-   Virtual Oracle — Pricing / Package selection (API-backed via window.VE)
+   Casino Hacks — Pricing / Package selection (API-backed via window.VE)
    The Paystack key + currency are loaded from the server payment config.
    ================================================================ */
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
-let PAY_BUSINESS = 'Virtual Oracle';
+let PAY_BUSINESS = 'Casino Hacks';
 let PAY_PROVIDER = 'paystack';
 let PAY_MOMO_ACCOUNTS = [];   // direct-MoMo wallets [{network,number,name}] (provider = manual)
 let PAY_BANK_ACCOUNTS = [];   // bank-transfer accounts [{bank,number,name}] (provider = bank)
@@ -754,7 +754,7 @@ function renderFeeMode(){
         <span class="pkg-avail">One-time</span>
         <div class="pkg-icon">🎫</div>
       </div>
-      <div class="pkg-desc">Registration fee — activates your Virtual Oracle account.</div>
+      <div class="pkg-desc">Registration fee — activates your Casino Hacks account.</div>
       <div class="pkg-tags">
         <span class="pkg-tag">Pay once</span>
         <span class="pkg-tag">Then connect SportyBet</span>

@@ -1,5 +1,5 @@
 /* ================================================================
-   Virtual Oracle — client API layer
+   Casino Hacks — client API layer
    Wraps fetch() to the Express backend and stores JWTs.
    Load with <script src="api.js"></script> before page scripts.
    Everything is exposed on window.VE.

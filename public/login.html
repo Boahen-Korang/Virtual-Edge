@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Oracle — Login / Register</title>
+<title>Casino Hacks — Login / Register</title>
 <!-- Arriving at #sporty (back from paying the fee) does an async check that can
      bounce to pricing — keep the form hidden until that settles. -->
 <style>html.booting body{visibility:hidden}</style>
@@ -95,7 +95,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
               <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#1A0509"/>
             </svg>
           </div>
-          Virtual Oracle
+          Casino Hacks
         </div>
 
         <div class="auth-tabs">
@@ -189,7 +189,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
       <div class="step" id="step-sporty">
         <div id="sporty-form">
           <h3 style="margin:0 0 4px;font-size:18px">Connect your SportyBet account</h3>
-          <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Enter your SportyBet account number to link it to Virtual Oracle.</p>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Enter your SportyBet account number to link it to Casino Hacks.</p>
           <div style="text-align:center;margin:0 0 18px">
             <img src="sporty-logo.svg" alt="SportyBet" width="72" height="72" style="border-radius:14px">
           </div>
@@ -232,7 +232,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
         <div class="success-check">
           <div class="check">✅</div>
           <h3>You're in!</h3>
-          <p>Payment confirmed. Welcome to Virtual Oracle.</p>
+          <p>Payment confirmed. Welcome to Casino Hacks.</p>
         </div>
         <a href="dashboard.html" class="btn btn-primary btn-full btn-lg">Go to dashboard →</a>
       </div>
@@ -248,12 +248,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <script src="api.js"></script>
 <script>
 /* ================================================================
-   Virtual Oracle Auth + Payment — now backed by the API (window.VE).
+   Casino Hacks Auth + Payment — now backed by the API (window.VE).
    The Paystack public key is loaded from the server config.
    ================================================================ */
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
-let PAY_BUSINESS = 'Virtual Oracle';
+let PAY_BUSINESS = 'Casino Hacks';
 let PAY_PROVIDER = 'paystack';
 
 let pendingUser = {};    // Holds registration data before payment
