@@ -1,0 +1,48 @@
+/* ================================================================
+   Casino Hacks theme — loaded AFTER each page's own styles so the
+   whole site shares the landing page's look: Archivo type, red
+   primary actions, gold accents, light grey ground.
+   Greens stay green where they mean money or success.
+   ================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Archivo+Narrow:wght@500;600;700&display=swap');
+
+:root{
+  /* shared app tokens (style.css pages: login, dashboard) */
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface2:#F6F7F9; --surface3:#EDEFF3;
+  --border:#E8EAEF; --border2:#D6DAE1;
+  --green:#E41827;                 /* the brand-accent slot → landing red */
+  --amber:#FFCC00;                 /* landing gold */
+  --chalk:#1B1E25; --muted:#5B6472;
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+
+  /* serif-era tokens (pricing, partners, admin, partner-login) */
+  --void:#F6F7F9; --panel:#FFFFFF; --panel2:#FFFFFF;
+  --bone:#1B1E25; --ash:#5B6472; --ash-dim:#8A93A3; --sulfur:#B98A00;
+  --display:'Archivo',system-ui,sans-serif;
+  --body:'Archivo',system-ui,sans-serif;
+  --ui:'Archivo Narrow','Arial Narrow',system-ui,sans-serif;
+
+  /* admin-login tokens */
+  --green-hi:#F0303E; --green-bd:#C00F1D;
+  --ink:#1B1E25; --gray:#5B6472; --gray-dim:#8A93A3; --line:#E8EAEF;
+}
+
+/* landing headings are tight and heavy, not wide serif caps */
+h1,h2,h3{letter-spacing:-.3px}
+
+/* primary actions: the landing's red button, not betslip green */
+.btn-primary{
+  background:linear-gradient(180deg,#F0303E,#E41827);
+  border-color:#C00F1D;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 18px -6px rgba(228,24,39,.5);
+}
+.pkg-btn,.momo-btn{
+  background:linear-gradient(180deg,#F0303E,#E41827);
+  border-color:#C00F1D;
+  box-shadow:0 6px 18px -6px rgba(228,24,39,.5);
+}
+.pkg-btn:hover,.momo-btn:hover,.btn-primary:hover{filter:brightness(1.06)}
+
+/* money and success stay green (the landing's win-green) */
+.toast.success{border-color:#2BB44A;color:#2BB44A}
+.badge-green{background:rgba(43,180,74,.14);color:#1E7E3E}
