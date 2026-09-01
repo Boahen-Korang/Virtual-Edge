@@ -146,6 +146,8 @@ ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS providers JSONB NOT NULL DEF
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS bank_accounts JSONB NOT NULL DEFAULT '[]'::jsonb;
 -- admin revenue counter reset point (display only; purchases stay stored)
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS revenue_cleared_at TIMESTAMPTZ;
+-- customer support contacts shown to members: {whatsapp, email, telegram}
+ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS support JSONB NOT NULL DEFAULT '{}'::jsonb;
 -- which games are switched on (admin toggles)
 ALTER TABLE payment_config ADD COLUMN IF NOT EXISTS games_enabled JSONB NOT NULL DEFAULT '{"football":true,"redblack":true}'::jsonb;
 

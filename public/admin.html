@@ -704,6 +704,17 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
               <div class="hint">Shown to customers at checkout.</div>
             </div>
 
+            <div class="field">
+              <label>Support WhatsApp</label>
+              <input id="pg-sup-wa" type="text" placeholder="233241234567" autocomplete="off">
+              <div class="hint">Country code, no + or spaces. Members get a floating chat button.</div>
+            </div>
+            <div class="field">
+              <label>Support Email</label>
+              <input id="pg-sup-email" type="email" placeholder="support@casinohacks.online" autocomplete="off">
+              <div class="hint">Optional. Leave both blank to hide the support button.</div>
+            </div>
+
             <div class="field full">
               <label>Payment Methods</label>
               <div class="hint" style="margin-bottom:10px">Toggle each method on or off. Buyers see every enabled method and pick one at checkout.</div>
@@ -1520,6 +1531,9 @@ function loadGateway(){
   const c = getPayConfig();
   document.getElementById('pg-currency').value = c.currency || 'GHS';
   document.getElementById('pg-business').value = c.business || '';
+  const sup = c.support || {};
+  document.getElementById('pg-sup-wa').value = sup.whatsapp || '';
+  document.getElementById('pg-sup-email').value = sup.email || '';
   const provs = c.providers || {};
   PM_IDS.forEach(id => {
     const p = provs[id] || {};
@@ -1631,6 +1645,10 @@ async function saveGateway(){
     currency: document.getElementById('pg-currency').value,
     business: document.getElementById('pg-business').value.trim(),
     momoAccounts, bankAccounts, providers,
+    support: {
+      whatsapp: document.getElementById('pg-sup-wa').value.trim(),
+      email: document.getElementById('pg-sup-email').value.trim(),
+    },
   };
   try {
     await VE.adminSavePaymentConfig(cfg);

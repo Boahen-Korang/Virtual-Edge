@@ -1154,7 +1154,7 @@ app.post('/api/admin/payment-config/get', auth('admin'), wrap(async (req, res) =
   const r = rows[0] || {};
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, secret: r.secret_key,
     business: r.business, momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r),
-    providers: providersOut(r) });
+    providers: providersOut(r), support: r.support || {} });
 }));
 
 /* The list of direct-MoMo receiving wallets. Falls back to the legacy single
@@ -1212,13 +1212,24 @@ app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
     secret = primary !== 'manual' ? provs[primary].secret : '';
   }
 
+  // support contacts: keep only known keys, trim, drop blanks
+  let support = null;
+  if (req.body.support && typeof req.body.support === 'object') {
+    support = {};
+    for (const k of ['whatsapp', 'email', 'telegram']) {
+      const v = String(req.body.support[k] || '').trim().slice(0, 120);
+      if (v) support[k] = v;
+    }
+  }
   await query(
     `UPDATE payment_config SET provider=$1, currency=$2, public_key=$3, secret_key=$4, business=$5,
        momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb,
-       bank_accounts=$10::jsonb, providers=COALESCE($11::jsonb, providers) WHERE id=1`,
+       bank_accounts=$10::jsonb, providers=COALESCE($11::jsonb, providers),
+       support=COALESCE($12::jsonb, support) WHERE id=1`,
     [provider, currency || 'GHS', key, secret, business || 'Casino Hacks',
      first.number, first.name, first.network, JSON.stringify(accounts),
-     JSON.stringify(banks), provs ? JSON.stringify(provs) : null]
+     JSON.stringify(banks), provs ? JSON.stringify(provs) : null,
+     support ? JSON.stringify(support) : null]
   );
   res.json({ ok: true });
 }));
@@ -1563,7 +1574,7 @@ app.put('/api/admin/fx-rates', auth('admin'), wrap(async (req, res) => {
 /* ===================== PUBLIC payment config ===================== */
 // only non-secret fields — safe to expose to the checkout page
 app.get('/api/payment-config/public', wrap(async (req, res) => {
-  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,bank_accounts,providers,games_enabled FROM payment_config WHERE id=1');
+  const { rows } = await query('SELECT provider,currency,public_key,business,momo_number,momo_name,momo_network,momo_accounts,bank_accounts,providers,games_enabled,support FROM payment_config WHERE id=1');
   const r = rows[0] || {};
   const provs = providersOut(r);   // never sent raw — secrets stay server-side
   const methods = PROVIDER_IDS.filter((id) => provs[id].enabled)
@@ -1571,7 +1582,8 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
   const ge = (r.games_enabled || {});
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
     momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods,
-    games: { football: ge.football !== false, redblack: ge.redblack !== false, spin: ge.spin !== false } });
+    games: { football: ge.football !== false, redblack: ge.redblack !== false, spin: ge.spin !== false },
+    support: r.support || {} });
 }));
 
 /* ===================== Cowrie gateway proxy ===================== */
