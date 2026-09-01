@@ -365,7 +365,6 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
       <a class="nav-item" data-view="partners" onclick="showView('partners')"><span class="ico">⬡</span>Partners</a>
       <a class="nav-item" data-view="transactions" onclick="showView('transactions')"><span class="ico">⇄</span>Transactions<span class="badge" id="nav-claims-badge" style="display:none">0</span></a>
       <a class="nav-item" data-view="gateway" onclick="showView('gateway')"><span class="ico">▤</span>Payment Gateway</a>
-      <a class="nav-item" data-view="chat" onclick="showView('chat')"><span class="ico">💬</span>Support Chat<span class="badge" id="nav-chat-badge" style="display:none;background:rgba(228,24,39,.18);color:var(--ember,#FF3B22)">0</span></a>
     </nav>
     <div class="side-foot">
       <a class="nav-item" onclick="lock()"><span class="ico">🔒</span>Lock</a>
@@ -623,44 +622,6 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
             <tbody id="tx-body"></tbody>
           </table>
           <div id="tx-pager"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== Support Chat ===== -->
-    <section class="view" id="view-chat" hidden>
-      <style>
-        .sc-wrap{display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--panel);border:1px solid rgba(25,28,34,.12);border-radius:12px;overflow:hidden;height:min(640px,72vh)}
-        .sc-list{border-right:1px solid rgba(25,28,34,.12);overflow-y:auto}
-        .sc-row{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(25,28,34,.08);padding:12px 14px;cursor:pointer;font-family:inherit}
-        .sc-row:hover{background:rgba(228,24,39,.05)}
-        .sc-row.on{background:rgba(228,24,39,.09)}
-        .sc-row .e{font-weight:700;font-size:13px;color:var(--bone);display:flex;align-items:center;gap:8px}
-        .sc-row .e .n{margin-left:auto;background:#E41827;color:#fff;border-radius:10px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;display:grid;place-items:center;padding:0 5px}
-        .sc-row .p{font-size:12px;color:var(--ash);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .sc-thread{display:flex;flex-direction:column;min-width:0}
-        .sc-th{padding:12px 16px;border-bottom:1px solid rgba(25,28,34,.12);font-weight:700;font-size:14px;color:var(--bone)}
-        .sc-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#F6F7F9}
-        .sc-b{max-width:70%;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
-        .sc-b.admin{align-self:flex-end;background:#E41827;color:#fff;border-bottom-right-radius:4px}
-        .sc-b.member{align-self:flex-start;background:#fff;color:#1B1E25;border:1px solid #E8EAEF;border-bottom-left-radius:4px}
-        .sc-b time{display:block;font-size:10px;opacity:.65;margin-top:4px}
-        .sc-in{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(25,28,34,.12);background:var(--panel)}
-        .sc-in textarea{flex:1;border:1px solid rgba(25,28,34,.16);border-radius:9px;padding:9px 11px;font:13.5px inherit;resize:none;height:40px;outline:none}
-        .sc-in textarea:focus{border-color:#E41827}
-        .sc-send{width:44px;border-radius:9px;border:none;background:#E41827;color:#fff;font-size:15px;cursor:pointer}
-        .sc-none{margin:auto;color:var(--ash);font-size:13px;text-align:center;padding:20px}
-        @media(max-width:760px){.sc-wrap{grid-template-columns:1fr;height:auto}.sc-list{max-height:200px;border-right:none;border-bottom:1px solid rgba(25,28,34,.12)}.sc-msgs{min-height:280px}}
-      </style>
-      <div class="sc-wrap">
-        <div class="sc-list" id="sc-list"><div class="sc-none">No conversations yet.<br>Member messages land here.</div></div>
-        <div class="sc-thread">
-          <div class="sc-th" id="sc-title">Pick a conversation</div>
-          <div class="sc-msgs" id="sc-msgs"><div class="sc-none">Messages will appear here.</div></div>
-          <div class="sc-in">
-            <textarea id="sc-input" placeholder="Type a reply…" maxlength="1000" aria-label="Reply" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();scSend();}"></textarea>
-            <button class="sc-send" onclick="scSend()" aria-label="Send">➤</button>
-          </div>
         </div>
       </div>
     </section>
@@ -1006,7 +967,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const creditLabel = n => (n >= 9999 ? '∞' : (n||0));
 
 /* ================= View switching ================= */
-const VIEW_TITLES = { overview:'Overview', members:'Members', send:'Send a Prediction', sent:'Sent Picks', partners:'Partners', transactions:'Transaction History', gateway:'Payment Gateway', chat:'Support Chat' };
+const VIEW_TITLES = { overview:'Overview', members:'Members', send:'Send a Prediction', sent:'Sent Picks', partners:'Partners', transactions:'Transaction History', gateway:'Payment Gateway' };
 function showView(v){
   document.querySelectorAll('.view').forEach(s => s.hidden = (s.id !== 'view-'+v));
   document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.toggle('active', n.dataset.view === v));
@@ -1015,91 +976,7 @@ function showView(v){
   if(v === 'partners'){ renderPartners(); }
   if(v === 'send'){ populateAccounts(); }
   if(v === 'sent'){ renderSentPicks(); }
-  if(v === 'chat'){ scOpenView(); } else { scCloseView(); }
 }
-
-/* ================= Support chat ================= */
-let scActive = '', scPollTimer = null, scListTimer = null;
-
-async function scLoadList(){
-  try {
-    const d = await VE.adminChatList();
-    const badge = document.getElementById('nav-chat-badge');
-    if(badge){ badge.textContent = d.unread; badge.style.display = d.unread ? '' : 'none'; }
-    const list = document.getElementById('sc-list');
-    if(!d.threads.length){ list.innerHTML = '<div class="sc-none">No conversations yet.<br>Member messages land here.</div>'; return; }
-    list.textContent = '';
-    d.threads.forEach(t => {
-      const b = document.createElement('button');
-      b.className = 'sc-row' + (t.email === scActive ? ' on' : '');
-      const e = document.createElement('div'); e.className = 'e';
-      e.textContent = t.email;
-      if(t.unread){ const n = document.createElement('span'); n.className = 'n'; n.textContent = t.unread; e.appendChild(n); }
-      const pv = document.createElement('div'); pv.className = 'p';
-      pv.textContent = (t.last.sender === 'admin' ? 'You: ' : '') + (t.last.body || '');
-      b.append(e, pv);
-      b.onclick = () => scOpenThread(t.email);
-      list.appendChild(b);
-    });
-  } catch(e){ authGuard(e); }
-}
-
-async function scOpenThread(email){
-  scActive = email;
-  document.getElementById('sc-title').textContent = email;
-  await scRefreshThread();
-  scLoadList();
-  clearInterval(scPollTimer);
-  scPollTimer = setInterval(scRefreshThread, 5000);
-  document.getElementById('sc-input').focus();
-}
-
-async function scRefreshThread(){
-  if(!scActive) return;
-  try {
-    const d = await VE.adminChatThread(scActive);
-    const box = document.getElementById('sc-msgs');
-    const stuck = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-    box.textContent = '';
-    if(!d.messages.length){ box.innerHTML = '<div class="sc-none">No messages in this thread yet.</div>'; return; }
-    d.messages.forEach(m => {
-      const b = document.createElement('div');
-      b.className = 'sc-b ' + (m.sender === 'admin' ? 'admin' : 'member');
-      b.textContent = m.body;
-      const t = document.createElement('time');
-      const dt = new Date(m.at);
-      t.textContent = dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
-        (dt.toDateString() !== new Date().toDateString() ? ' \u00b7 ' + dt.toLocaleDateString() : '');
-      b.appendChild(t);
-      box.appendChild(b);
-    });
-    if(stuck) box.scrollTop = box.scrollHeight;
-  } catch(e){ authGuard(e); }
-}
-
-async function scSend(){
-  const input = document.getElementById('sc-input');
-  const body = input.value.trim();
-  if(!body){ return; }
-  if(!scActive){ toast('Pick a conversation first.', 'error'); return; }
-  try {
-    await VE.adminChatReply(scActive, body);
-    input.value = '';
-    scRefreshThread();
-  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not send.', 'error'); }
-}
-
-function scOpenView(){
-  scLoadList();
-  clearInterval(scListTimer);
-  scListTimer = setInterval(scLoadList, 8000);
-}
-function scCloseView(){
-  clearInterval(scListTimer); clearInterval(scPollTimer);
-  scListTimer = setInterval(scLoadList, 30000);   // keep the nav badge fresh
-}
-setTimeout(scLoadList, 1500);                     // badge on first load too
-scListTimer = setInterval(scLoadList, 30000);
 
 /* ================= Stats ================= */
 function renderStats(){
@@ -2148,6 +2025,24 @@ async function refreshAll(){
   refresh();
   toast('Data refreshed', 'success');
 }
+
+/* Auto-refresh: pull fresh data every 20s so new deposits and messages
+   show up on their own. Skipped while the tab is hidden or the admin is
+   typing somewhere; catches up the moment the tab is visible again. */
+let _pendingSeen = null;
+async function autoRefresh(){
+  if(document.hidden) return;
+  const ae = document.activeElement;
+  if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+  await loadAll();
+  const pending = getClaims().filter(c => c.status === 'pending').length;
+  if(_pendingSeen !== null && pending > _pendingSeen){
+    toast('💰 New deposit waiting for confirmation', 'success');
+  }
+  _pendingSeen = pending;
+}
+setInterval(autoRefresh, 20000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) autoRefresh(); });
 
 /* An admin token lasts 30 days; when it lapses the API answers 401
    "Session expired". Send the admin back to the login page. */
