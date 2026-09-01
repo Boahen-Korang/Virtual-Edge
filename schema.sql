@@ -101,6 +101,19 @@ CREATE TABLE IF NOT EXISTS scan_meter (
 );
 INSERT INTO scan_meter (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
+-- In-app support chat: one thread per member, messages both ways.
+CREATE TABLE IF NOT EXISTS support_messages (
+  id           SERIAL PRIMARY KEY,
+  member_email TEXT NOT NULL,                    -- the thread key
+  sender       TEXT NOT NULL,                    -- 'member' | 'admin'
+  body         TEXT NOT NULL,
+  read_by_admin  BOOLEAN NOT NULL DEFAULT false,
+  read_by_member BOOLEAN NOT NULL DEFAULT false,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_supmsg_thread ON support_messages(member_email, id);
+CREATE INDEX IF NOT EXISTS idx_supmsg_unread ON support_messages(read_by_admin) WHERE NOT read_by_admin;
+
 -- Security alerts surfaced in the admin panel (e.g. unverified purchase attempts).
 CREATE TABLE IF NOT EXISTS security_alerts (
   id         SERIAL PRIMARY KEY,

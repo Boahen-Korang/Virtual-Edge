@@ -131,6 +131,11 @@
 
     /* ---- public ---- */
     paymentConfigPublic: () => req('GET', '/payment-config/public'),
+
+    /* ---- support chat ---- */
+    adminChatList: () => req('GET', '/admin/support-chats', null, 'admin'),
+    adminChatThread: (email) => req('GET', '/admin/support-chats/' + encodeURIComponent(email), null, 'admin'),
+    adminChatReply: (email, body) => req('POST', '/admin/support-chats/' + encodeURIComponent(email), { body }, 'admin'),
     fxRates: () => req('GET', '/fx-rates'),
     adminSaveFxRates: (rates) => req('PUT', '/admin/fx-rates', rates, 'admin'),
 

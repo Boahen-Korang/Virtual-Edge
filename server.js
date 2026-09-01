@@ -1586,6 +1586,77 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
     support: r.support || {} });
 }));
 
+/* ===================== Support chat ===================== */
+/* One thread per member. The member's widget and the admin panel both
+   poll these; messages are plain text, rendered with textContent. */
+
+const msgOut = (r) => ({
+  id: r.id, sender: r.sender, body: r.body,
+  at: r.created_at, readByAdmin: r.read_by_admin, readByMember: r.read_by_member,
+});
+
+// member: read own thread (marks admin replies as read)
+app.get('/api/me/support-chat', auth('member'), wrap(async (req, res) => {
+  const { rows } = await query(
+    'SELECT * FROM support_messages WHERE member_email=$1 ORDER BY id DESC LIMIT 100', [req.user.email]);
+  query("UPDATE support_messages SET read_by_member=true WHERE member_email=$1 AND sender='admin' AND NOT read_by_member",
+    [req.user.email]).catch(() => {});
+  res.json({ messages: rows.reverse().map(msgOut) });
+}));
+
+// member: send a message
+app.post('/api/me/support-chat', auth('member'), wrap(async (req, res) => {
+  const body = String(req.body.body || '').trim().slice(0, 1000);
+  if (!body) return res.status(400).json({ error: 'Type a message first.' });
+  if (await overLimit('chat:' + req.user.email, 30, 300)) {
+    return res.status(429).json({ error: 'Slow down a little — try again in a few minutes.' });
+  }
+  const { rows } = await query(
+    "INSERT INTO support_messages (member_email, sender, body, read_by_member) VALUES ($1,'member',$2,true) RETURNING *",
+    [req.user.email, body]);
+  res.json({ ok: true, message: msgOut(rows[0]) });
+}));
+
+// admin: conversation list, newest activity first, with unread counts
+app.get('/api/admin/support-chats', auth('admin'), wrap(async (req, res) => {
+  const { rows } = await query(`
+    SELECT member_email,
+           MAX(id) AS last_id,
+           COUNT(*) FILTER (WHERE sender='member' AND NOT read_by_admin) AS unread
+    FROM support_messages GROUP BY member_email ORDER BY MAX(id) DESC LIMIT 200`);
+  if (!rows.length) return res.json({ threads: [], unread: 0 });
+  const last = await query(
+    'SELECT * FROM support_messages WHERE id = ANY($1::int[])', [rows.map((r) => Number(r.last_id))]);
+  const byId = Object.fromEntries(last.rows.map((r) => [r.id, r]));
+  const threads = rows.map((r) => ({
+    email: r.member_email,
+    unread: Number(r.unread),
+    last: msgOut(byId[r.last_id] || {}),
+  }));
+  res.json({ threads, unread: threads.reduce((n, t) => n + t.unread, 0) });
+}));
+
+// admin: read one thread (marks member messages as read)
+app.get('/api/admin/support-chats/:email', auth('admin'), wrap(async (req, res) => {
+  const email = norm(req.params.email);
+  const { rows } = await query(
+    'SELECT * FROM support_messages WHERE member_email=$1 ORDER BY id DESC LIMIT 200', [email]);
+  query("UPDATE support_messages SET read_by_admin=true WHERE member_email=$1 AND sender='member' AND NOT read_by_admin",
+    [email]).catch(() => {});
+  res.json({ messages: rows.reverse().map(msgOut) });
+}));
+
+// admin: reply into a thread
+app.post('/api/admin/support-chats/:email', auth('admin'), wrap(async (req, res) => {
+  const email = norm(req.params.email);
+  const body = String(req.body.body || '').trim().slice(0, 1000);
+  if (!body) return res.status(400).json({ error: 'Type a message first.' });
+  const { rows } = await query(
+    "INSERT INTO support_messages (member_email, sender, body, read_by_admin) VALUES ($1,'admin',$2,true) RETURNING *",
+    [email, body]);
+  res.json({ ok: true, message: msgOut(rows[0]) });
+}));
+
 /* ===================== Cowrie gateway proxy ===================== */
 /* Cowrie has no CORS, and its secret key must stay server-side, so the
    browser talks to these endpoints instead of Cowrie directly.
