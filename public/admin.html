@@ -2149,7 +2149,7 @@ async function refreshAll(){
   toast('Data refreshed', 'success');
 }
 
-/* Auto-refresh: pull fresh data every 20s so new deposits and messages
+/* Auto-refresh: pull fresh data every 5s so new deposits and messages
    show up on their own. Skipped while the tab is hidden or the admin is
    typing somewhere; catches up the moment the tab is visible again. */
 let _pendingSeen = null;
@@ -2164,7 +2164,7 @@ async function autoRefresh(){
   }
   _pendingSeen = pending;
 }
-setInterval(autoRefresh, 20000);
+setInterval(autoRefresh, 5000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) autoRefresh(); });
 
 /* An admin token lasts 30 days; when it lapses the API answers 401
