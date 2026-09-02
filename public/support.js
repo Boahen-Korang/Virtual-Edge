@@ -65,7 +65,7 @@
           '</div>'
         : '') +
       '<div class="ch-chat" hidden>' +
-      '  <div class="ch-chat-h">💬<div><b>Customer Support</b><small>We reply as soon as we can</small></div>' +
+      '  <div class="ch-chat-h">💬<div><b>Customer Support</b><small id="ch-presence">We reply as soon as we can</small></div>' +
       '  <button type="button" class="ch-chat-x" aria-label="Close chat">✕</button></div>' +
       '  <div class="ch-msgs"></div>' +
       '  <div class="ch-in"><textarea placeholder="Type a message…" maxlength="1000" aria-label="Message"></textarea>' +
@@ -106,14 +106,31 @@
     }
 
     function refresh(force) {
-      api('GET', '/me/support-chat').then(function (d) {
-        if (!panel.hidden || force) { render(d.messages); dot.hidden = true; }
-        else {
+      var open = !panel.hidden || force;
+      api('GET', '/me/support-chat' + (open ? '' : '?bg=1')).then(function (d) {
+        if (open) {
+          render(d.messages);
+          dot.hidden = true;
+          var pres = wrap.querySelector('#ch-presence');
+          if (pres) {
+            var a = d.admin || {};
+            pres.textContent = a.typing ? 'typing…' : a.online ? 'Online now' : 'We reply as soon as we can';
+          }
+        } else {
           var unread = d.messages.filter(function (m) { return m.sender === 'admin' && !m.readByMember; }).length;
           if (unread) { dot.textContent = unread > 9 ? '9+' : unread; dot.hidden = false; }
         }
       }).catch(function () {});
     }
+
+    /* tell the admin we're typing (throttled) */
+    var lastPing = 0;
+    input.addEventListener('input', function () {
+      var now = Date.now();
+      if (now - lastPing < 2500 || !input.value) return;
+      lastPing = now;
+      api('POST', '/me/support-chat/typing').catch(function () {});
+    });
 
     function openChat() {
       if (menu) menu.hidden = true;
@@ -121,7 +138,7 @@
       btn.setAttribute('aria-expanded', 'true');
       clearInterval(timer);
       refresh(true);
-      timer = setInterval(refresh, 4000);
+      timer = setInterval(refresh, 3000);
       setTimeout(function () { input.focus(); }, 50);
     }
     function closeAll() {
@@ -168,10 +185,15 @@
     if (wa) links.push({ label: 'WhatsApp us', sub: '+' + wa.num, href: wa.href, icon: '🟢' });
     if (support.telegram) links.push({ label: 'Telegram', sub: '', href: 'https://t.me/' + String(support.telegram).replace(/^@/, ''), icon: '✈️' });
     if (support.email) links.push({ label: 'Email us', sub: support.email, href: 'mailto:' + support.email, icon: '✉️' });
-    links.push({ label: 'Sign in to chat', sub: 'Message us right in the app', href: 'login.html', icon: '💬' });
-
     wrap.innerHTML =
       '<div class="ch-menu" hidden><div class="t">Customer Support</div>' +
+      '<button type="button" data-act="need-acct">💬 <span>Chat with an agent<small>Message us right in the app</small></span></button>' +
+      '<div class="ch-note" hidden style="padding:12px 16px;background:#FFF7E0;border-top:1px solid #E5C55A;border-bottom:1px solid #E5C55A;font:500 13px Archivo,system-ui,sans-serif;color:#5C4A00;line-height:1.5">' +
+      'You need an account to chat with us — it takes a minute.' +
+      '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<a href="login.html#register" style="flex:1;text-align:center;background:#E41827;color:#fff;border-radius:6px;font-weight:800;font-size:13px;padding:9px 10px;text-decoration:none">Create Account</a>' +
+      '<a href="login.html" style="flex:1;text-align:center;border:1.5px solid #E41827;color:#E41827;border-radius:6px;font-weight:800;font-size:13px;padding:9px 10px;text-decoration:none">Sign In</a>' +
+      '</div></div>' +
       links.map(function (l) {
         var ext = l.href.indexOf('http') === 0 || l.href.indexOf('mailto') === 0;
         return '<a href="' + l.href + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' + l.icon + ' <span>' + l.label +
@@ -181,12 +203,17 @@
     document.body.appendChild(wrap);
     var btn = wrap.querySelector('.ch-sup-btn');
     var menu = wrap.querySelector('.ch-menu');
+    var note = wrap.querySelector('.ch-note');
+    wrap.querySelector('[data-act="need-acct"]').addEventListener('click', function () {
+      note.hidden = !note.hidden;   // the account-first notice
+    });
     btn.addEventListener('click', function () {
       menu.hidden = !menu.hidden;
+      if (menu.hidden) note.hidden = true;
       btn.setAttribute('aria-expanded', String(!menu.hidden));
     });
     document.addEventListener('click', function (e) {
-      if (!wrap.contains(e.target)) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+      if (!wrap.contains(e.target)) { menu.hidden = true; note.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
     });
   }
 

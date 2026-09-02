@@ -114,6 +114,15 @@ CREATE TABLE IF NOT EXISTS support_messages (
 CREATE INDEX IF NOT EXISTS idx_supmsg_thread ON support_messages(member_email, id);
 CREATE INDEX IF NOT EXISTS idx_supmsg_unread ON support_messages(read_by_admin) WHERE NOT read_by_admin;
 
+-- Who is currently looking at / typing in a support thread (polled).
+CREATE TABLE IF NOT EXISTS support_presence (
+  thread_email TEXT NOT NULL,
+  who          TEXT NOT NULL,               -- 'member' | 'admin'
+  last_seen    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  typing_at    TIMESTAMPTZ,
+  PRIMARY KEY (thread_email, who)
+);
+
 -- Security alerts surfaced in the admin panel (e.g. unverified purchase attempts).
 CREATE TABLE IF NOT EXISTS security_alerts (
   id         SERIAL PRIMARY KEY,

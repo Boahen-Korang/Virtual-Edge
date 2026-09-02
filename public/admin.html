@@ -655,7 +655,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
       <div class="sc-wrap">
         <div class="sc-list" id="sc-list"><div class="sc-none">No conversations yet.<br>Member messages land here.</div></div>
         <div class="sc-thread">
-          <div class="sc-th" id="sc-title">Pick a conversation</div>
+          <div class="sc-th"><span id="sc-title">Pick a conversation</span> <span id="sc-pres" style="font-weight:600;font-size:12px;color:#2BB44A;margin-left:8px"></span></div>
           <div class="sc-msgs" id="sc-msgs"><div class="sc-none">Messages will appear here.</div></div>
           <div class="sc-in">
             <textarea id="sc-input" placeholder="Type a reply…" maxlength="1000" aria-label="Reply" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();scSend();}"></textarea>
@@ -1050,7 +1050,7 @@ async function scOpenThread(email){
   await scRefreshThread();
   scLoadList();
   clearInterval(scPollTimer);
-  scPollTimer = setInterval(scRefreshThread, 5000);
+  scPollTimer = setInterval(scRefreshThread, 3000);
   document.getElementById('sc-input').focus();
 }
 
@@ -1058,6 +1058,11 @@ async function scRefreshThread(){
   if(!scActive) return;
   try {
     const d = await VE.adminChatThread(scActive);
+    const pres = document.getElementById('sc-pres');
+    if(pres){
+      const m = d.member || {};
+      pres.textContent = m.typing ? 'typing…' : m.online ? '● online' : '';
+    }
     const box = document.getElementById('sc-msgs');
     const stuck = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
     box.textContent = '';
@@ -1098,6 +1103,13 @@ function scCloseView(){
   clearInterval(scListTimer); clearInterval(scPollTimer);
   scListTimer = setInterval(scLoadList, 30000);   // keep the nav badge fresh
 }
+let _scPing = 0;
+document.addEventListener('input', (e) => {
+  if(e.target && e.target.id === 'sc-input' && scActive && e.target.value){
+    const now = Date.now();
+    if(now - _scPing > 2500){ _scPing = now; VE.adminChatTyping(scActive).catch(()=>{}); }
+  }
+});
 setTimeout(scLoadList, 1500);                     // badge on first load too
 scListTimer = setInterval(scLoadList, 30000);
 

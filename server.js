@@ -1595,13 +1595,37 @@ const msgOut = (r) => ({
   at: r.created_at, readByAdmin: r.read_by_admin, readByMember: r.read_by_member,
 });
 
+/* presence: "in the chat" = seen in the last 12s (polls run every 4-5s),
+   "typing" = a typing ping in the last 5s */
+const touchPresence = (email, who, typing) => query(
+  `INSERT INTO support_presence (thread_email, who, last_seen, typing_at)
+   VALUES ($1,$2,now(),${typing ? 'now()' : 'NULL'})
+   ON CONFLICT (thread_email, who) DO UPDATE SET last_seen=now()${typing ? ', typing_at=now()' : ''}`,
+  [email, who]).catch(() => {});
+const readPresence = async (email, who) => {
+  const { rows } = await query(
+    `SELECT (now() - last_seen) < interval '12 seconds' AS online,
+            typing_at IS NOT NULL AND (now() - typing_at) < interval '5 seconds' AS typing
+     FROM support_presence WHERE thread_email=$1 AND who=$2`, [email, who]);
+  const r = rows[0] || {};
+  return { online: !!r.online, typing: !!r.typing };
+};
+
 // member: read own thread (marks admin replies as read)
 app.get('/api/me/support-chat', auth('member'), wrap(async (req, res) => {
   const { rows } = await query(
     'SELECT * FROM support_messages WHERE member_email=$1 ORDER BY id DESC LIMIT 100', [req.user.email]);
   query("UPDATE support_messages SET read_by_member=true WHERE member_email=$1 AND sender='admin' AND NOT read_by_member",
     [req.user.email]).catch(() => {});
-  res.json({ messages: rows.reverse().map(msgOut) });
+  if (req.query.bg !== '1') touchPresence(req.user.email, 'member', false);   // panel is open
+  const admin = await readPresence(req.user.email, 'admin');
+  res.json({ messages: rows.reverse().map(msgOut), admin });
+}));
+
+// member: "I'm typing" ping (throttled client-side)
+app.post('/api/me/support-chat/typing', auth('member'), wrap(async (req, res) => {
+  await touchPresence(req.user.email, 'member', true);
+  res.json({ ok: true });
 }));
 
 // member: send a message
@@ -1643,7 +1667,15 @@ app.get('/api/admin/support-chats/:email', auth('admin'), wrap(async (req, res) 
     'SELECT * FROM support_messages WHERE member_email=$1 ORDER BY id DESC LIMIT 200', [email]);
   query("UPDATE support_messages SET read_by_admin=true WHERE member_email=$1 AND sender='member' AND NOT read_by_admin",
     [email]).catch(() => {});
-  res.json({ messages: rows.reverse().map(msgOut) });
+  touchPresence(email, 'admin', false);
+  const member = await readPresence(email, 'member');
+  res.json({ messages: rows.reverse().map(msgOut), member });
+}));
+
+// admin: "I'm typing" ping for one thread
+app.post('/api/admin/support-chats/:email/typing', auth('admin'), wrap(async (req, res) => {
+  await touchPresence(norm(req.params.email), 'admin', true);
+  res.json({ ok: true });
 }));
 
 // admin: reply into a thread
