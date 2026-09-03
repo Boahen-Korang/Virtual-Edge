@@ -491,7 +491,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
    tampered request can't claim more than the package grants. */
 const CLAIM_PACKAGES = {
   'GHS 50': 0,                                 // registration fee
-  'GHS 250': 2, 'GHS 350': 3, 'GHS 500': 4,    // Instant Football packages
+  'GHS 300': 1, 'GHS 400': 2, 'GHS 500': 3,    // Instant Football packages
   'GHS 350 · Red & Black': 3,                  // one session: 3 screenshots -> 3 predictions
   'GHS 350 · Spin the Bottle': 3,              // same deal for the spin game
   'GHS 500 · Red & Black': 3,                  // previous price, still honoured for cached pages
