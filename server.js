@@ -442,6 +442,42 @@ app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
 }));
 
 // record a purchase + extend plan / add credits
+/* ---- Flutterwave verification (the secret never leaves the server) ----
+   The checkout modal charges with tx_ref "VE_..."; we confirm that exact
+   reference with Flutterwave, check it was paid by this member, and take the
+   package (and its credits) from OUR price list — the client's numbers are
+   never trusted. */
+async function verifyFlutterwaveCharge(reference, claimantEmail) {
+  const { rows } = await query('SELECT providers FROM payment_config WHERE id=1');
+  const provs = (rows[0] && rows[0].providers) || {};
+  const fw = provs.flutterwave || {};
+  if (!fw.enabled || !fw.secret) return { ok: false, reason: 'Flutterwave is not configured.' };
+  let d;
+  try {
+    const r = await fetch('https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=' + encodeURIComponent(reference),
+      { headers: { authorization: 'Bearer ' + fw.secret } });
+    const j = await r.json().catch(() => null);
+    d = j && j.data;
+  } catch (e) { return { ok: false, reason: 'Could not reach Flutterwave.' , transient: true }; }
+  if (!d || d.status !== 'successful') return { ok: false, reason: 'Payment is not confirmed yet.', pending: true };
+  const payer = String((d.customer && d.customer.email) || (d.meta && d.meta.email) || '').toLowerCase();
+  if (payer && payer !== claimantEmail) return { ok: false, reason: 'This payment belongs to another account.' };
+  const pkg = String((d.meta && d.meta.package) || '').slice(0, 40);
+  const credits = CLAIM_PACKAGES[pkg];
+  if (credits === undefined) return { ok: false, reason: 'Unknown package on this payment.' };
+  // amount must cover the package price in the charged currency
+  const price = parsePrice(pkg);
+  let expected = price;
+  const cur = String(d.currency || 'GHS').toUpperCase();
+  if (cur !== 'GHS') {
+    const fr = await query('SELECT rate FROM fx_rates WHERE code=$1', [cur]);
+    if (!fr.rows.length) return { ok: false, reason: 'Unsupported payment currency.' };
+    expected = Math.round(price * Number(fr.rows[0].rate));
+  }
+  if (Number(d.amount) < expected - 1) return { ok: false, reason: 'Amount paid does not match the package.' };
+  return { ok: true, pkg, credits };
+}
+
 app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   let pkg = String(req.body.pkg || '');
   const reference = String(req.body.reference || '');
@@ -449,22 +485,34 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
   const planEnd = req.body.planEnd ? Number(req.body.planEnd) : null;
   const plan = req.body.plan != null ? String(req.body.plan) : null;
 
-  // Only credit payments we can VERIFY with the gateway. A real Cowrie charge
-  // starts with "cwr_"; anything else (demo refs, forged client values, etc.)
-  // is rejected so nobody gets free credits.
-  if (!/^cwr_/i.test(reference)) {
-    // flag the attempt for the admin (best-effort)
+  // Only credit payments we can VERIFY with a gateway: Cowrie ("cwr_...")
+  // or Flutterwave ("VE_..." tx_ref, confirmed via their API). Anything else
+  // (demo refs, forged client values, etc.) is rejected — no free credits.
+  if (/^cwr_/i.test(reference)) {
+    const v = await verifyCowrieCharge(reference);
+    if (!v) return res.status(502).json({ error: 'Could not verify the payment. Please try again.' });
+    if (!v.paid) return res.status(402).json({ error: 'Payment is not confirmed yet.' });
+    if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
+    predictions = v.credits;     // gateway is the source of truth
+    pkg = v.pkg || pkg;
+  } else if (/^VE_/.test(reference)) {
+    const f = await verifyFlutterwaveCharge(reference, req.user.email);
+    if (!f.ok) {
+      if (f.transient) return res.status(502).json({ error: f.reason });
+      if (f.pending) return res.status(402).json({ error: f.reason });
+      query('INSERT INTO security_alerts (email,kind,detail) VALUES ($1,$2,$3)',
+        [req.user.email, 'unverified_purchase',
+         'Flutterwave ref "' + reference.slice(0, 40) + '" rejected: ' + f.reason]).catch(() => {});
+      return res.status(400).json({ error: 'Payment could not be verified.' });
+    }
+    predictions = f.credits;     // our price list is the source of truth
+    pkg = f.pkg;
+  } else {
     query('INSERT INTO security_alerts (email,kind,detail) VALUES ($1,$2,$3)',
       [req.user.email, 'unverified_purchase',
        'Tried to claim ' + predictions + ' predictions (' + pkg + ') with ref "' + reference.slice(0, 40) + '"']).catch(() => {});
     return res.status(400).json({ error: 'Payment could not be verified.' });
   }
-  const v = await verifyCowrieCharge(reference);
-  if (!v) return res.status(502).json({ error: 'Could not verify the payment. Please try again.' });
-  if (!v.paid) return res.status(402).json({ error: 'Payment is not confirmed yet.' });
-  if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
-  predictions = v.credits;     // gateway is the source of truth
-  pkg = v.pkg || pkg;
   if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
     return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
