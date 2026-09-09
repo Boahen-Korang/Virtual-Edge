@@ -167,6 +167,17 @@ function auth(role) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       if (role && decoded.role !== role) return res.status(403).json({ error: 'Forbidden' });
+      if (decoded.role === 'member') {
+        // blocked accounts are cut off immediately, existing tokens included
+        query('SELECT blocked FROM users WHERE email=$1', [decoded.email]).then(({ rows }) => {
+          if (rows[0] && rows[0].blocked) {
+            return res.status(403).json({ error: 'Your account has been blocked. Contact Casino Hacks support.' });
+          }
+          req.user = decoded;
+          next();
+        }).catch(() => { req.user = decoded; next(); });   // db hiccup: fail open, not lock everyone out
+        return;
+      }
       req.user = decoded;
       next();
     } catch {
@@ -215,6 +226,7 @@ const userOut = (r) => r && ({
   sportyAccount: r.sporty_account || null,
   unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
   regFeePaid: !!r.reg_fee_paid,
+  blocked: !!r.blocked,
   created: r.created_at || null,
 });
 
@@ -328,6 +340,7 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [email]);
   const u = rows[0];
   if (!u || !check(password, u.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
+  if (u.blocked) return res.status(403).json({ error: 'Your account has been blocked. Contact Casino Hacks support.' });
   clearLimit('login:' + email);   // a good password wipes the slate
   res.json({ token: sign({ email, role: 'member' }), user: userOut(u) });
 }));
@@ -1011,6 +1024,16 @@ app.post('/api/admin/unlimited', auth('admin'), wrap(async (req, res) => {
 }));
 
 // delete a member (keeps their transaction history)
+// block / unblock a member. Unlike delete, everything stays: their
+// purchases keep counting in revenue and their data survives an unblock.
+app.post('/api/admin/users/:email/block', auth('admin'), wrap(async (req, res) => {
+  const email = norm(req.params.email);
+  const blocked = req.body.blocked !== false;
+  const { rows } = await query('UPDATE users SET blocked=$2 WHERE email=$1 RETURNING email, blocked', [email, blocked]);
+  if (!rows.length) return res.status(404).json({ error: 'No such member.' });
+  res.json({ ok: true, email: rows[0].email, blocked: rows[0].blocked });
+}));
+
 app.delete('/api/admin/users/:email', auth('admin'), wrap(async (req, res) => {
   const email = norm(req.params.email);
   await query('DELETE FROM credits WHERE email=$1', [email]);

@@ -137,6 +137,7 @@
     adminChatThread: (email) => req('GET', '/admin/support-chats/' + encodeURIComponent(email), null, 'admin'),
     adminChatReply: (email, body) => req('POST', '/admin/support-chats/' + encodeURIComponent(email), { body }, 'admin'),
     adminChatTyping: (email) => req('POST', '/admin/support-chats/' + encodeURIComponent(email) + '/typing', null, 'admin'),
+    adminBlockUser: (email, blocked) => req('POST', '/admin/users/' + encodeURIComponent(email) + '/block', { blocked }, 'admin'),
     fxRates: () => req('GET', '/fx-rates'),
     adminSaveFxRates: (rates) => req('PUT', '/admin/fx-rates', rates, 'admin'),
 

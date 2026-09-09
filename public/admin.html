@@ -1319,7 +1319,8 @@ function renderUsers(){
       <tr>
         <td><div class="name">${esc(r.name||'—')}</div><div class="email">${esc(r.email)}</div></td>
         <td><span class="ref">${esc(fmtDate(r.created))}</span></td>
-        <td>${r.regFeePaid ? '<span class="pill active">Activated</span>' : '<span class="pill pending">Fee unpaid</span>'}</td>
+        <td>${r.blocked ? '<span class="pill" style="background:rgba(228,24,39,.14);color:#C00F1D">🚫 Blocked</span>'
+          : r.regFeePaid ? '<span class="pill active">Activated</span>' : '<span class="pill pending">Fee unpaid</span>'}</td>
         <td><span class="credits-num${inf}">${creditLabel(r.credits)}</span> <span class="email">⚽</span>
             <div class="email" style="margin-top:3px">🃏 ${r.rbCredits || 0} R&B · 🍾 ${r.spinCredits || 0} Spin</div></td>
         <td>${r.partner
@@ -1327,11 +1328,25 @@ function renderUsers(){
           : `<span class="ref">— direct</span>`}</td>
         <td><div class="row-actions">
           <button class="act" onclick="grantCredits('${esc(r.email)}')">+ Credits</button>
+          ${r.blocked
+            ? `<button class="act" onclick="blockUser('${esc(r.email)}', false)">Unblock</button>`
+            : `<button class="act danger" onclick="blockUser('${esc(r.email)}', true)">Block</button>`}
           <button class="act danger" onclick="deleteUser('${esc(r.email)}')">Delete</button>
         </div></td>
       </tr>`;
   }).join('');
   renderPager('users-pager', 'users', total);
+}
+
+async function blockUser(email, blocked){
+  if(blocked && !confirm('Block ' + email + '?
+
+They will be signed out and unable to use the site until unblocked. Their payments stay in your revenue.')) return;
+  try {
+    await VE.adminBlockUser(email, blocked);
+    toast(blocked ? email + ' blocked' : email + ' unblocked', 'success');
+    await loadAll();
+  } catch(e){ if(!authGuard(e)) toast(e.message || 'Could not update.', 'error'); }
 }
 
 /* ================= Transactions ================= */
