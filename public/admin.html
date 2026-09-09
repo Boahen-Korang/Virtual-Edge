@@ -867,7 +867,7 @@ const PACKAGES = [
 
 /* ---- Data access (cached from the API; loadAll() refreshes them) ---- */
 const read = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || fb); } catch(e){ return JSON.parse(fb); } };
-let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [], _fx = {}, _daily = [];
+let _users = {}, _credits = {}, _purchases = [], _partners = [], _picks = [], _paycfg = {}, _claims = [], _fx = {}, _daily = [], _dataSig = '';
 const getUsers     = () => _users;
 const getCredits   = () => _credits;
 const getPurchases = () => _purchases;
@@ -896,6 +896,12 @@ async function loadAll(){
     _picks = picks;
     _claims = claims;
     // _paycfg loads only after the Payment Gateway passcode unlock
+
+    // Repaint only when something actually changed — constant repaints make
+    // buttons unresponsive (they get rebuilt under the pointer mid-tap).
+    const sig = JSON.stringify([users, partners, purchases, picks, claims]);
+    if(sig === _dataSig){ loadScanMeter(); loadAlerts(); return; }
+    _dataSig = sig;
   } catch(e){
     console.error(e);
     if(authGuard(e)) return;
