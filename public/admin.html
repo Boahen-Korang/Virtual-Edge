@@ -1345,9 +1345,7 @@ function renderUsers(){
 }
 
 async function blockUser(email, blocked){
-  if(blocked && !confirm('Block ' + email + '?
-
-They will be signed out and unable to use the site until unblocked. Their payments stay in your revenue.')) return;
+  if(blocked && !confirm('Block ' + email + '? They will be signed out and unable to use the site until unblocked. Their payments stay in your revenue.')) return;
   try {
     await VE.adminBlockUser(email, blocked);
     toast(blocked ? email + ' blocked' : email + ' unblocked', 'success');
