@@ -1139,13 +1139,20 @@ function renderStats(){
   const ngSub = ngPurchases.length + ' transaction' + (ngPurchases.length===1?'':'s')
     + (ngRate ? ' · ≈ ₦' + Math.round(ngRevenue * ngRate).toLocaleString() : '');
 
-  const today = (_daily && _daily.length) ? _daily[_daily.length - 1] : { revenue: 0, count: 0 };
+  /* today's takings, split by the member's country (+234 = Nigeria) */
+  const todayStr = new Date().toDateString();
+  const todays = purchases.filter(p => p.date && new Date(p.date).toDateString() === todayStr);
+  const ghToday = todays.filter(p => !isNG(p.email));
+  const ngToday = todays.filter(p => isNG(p.email));
+  const ghTodayRev = ghToday.reduce((a,p) => a + parsePrice(p.pkg), 0);
+  const ngTodayRev = ngToday.reduce((a,p) => a + parsePrice(p.pkg), 0);
 
   const cards = [
     { label:'Total Members', val: totalUsers, cls:'', ico:'☷', sub: active+' active subscription'+(active===1?'':'s') },
     { label:'Revenue', val: fmtMoney(revenue), cls:'gold', ico:'₵', icoCls:'gold', sub: txCount+' transaction'+(txCount===1?'':'s') },
-    { label:"Today's Revenue", val: fmtMoney(today.revenue), cls:'gold', ico:'📅', icoCls:'gold', sub: today.count+' transaction'+(today.count===1?'':'s')+' today' },
-    { label:'Nigeria Revenue', val: fmtMoney(ngRevenue), cls:'', ico:'🇳🇬', sub: ngSub },
+    { label:"Today · Ghana", val: fmtMoney(ghTodayRev), cls:'gold', ico:'🇬🇭', icoCls:'gold', sub: ghToday.length+' transaction'+(ghToday.length===1?'':'s')+' today' },
+    { label:"Today · Nigeria", val: fmtMoney(ngTodayRev), cls:'gold', ico:'🇳🇬', icoCls:'gold', sub: ngToday.length+' transaction'+(ngToday.length===1?'':'s')+' today' },
+    { label:'Nigeria Revenue', val: fmtMoney(ngRevenue), cls:'', ico:'🇳🇬', sub: ngSub + ' · all-time' },
     { label:'Transactions', val: txCount, cls:'crimson', ico:'⇄', sub:'all-time purchases' },
     { label:'Credits Live', val: outstanding + (hasUnlim?' +∞':''), cls:'', ico:'⚡', sub:'unused predictions' },
     { label:'Seed Matches', val: getResults().length, cls:'', ico:'⚽', sub:'in prediction pool' },
