@@ -776,6 +776,8 @@ function feeCountry(c){
   BUYER_COUNTRY = c;
   // carry the choice to the SportyBet step so the dialling code is right
   try { localStorage.setItem('ve_pay_country', c); } catch(e){}
+  // and save it on the account — revenue is attributed by this choice
+  try { VE.setCountry(c).catch(function(){}); } catch(e){}
   payFor(FEE_PKG);
 }
 

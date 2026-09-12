@@ -227,6 +227,7 @@ const userOut = (r) => r && ({
   unlimitedUntil: r.unlimited_until ? Number(r.unlimited_until) : null,
   regFeePaid: !!r.reg_fee_paid,
   blocked: !!r.blocked,
+  country: r.country || '',
   created: r.created_at || null,
 });
 
@@ -427,6 +428,14 @@ async function regFeeUnpaid(email) {
 }
 
 // link a SportyBet account number (first-time setup after registration) + email the user
+// the member's own country choice from the fee step ("I am Ghanaian / Nigerian")
+app.post('/api/me/country', auth('member'), wrap(async (req, res) => {
+  const c = String(req.body.country || '').toUpperCase();
+  if (c !== 'GH' && c !== 'NG') return res.status(400).json({ error: 'Pick Ghana or Nigeria.' });
+  await query('UPDATE users SET country=$2 WHERE email=$1', [req.user.email, c]);
+  res.json({ ok: true, country: c });
+}));
+
 app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
   if (await regFeeUnpaid(req.user.email)) {
     return res.status(402).json({ error: 'Pay the GHS 50 registration fee first.' });

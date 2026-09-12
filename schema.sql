@@ -22,6 +22,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS unlimited_until BIGINT;
 -- one-time GHS 50 registration fee (added 2026-08-11); accounts created
 -- before then are grandfathered in as paid
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reg_fee_paid BOOLEAN NOT NULL DEFAULT false;
+-- the member's own "I am Ghanaian / I am Nigerian" choice from the fee step
+ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT '';
 -- admin can block an account: sign-in and all member API calls are refused,
 -- but the member's purchases stay in the books (revenue is untouched)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked BOOLEAN NOT NULL DEFAULT false;
