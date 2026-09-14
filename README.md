@@ -29,25 +29,33 @@ npm run initdb            # create tables (optional; server also does this on bo
 npm start                 # http://localhost:3000
 ```
 
-You need a Postgres database. Easiest is to create the free Render database first and put its
-**External** connection string in `.env` (set `DATABASE_SSL=on` for the Render DB).
+You need a Postgres database — the project uses **Supabase**. Put its Session pooler
+connection string in `.env` with `DATABASE_SSL=on`.
+
+## Database: Supabase
+
+1. Create a project at [supabase.com](https://supabase.com) and note the database password.
+2. Click **Connect** → copy the **Session pooler** URI (port 5432). Don't use "Direct
+   connection" — it's IPv6-only and Render can't reach it.
+3. Replace `[YOUR-PASSWORD]` with the password (URL-encode special characters).
+4. Tables are created automatically when the server boots. `schema.sql` enables row-level
+   security on every table so Supabase's public REST API can't read them; the server
+   connects as the owner and is unaffected. The app doesn't use supabase-js or Supabase Auth.
 
 ## Deploy to Render (Blueprint — easiest)
 
-1. Push this folder to a new **GitHub** repo.
-2. In Render: **New → Blueprint**, select the repo. `render.yaml` provisions:
-   - a **Web Service** (`virtualedge`)
-   - a **PostgreSQL** database (`virtualedge-db`), auto-wired via `DATABASE_URL`
-   - `JWT_SECRET` (auto-generated)
-3. Set **`ADMIN_PASSCODE`** in the web service's *Environment* tab (it's `sync:false`).
+1. Push this folder to a **GitHub** repo.
+2. In Render: **New → Blueprint**, select the repo. `render.yaml` provisions the
+   **Web Service** (`virtualedge`) and auto-generates `JWT_SECRET`.
+3. When prompted, set **`DATABASE_URL`** to the Supabase Session pooler URI, plus any of
+   `ADMIN_ACCOUNTS`, `ADMIN_PASSCODE`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM`.
 4. Deploy. Tables are created automatically on first boot.
 
 ### Or wire it up manually
 
-1. **New → PostgreSQL** (free). Copy the *Internal* connection string.
-2. **New → Web Service** from the repo. Build: `npm install`, Start: `npm start`.
-3. Add env vars: `DATABASE_URL` (the internal string), `JWT_SECRET` (long random),
-   `ADMIN_PASSCODE`, `DATABASE_SSL=on`.
+1. **New → Web Service** from the repo. Build: `npm install`, Start: `npm start`.
+2. Add env vars: `DATABASE_URL` (Supabase Session pooler URI), `JWT_SECRET` (long random),
+   `DATABASE_SSL=on`, `NODE_VERSION=20`, and the optional keys above.
 
 ## Security notes (read before going public)
 

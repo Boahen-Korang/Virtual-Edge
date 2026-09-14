@@ -195,3 +195,21 @@ CREATE TABLE IF NOT EXISTS manual_claims (
 );
 CREATE INDEX IF NOT EXISTS idx_claims_status ON manual_claims(status);
 ALTER TABLE manual_claims ADD COLUMN IF NOT EXISTS proof TEXT;
+
+-- Supabase exposes the public schema through its REST Data API. Row-level security
+-- with no policies blocks that API (anon/authenticated roles) entirely, while the
+-- server — connecting as the table owner — is unaffected. Harmless on plain Postgres.
+ALTER TABLE users            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE partners         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pushed_picks     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchases        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE results          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE credits          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_hits        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scan_meter       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_presence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE security_alerts  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fx_rates         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_config   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE manual_claims    ENABLE ROW LEVEL SECURITY;
