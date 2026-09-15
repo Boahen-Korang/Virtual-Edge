@@ -3,66 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Choose Your Game — Casino Hacks</title>
+<title>Choose Your Game — SportyHacks</title>
+<meta name="theme-color" content="#06100B">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Archivo+Narrow:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --red:#E41827; --red-deep:#9B0C17; --ink:#1B1E25; --navy:#0E1420;
-    --panel:#151C2C; --line:#E8EAEF; --mut:#5B6472; --gold:#FFCC00; --green:#2BB44A;
-    --bg:#F6F7F9;
-    --head:'Archivo',system-ui,sans-serif;
-    --cond:'Archivo Narrow','Arial Narrow',system-ui,sans-serif;
+    color-scheme:dark;
+    --night:#06100B; --pitch:#0A1A12; --panel:#0F2219; --panel2:#132A20; --panel3:#18342A;
+    --line:rgba(214,255,228,.10); --line2:#2B4A3C;
+    --text:#EAF5EE; --mut:#8FA89A; --dim:#5E7568;
+    --lime:#C8FF3D; --lime-deep:#9BD11A; --ink:#0B1511; --coral:#FF5B4A;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:var(--head);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+  html{background:var(--night)}
+  body{font-family:var(--body);background:var(--night);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
   body.veil{visibility:hidden}
+  ::selection{background:var(--lime);color:var(--ink)}
   a{text-decoration:none;color:inherit}
   img{max-width:100%;display:block}
 
-  .topbar{position:sticky;top:0;z-index:50;background:var(--red);color:#fff;box-shadow:0 2px 10px rgba(155,12,23,.35)}
-  .topbar-in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:0 18px;height:56px}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:18px;letter-spacing:.5px}
-  .brand .chip{background:#fff;color:var(--red);border-radius:6px;padding:1px 7px;font-size:14px;font-weight:900;transform:skewX(-8deg)}
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(6,16,11,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--text);border-bottom:1px solid var(--line)}
+  .topbar-in{max-width:1160px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:0 20px;height:64px}
+  .brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.4px;white-space:nowrap}
+  .brand .chip{background:var(--lime);color:var(--ink);border-radius:8px;padding:2px 8px;font-family:var(--display);font-size:14px;font-weight:800;letter-spacing:0;box-shadow:0 0 16px rgba(200,255,61,.25)}
   .top-cta{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .btn{display:inline-block;border-radius:6px;font-weight:800;font-size:13px;padding:8px 14px;cursor:pointer;border:0}
-  .btn-ghost{border:2px solid rgba(255,255,255,.85);color:#fff;background:none}
+  .btn{display:inline-flex;align-items:center;border-radius:999px;font-family:var(--body);font-weight:800;font-size:13.5px;padding:9px 16px;cursor:pointer;border:0;white-space:nowrap;transition:color .15s ease,border-color .15s ease}
+  .btn-ghost{border:1.5px solid rgba(234,245,238,.28);color:var(--text);background:none}
+  .btn-ghost:hover{border-color:var(--lime);color:var(--lime)}
 
-  .head{background:linear-gradient(160deg,var(--navy) 0%,#131B2E 60%,#1B1020 100%);color:#fff;padding:44px 0 90px;position:relative;overflow:hidden}
-  .head::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 260px at 82% 10%,rgba(228,24,39,.25),transparent 60%)}
-  .wrap{max-width:1120px;margin:0 auto;padding:0 18px;position:relative}
-  .kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
-  .kicker::before{content:"";width:26px;height:3px;background:var(--red);border-radius:2px}
-  h1{font-size:clamp(1.7rem,4vw,2.6rem);font-weight:900;letter-spacing:-.4px;margin-top:8px}
-  .head p{color:#B9C2D2;margin-top:8px;max-width:56ch;line-height:1.6}
+  .head{position:relative;overflow:hidden;color:var(--text);padding:56px 0 100px;isolation:isolate;
+    background:radial-gradient(900px 300px at 80% 0%,rgba(200,255,61,.12),transparent 70%),radial-gradient(600px 220px at 5% 40%,rgba(87,199,255,.06),transparent 70%),linear-gradient(180deg,#06100B 0%,#0A1A12 70%,#06100B 100%)}
+  .head::before{content:"";position:absolute;inset:auto 0 0;height:70%;z-index:-1;opacity:.45;
+    background-image:linear-gradient(rgba(200,255,61,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,255,61,.07) 1px,transparent 1px);
+    background-size:56px 56px;mask-image:linear-gradient(180deg,transparent,#000 55%,transparent);-webkit-mask-image:linear-gradient(180deg,transparent,#000 55%,transparent)}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 20px;position:relative}
+  .kicker{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--lime);border:1px solid rgba(200,255,61,.28);background:rgba(200,255,61,.06);padding:6px 13px;border-radius:999px}
+  .kicker::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime)}
+  h1{font-family:var(--display);font-size:clamp(2.2rem,5.2vw,3.8rem);font-weight:800;line-height:1;letter-spacing:-.035em;margin-top:18px}
+  .head p{color:var(--mut);margin-top:14px;max-width:56ch;line-height:1.65;font-size:1.02rem}
 
-  .deck{flex:1;margin-top:-56px;padding-bottom:64px}
-  .games{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-  .gcard{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .16s ease,box-shadow .16s ease;position:relative}
-  a.gcard:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(14,20,32,.16)}
-  .gart{height:170px;display:grid;place-items:center;position:relative;overflow:hidden}
-  .gart img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
-  a.gcard:hover .gart img{transform:scale(1.06)}
-  .gtag{position:absolute;top:10px;left:10px;font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.4);backdrop-filter:blur(3px);padding:4px 9px;border-radius:20px;z-index:2}
-  .gbal{position:absolute;top:10px;right:10px;font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.06em;color:#0E3D1E;background:var(--gold);padding:4px 9px;border-radius:20px;z-index:2;display:none}
-  .gbody{padding:16px;display:flex;flex-direction:column;flex:1}
-  .gbody h3{font-size:17px;font-weight:800}
-  .gbody p{color:var(--mut);font-size:13.5px;line-height:1.55;margin-top:6px;flex:1}
-  .gcta{margin-top:14px;text-align:center;background:var(--red);color:#fff;border-radius:6px;font-weight:800;font-size:14px;padding:11px;box-shadow:0 3px 0 var(--red-deep)}
-  .soon .gart img,.soon .gart svg{filter:grayscale(.55);opacity:.75}
-  .soon .gcta{background:#EDEFF3;color:#8A93A3;box-shadow:none}
+  .deck{flex:1;margin-top:-56px;padding-bottom:72px;position:relative;z-index:2}
+  .games{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .gcard{background:var(--panel);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;position:relative;isolation:isolate;
+    box-shadow:0 24px 50px -28px rgba(0,0,0,.8);transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .35s ease}
+  a.gcard:hover{transform:translateY(-6px);border-color:rgba(200,255,61,.35)}
+  .gart{height:210px;display:grid;place-items:center;position:relative;overflow:hidden}
+  .gart::after{content:"";position:absolute;inset:0;background:radial-gradient(360px 220px at 70% 10%,rgba(255,255,255,.10),transparent 60%);pointer-events:none}
+  .gart img{position:relative;z-index:1;width:min(58%,150px);aspect-ratio:1;height:auto;object-fit:cover;border-radius:20px;border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 22px 40px -12px rgba(0,0,0,.65);transform:rotate(-3deg);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  a.gcard:hover .gart img{transform:scale(1.08) rotate(-4deg)}
+  .gart svg{filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}
+  .gtag{position:absolute;top:14px;left:14px;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text);background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);padding:5px 10px;border-radius:999px;z-index:2}
+  .gbal{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--lime);border:1px solid var(--lime);padding:5px 10px;border-radius:999px;z-index:2;display:none}
+  .gbody{padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;border-top:1px solid var(--line)}
+  .gbody h3{font-family:var(--display);font-size:1.45rem;font-weight:800;letter-spacing:-.025em}
+  .gbody p{color:rgba(234,245,238,.72);font-size:.94rem;line-height:1.55;margin-top:6px;flex:1}
+  .gcta{margin-top:18px;text-align:center;background:var(--lime);color:var(--ink);border-radius:999px;font-weight:800;font-size:14px;padding:12px;box-shadow:0 8px 24px -12px rgba(200,255,61,.55);transition:box-shadow .18s ease,background .18s ease}
+  a.gcard:hover .gcta{background:#D8FF6E;box-shadow:0 10px 30px -8px rgba(200,255,61,.6)}
+  .soon .gart img,.soon .gart svg{filter:grayscale(.5);opacity:.6}
+  .soon .gcta{background:var(--panel3);color:var(--dim);box-shadow:none;border:1px solid var(--line)}
   .soon{cursor:default}
 
-  footer{background:var(--navy);color:#8E99AC;padding:22px 0;font-size:13px}
+  footer{border-top:1px solid var(--line);color:var(--dim);padding:26px 0;font-size:13.5px}
   footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  footer a{color:#C6CEDC}
+  footer a{color:var(--mut);font-weight:600}
+  footer a:hover{color:var(--lime)}
 
   @media(max-width:920px){.games{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:560px){
     .games{grid-template-columns:1fr}
     .gart{height:200px}
-    .gart img.sq{object-fit:contain;padding:12px}
+    .topbar-in{padding:0 16px;gap:8px}
+    .brand{font-size:18px}
+    .btn{padding:8px 12px;font-size:13px}
+    .wrap{padding:0 16px}
+    .head{padding:40px 0 92px}
   }
 </style>
 </head>
@@ -70,7 +90,7 @@
 
 <div class="topbar">
   <div class="topbar-in">
-    <a class="brand" href="index.html"><span class="chip">CH</span>&nbsp;Casino Hacks</a>
+    <a class="brand" href="index.html"><span class="chip">SH</span>&nbsp;SportyHacks</a>
     <div class="top-cta">
       <a class="btn btn-ghost" href="dashboard.html" id="dash-link" style="display:none">Dashboard</a>
       <button class="btn btn-ghost" onclick="VE.signOutMember();location.href='index.html'">Sign Out</button>
@@ -91,7 +111,7 @@
     <div class="games">
 
       <a class="gcard" id="g-football" href="pricing.html?game=football">
-        <div class="gart" style="background:linear-gradient(150deg,#0B7A3B,#064D25)">
+        <div class="gart" style="background:linear-gradient(150deg,#0F6B3A,#063A1F 70%)">
           <span class="gtag">Virtuals</span><span class="gbal" id="bal-football"></span>
           <img src="oo.jpg" class="sq" alt="Sporty Instant Football" loading="lazy">
         </div>
@@ -103,7 +123,7 @@
       </a>
 
       <a class="gcard" id="g-redblack" href="pricing.html?game=redblack">
-        <div class="gart" style="background:linear-gradient(150deg,#5A1220,#2A0810)">
+        <div class="gart" style="background:linear-gradient(150deg,#6B1422,#2A0810 70%)">
           <span class="gtag">Cards</span><span class="gbal" id="bal-redblack"></span>
           <img src="casino.jpeg" style="object-position:50% 18%" alt="Red &amp; Black casino cards" loading="lazy">
         </div>
@@ -115,7 +135,7 @@
       </a>
 
       <a class="gcard" id="g-spin" href="pricing.html?game=spin">
-        <div class="gart" style="background:linear-gradient(150deg,#123B63,#0A2038)">
+        <div class="gart" style="background:linear-gradient(150deg,#15507F,#0A2038 70%)">
           <span class="gtag">Instant</span><span class="gbal" id="bal-spin"></span>
           <img src="spint%20da%20bottle.png" class="sq" alt="Spin da Bottle" loading="lazy">
         </div>
@@ -127,7 +147,7 @@
       </a>
 
       <div class="gcard soon">
-        <div class="gart" style="background:linear-gradient(150deg,#1B1226,#0E0812)">
+        <div class="gart" style="background:linear-gradient(150deg,#2A1838,#0E0812 70%)">
           <span class="gtag">Crash</span>
           <img src="avi.png" class="sq" alt="Aviator" loading="lazy">
         </div>
@@ -139,14 +159,14 @@
       </div>
 
       <div class="gcard soon">
-        <div class="gart" style="background:linear-gradient(150deg,#233047,#121A2A)">
+        <div class="gart" style="background:linear-gradient(150deg,#26344C,#111A2A 70%)">
           <span class="gtag">Grid</span>
           <svg width="86" height="86" viewBox="0 0 96 96" fill="none" style="position:relative;z-index:1">
             <g opacity=".35" stroke="#4A5C7E" stroke-width="2"><path d="M18 18h60v60H18zM38 18v60M58 18v60M18 38h60M18 58h60"/></g>
-            <rect x="20" y="20" width="16" height="16" rx="3" fill="#2BB44A"/><path d="M24 28l3 3 5-6" stroke="#fff" stroke-width="2.5" fill="none"/>
-            <rect x="60" y="40" width="16" height="16" rx="3" fill="#2BB44A"/><path d="M64 48l3 3 5-6" stroke="#fff" stroke-width="2.5" fill="none"/>
-            <circle cx="48" cy="66" r="11" fill="#E41827"/>
-            <path d="M48 51v-6M48 87v-6M33 66h-6M69 66h-6M37 55l-4-4M63 77l-4-4M59 55l4-4M37 77l-4 4" stroke="#E41827" stroke-width="3.5" stroke-linecap="round"/>
+            <rect x="20" y="20" width="16" height="16" rx="3" fill="#C8FF3D"/><path d="M24 28l3 3 5-6" stroke="#0B1511" stroke-width="2.5" fill="none"/>
+            <rect x="60" y="40" width="16" height="16" rx="3" fill="#C8FF3D"/><path d="M64 48l3 3 5-6" stroke="#0B1511" stroke-width="2.5" fill="none"/>
+            <circle cx="48" cy="66" r="11" fill="#FF5B4A"/>
+            <path d="M48 51v-6M48 87v-6M33 66h-6M69 66h-6M37 55l-4-4M63 77l-4-4M59 55l4-4M37 77l-4 4" stroke="#FF5B4A" stroke-width="3.5" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="gbody">

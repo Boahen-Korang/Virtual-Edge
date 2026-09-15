@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casino Hacks — Get Prediction</title>
+<title>SportyHacks — Get Prediction</title>
 <!-- Guard BEFORE the page paints: bounce signed-out visitors and keep the
      page hidden until we know which sections to show, so nobody sees a
      flash of content they're about to be redirected away from. -->
@@ -19,7 +19,9 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <link rel="stylesheet" href="style.css">
 <style>
   body {
-    background: #F3F5F8;
+    background:
+      radial-gradient(900px 420px at 50% -120px, rgba(200,255,61,.07), transparent 65%),
+      var(--rc-night, #06100B);
     min-height: 100vh;
   }
 
@@ -27,62 +29,89 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   /* ---- Game switcher (Instant Football / Red & Black) ---- */
   .game-tabs { display: flex; gap: 10px; margin-bottom: 18px; }
   .gt {
-    flex: 1; padding: 12px 8px; border: 1.5px solid #E2E5EA; border-radius: 10px;
-    background: #FFFFFF; font-family: var(--sans); font-size: 13px; font-weight: 700;
+    flex: 1; padding: 12px 8px; border: 1.5px solid #1F3A2E; border-radius: 12px;
+    background: #0F2219; font-family: var(--sans); font-size: 13px; font-weight: 700;
     color: var(--muted); cursor: pointer; transition: .15s;
   }
-  .gt.on { border-color: #E41827; color: #E41827; background: rgba(228,24,39,.06); }
+  .gt:hover { border-color: #2B4A3C; color: #EAF5EE; }
+  .gt.on {
+    border-color: #C8FF3D; color: #C8FF3D; background: rgba(200,255,61,.10);
+    box-shadow: 0 0 0 1px rgba(200,255,61,.15), 0 10px 26px -14px rgba(200,255,61,.5);
+  }
 
   /* ---- Red & Black ---- */
   .rb-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
   .rb-dot {
     width: 26px; height: 34px; border-radius: 5px; display: grid; place-items: center;
-    font-size: 12px; font-weight: 800; color: #fff;
+    font-size: 12px; font-weight: 800; color: #0B1511; font-family: var(--mono);
   }
-  .rb-dot.red { background: #E41827; }
-  .rb-dot.black { background: #1A1C22; }
-  .rb-dot.joker { background: #1F9E48; }
+  .rb-dot.red { background: #FF5B4A; color: #0B1511; }
+  .rb-dot.black { background: #0B0F0D; color: #EAF5EE; box-shadow: inset 0 0 0 1px rgba(234,245,238,.24); }
+  .rb-dot.joker { background: #C8FF3D; color: #0B1511; }
   .rb-card {
-    border-radius: 16px; padding: 26px 20px; text-align: center; color: #fff; margin-bottom: 14px;
+    border-radius: 18px; padding: 26px 20px; text-align: center; color: #fff; margin-bottom: 14px;
+    border: 1.5px solid transparent;
   }
-  .rb-card.red { background: linear-gradient(160deg, #F03040, #C4111C); }
-  .rb-card.black { background: linear-gradient(160deg, #2A2E38, #14161B); }
-  .rb-card .rb-next { font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; opacity: .8; }
-  .rb-card .rb-pick { font-size: 44px; font-weight: 900; letter-spacing: .06em; margin: 8px 0 4px; }
+  .rb-card.red {
+    background: linear-gradient(160deg, #FF6B5B, #D2372A);
+    border-color: rgba(255,91,74,.6);
+    box-shadow: 0 18px 44px -20px rgba(255,91,74,.6);
+  }
+  .rb-card.black {
+    background: linear-gradient(160deg, #1B201E, #050706);
+    border-color: rgba(234,245,238,.22);
+    box-shadow: 0 18px 44px -20px rgba(0,0,0,.9);
+  }
+  .rb-card .rb-next { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; opacity: .85; }
+  .rb-card .rb-pick { font-family: var(--rc-display, var(--sans)); font-size: 44px; font-weight: 800; letter-spacing: -.01em; margin: 8px 0 4px; }
   .rb-card .rb-conf { font-size: 13px; opacity: .9; }
 
-  /* SportyBet-style solid red header */
+  /* Dark glass header */
   .top-bar {
     display: flex; align-items: center; gap: 12px;
     padding: 13px 18px;
-    background: #E41827; color: #FFFFFF;
+    background: rgba(6,16,11,.82); color: #EAF5EE;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(214,255,228,.10);
     position: sticky; top: 0; z-index: 10;
-    box-shadow: 0 2px 12px rgba(25,30,45,.15);
+    box-shadow: 0 10px 30px -18px rgba(0,0,0,.8);
   }
   .top-bar .brand {
-    display: flex; align-items: center; gap: 9px;
-    font-weight: 800; font-size: 15px; letter-spacing: .05em; color: #FFFFFF;
+    display: flex; align-items: center; gap: 9px; white-space: nowrap;
+    font-family: var(--rc-display, var(--sans));
+    font-weight: 800; font-size: 17px; letter-spacing: -.01em; color: #EAF5EE;
   }
   .top-bar .logo {
-    width: 30px; height: 30px; border-radius: 8px;
-    background: rgba(255,255,255,.92);
+    width: 30px; height: 30px; border-radius: 8px; flex: 0 0 auto;
+    background: #C8FF3D; box-shadow: 0 0 16px rgba(200,255,61,.25);
     display: grid; place-items: center;
   }
   .top-bar .spacer { flex: 1; }
   .credits-chip {
-    display: flex; align-items: center; gap: 6px;
-    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.45);
+    display: flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto;
+    background: rgba(200,255,61,.10); border: 1px solid rgba(200,255,61,.35);
     border-radius: 20px; padding: 5px 12px;
-    font-size: 12px; font-weight: 700; color: #FFFFFF;
+    font-size: 12px; font-weight: 700; color: #C8FF3D;
     font-family: var(--mono);
   }
   .credits-chip .ci { font-size: 14px; }
   .logout-btn {
-    background: none; border: 1px solid rgba(255,255,255,.45); border-radius: 8px;
-    color: rgba(255,255,255,.9); font-size: 12px; cursor: pointer;
-    font-family: var(--sans); padding: 6px 11px; transition: .12s;
+    background: none; border: 1px solid rgba(234,245,238,.22); border-radius: 999px;
+    color: #EAF5EE; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    font-family: var(--sans); padding: 6px 12px; transition: .12s; flex: 0 0 auto;
   }
-  .logout-btn:hover { color: #FFFFFF; border-color: #FFFFFF; }
+  .logout-btn:hover { color: #C8FF3D; border-color: #C8FF3D; }
+
+  @media (max-width: 520px) {
+    .top-bar { gap: 8px; row-gap: 9px; padding: 10px 12px; flex-wrap: wrap; }
+    .top-bar .logout-btn[onclick="goBack()"] { margin-right: 2px !important; }
+    .top-bar .brand { font-size: 15px; gap: 7px; }
+    .top-bar .logo { width: 26px; height: 26px; }
+    #user-email { display: none; }
+    /* balance gets its own slim row so long labels ("Unlimited · 23h left") never push the bar wider */
+    .credits-chip { order: 10; flex: 1 1 100%; justify-content: center; padding: 5px 10px; font-size: 11.5px; }
+    .logout-btn { padding: 6px 10px; }
+  }
 
   /* ---- Page wrap ---- */
   .page-wrap {
@@ -92,55 +121,60 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   /* ---- Upload zone ---- */
   .upload-label {
     display: block;
-    border: 2px dashed #D0D5DC;
+    border: 2px dashed #2B4A3C;
     border-radius: 18px;
     padding: 38px 20px;
     text-align: center;
     cursor: pointer;
     transition: .15s;
-    background: #FFFFFF;
+    background: linear-gradient(180deg, #0F2219, rgba(15,34,25,.55));
   }
   .upload-label:hover {
     border-color: var(--green);
-    background: rgba(228,24,39,.04);
+    background: rgba(200,255,61,.05);
+    box-shadow: inset 0 0 40px -20px rgba(200,255,61,.4);
   }
   .upload-label .uz-icon { font-size: 40px; margin-bottom: 12px; display: block; }
-  .upload-label .uz-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .upload-label .uz-title { font-family: var(--rc-display, var(--sans)); font-size: 18px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 6px; color: #EAF5EE; }
   .upload-label .uz-sub { font-size: 13px; color: var(--muted); }
 
   /* ---- Screenshot preview ---- */
   .preview-section { display: none; margin-top: 14px; }
   .preview-box {
-    border: 1px solid #D0D5DC; border-radius: 14px; overflow: hidden;
+    border: 1px solid #2B4A3C; border-radius: 14px; overflow: hidden;
     position: relative;
   }
   .preview-box img {
     width: 100%; display: block; max-height: 340px;
-    object-fit: contain; background: #F3F5F8;
+    object-fit: contain; background: #0A1A12;
   }
   .preview-box .remove-btn {
     position: absolute; top: 10px; right: 10px;
-    background: rgba(243,245,248,.85); border: 1px solid #D0D5DC;
-    border-radius: 8px; color: var(--muted); font-size: 12px;
+    background: rgba(6,16,11,.78); border: 1px solid #2B4A3C;
+    border-radius: 8px; color: #EAF5EE; font-size: 12px;
     padding: 5px 10px; cursor: pointer; backdrop-filter: blur(4px);
   }
   .preview-box .remove-btn:hover { color: var(--red); border-color: var(--red); }
 
   .analyze-btn {
     width: 100%; margin-top: 14px; padding: 15px;
-    background: var(--green); color: #F3F5F8;
+    background: #C8FF3D; color: #0B1511;
     border: none; border-radius: 13px;
-    font-size: 15px; font-weight: 900; letter-spacing: .05em;
+    font-family: var(--sans);
+    font-size: 15px; font-weight: 800; letter-spacing: .05em;
     text-transform: uppercase; cursor: pointer; transition: .12s;
     display: flex; align-items: center; justify-content: center; gap: 9px;
+    box-shadow: 0 10px 28px -12px rgba(200,255,61,.6);
   }
-  .analyze-btn:hover { filter: brightness(1.1); }
+  .analyze-btn:hover { filter: none; background: #D8FF6E; color: #0B1511; }
 
   /* ---- Loading overlay ---- */
   .loading-screen {
     display: none;
     position: fixed; inset: 0; z-index: 50;
-    background: #F3F5F8;
+    background:
+      radial-gradient(600px 360px at 50% 40%, rgba(200,255,61,.08), transparent 65%),
+      #06100B;
     flex-direction: column; align-items: center; justify-content: center;
     gap: 0; padding: 30px;
   }
@@ -152,12 +186,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   .scan-img {
     width: 100%; height: 100%; border-radius: 16px;
     object-fit: cover; opacity: .35;
-    border: 1px solid #E2E5EA;
+    border: 1px solid #1F3A2E;
   }
   .scan-img.has-img { opacity: .5; }
   .scan-placeholder {
     width: 100%; height: 100%; border-radius: 16px;
-    background: #FFFFFF; border: 1px solid #E2E5EA;
+    background: #0F2219; border: 1px solid #1F3A2E;
     display: grid; place-items: center; font-size: 48px;
   }
   .scan-line {
@@ -188,7 +222,8 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   .scan-corners-2::after  { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
 
   .loading-msg {
-    font-size: 16px; font-weight: 700; color: var(--chalk);
+    font-family: var(--rc-display, var(--sans));
+    font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--chalk);
     margin-bottom: 8px; text-align: center; min-height: 26px;
     transition: opacity .3s;
   }
@@ -196,12 +231,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
     font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 28px;
   }
   .progress-track {
-    width: 220px; height: 4px; background: #E2E5EA; border-radius: 10px; overflow: hidden;
+    width: 220px; height: 4px; background: rgba(214,255,228,.08); border-radius: 10px; overflow: hidden;
   }
   .progress-fill {
-    height: 100%; background: var(--green);
+    height: 100%; background: linear-gradient(90deg, #9BD11A, #C8FF3D);
     border-radius: 10px; width: 0%;
-    box-shadow: 0 0 10px rgba(228,24,39,.5);
+    box-shadow: 0 0 10px rgba(200,255,61,.5);
     transition: width .35s ease;
   }
   .loading-dots {
@@ -209,107 +244,111 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   }
   .loading-dots span {
     width: 7px; height: 7px; border-radius: 50%;
-    background: #D0D5DC; animation: dotpulse 1.2s ease-in-out infinite;
+    background: #2B4A3C; animation: dotpulse 1.2s ease-in-out infinite;
   }
   .loading-dots span:nth-child(2) { animation-delay: .2s; }
   .loading-dots span:nth-child(3) { animation-delay: .4s; }
-  @keyframes dotpulse { 0%,80%,100%{background:#D0D5DC} 40%{background:var(--green)} }
+  @keyframes dotpulse { 0%,80%,100%{background:#2B4A3C} 40%{background:var(--green)} }
 
   /* ---- Result card ---- */
   .result-section { display: none; margin-top: 14px; }
   .result-card {
-    background: #FFFFFF; border: 1.5px solid var(--green);
+    background: #0F2219; border: 1.5px solid rgba(200,255,61,.38);
     border-radius: 18px; overflow: hidden;
-    box-shadow: 0 0 40px rgba(228,24,39,.12);
+    box-shadow: 0 0 44px -10px rgba(200,255,61,.18), 0 24px 50px -24px rgba(0,0,0,.8);
     animation: popUp .45s cubic-bezier(.2,.9,.3,1.4);
   }
   @keyframes popUp { from{opacity:0;transform:scale(.9) translateY(16px)} to{opacity:1;transform:none} }
   .result-head {
-    background: linear-gradient(135deg, #FFFFFF, #F6F7F9);
-    padding: 14px 16px; border-bottom: 1px solid #E2E5EA;
+    background: linear-gradient(135deg, #132A20, #0F2219);
+    padding: 14px 16px; border-bottom: 1px solid #1F3A2E;
     display: flex; align-items: center; gap: 10px;
   }
   .result-head .rh-icon {
     width: 34px; height: 34px; border-radius: 10px;
-    background: rgba(228,24,39,.15); border: 1px solid rgba(228,24,39,.3);
+    background: rgba(200,255,61,.10); border: 1px solid rgba(200,255,61,.28);
     display: grid; place-items: center; font-size: 17px; flex: 0 0 auto;
   }
-  .result-head .rh-title { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .result-head .rh-title { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .result-head .rh-sub   { font-size: 13px; font-weight: 700; color: var(--chalk); margin-top: 2px; }
   .result-head .rh-live  {
     margin-left: auto; display: flex; align-items: center; gap: 5px;
-    font-size: 10px; font-weight: 800; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: #FF5B4A;
   }
-  .rh-live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse .7s infinite; }
+  .rh-live .dot { width: 7px; height: 7px; border-radius: 50%; background: #FF5B4A; box-shadow: 0 0 10px rgba(255,91,74,.7); animation: pulse .7s infinite; }
   @keyframes pulse { 50%{opacity:.3} }
 
   .match-display {
     padding: 20px 16px 14px;
     display: flex; align-items: center; gap: 0; text-align: center;
   }
-  .team-side { flex: 1; }
+  .team-side { flex: 1; min-width: 0; }
   .team-badge {
     width: 46px; height: 46px; border-radius: 13px; margin: 0 auto 8px;
-    display: grid; place-items: center; font-size: 13px; font-weight: 900;
-    font-family: var(--mono); color: #F3F5F8;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+    font-family: var(--mono); color: #0B1511;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.15), 0 10px 22px -12px rgba(0,0,0,.8);
   }
-  .team-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .team-name { font-size: 13px; font-weight: 700; line-height: 1.3; color: #EAF5EE; overflow-wrap: anywhere; }
   .vs-block {
     flex: 0 0 auto; padding: 0 10px;
-    font-family: var(--mono); font-size: 11px; font-weight: 800;
-    color: var(--muted); letter-spacing: .12em;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--rc-dim, #5E7568); letter-spacing: .12em;
   }
 
   .pick-area {
     margin: 0 16px 16px;
-    background: rgba(31,158,72,.07); border: 1.5px solid rgba(31,158,72,.35);
+    background: rgba(200,255,61,.07); border: 1.5px solid rgba(200,255,61,.30);
     border-radius: 13px; padding: 14px 16px;
     display: flex; align-items: center; gap: 12px;
   }
   .pick-area .pick-icon { font-size: 26px; flex: 0 0 auto; }
-  .pick-area .pick-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
-  .pick-area .pick-val   { font-size: 18px; font-weight: 900; color: #157A36; letter-spacing: .02em; }
+  .pick-area .pick-label { font-family: var(--mono); font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+  .pick-area .pick-val   { font-family: var(--rc-display, var(--sans)); font-size: 20px; font-weight: 800; color: #C8FF3D; letter-spacing: -.01em; line-height: 1.15; }
   .pick-area .pick-conf  { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .pick-area .pick-odds  {
     margin-left: auto; text-align: center; flex: 0 0 auto;
-    background: #E2F3E6; border-radius: 8px; padding: 8px 14px;   /* SportyBet odds chip */
+    background: #C8FF3D; border-radius: 9px; padding: 8px 14px;   /* odds chip */
+    box-shadow: 0 8px 22px -10px rgba(200,255,61,.6);
   }
   .pick-area .pick-odds .odds-num {
-    font-family: var(--mono); font-size: 22px; font-weight: 900; color: #157A36;
+    font-family: var(--mono); font-size: 22px; font-weight: 700; color: #0B1511;
   }
-  .pick-area .pick-odds .odds-lbl { font-size: 10px; color: var(--muted); }
+  .pick-area .pick-odds .odds-lbl { font-size: 10px; font-weight: 700; color: rgba(11,21,17,.7); }
 
   .stat-pills {
     display: flex; gap: 8px; padding: 0 16px 16px; flex-wrap: wrap;
   }
   .stat-pill {
-    flex: 1; min-width: 80px; background: #F6F7F9;
-    border: 1px solid #E2E5EA; border-radius: 10px; padding: 10px 10px;
+    flex: 1; min-width: 80px; background: #0A1A12;
+    border: 1px solid #1F3A2E; border-radius: 10px; padding: 10px 10px;
     text-align: center;
   }
-  .stat-pill .sp-val { font-family: var(--mono); font-size: 16px; font-weight: 800; color: var(--chalk); }
+  .stat-pill .sp-val { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--chalk); }
   .stat-pill .sp-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: .06em; }
 
   .result-footer {
-    padding: 12px 16px; border-top: 1px solid #E2E5EA;
+    padding: 12px 16px; border-top: 1px solid #1F3A2E;
     display: flex; align-items: center; gap: 10px;
   }
   .result-footer .rf-note { font-size: 11px; color: var(--muted); flex: 1; line-height: 1.4; }
-  .result-footer .rf-cred { font-family: var(--mono); font-size: 11px; color: var(--amber); flex: 0 0 auto; }
+  .result-footer .rf-cred { font-family: var(--mono); font-size: 11px; color: #C8FF3D; flex: 0 0 auto; }
 
   .another-btn {
     width: 100%; margin-top: 12px; padding: 13px;
-    background: transparent; color: var(--green);
-    border: 1.5px solid rgba(228,24,39,.35); border-radius: 13px;
+    background: transparent; color: #C8FF3D;
+    border: 1.5px solid rgba(200,255,61,.35); border-radius: 13px;
+    font-family: var(--sans);
     font-size: 14px; font-weight: 800; cursor: pointer; transition: .12s;
   }
-  .another-btn:hover { background: rgba(228,24,39,.07); border-color: var(--green); }
+  .another-btn:hover { background: rgba(200,255,61,.08); border-color: #C8FF3D; }
 
   /* ---- Team inputs ---- */
   .team-inputs {
     margin-top: 14px;
-    background: #FFFFFF; border: 1px solid #E2E5EA;
+    background: #0F2219; border: 1px solid #1F3A2E;
     border-radius: 14px; padding: 14px 14px 12px;
   }
   .ti-label {
@@ -317,25 +356,27 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
     text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
     text-align: center;
   }
+  .ti-label b { color: #EAF5EE; }
   .ti-row {
     display: flex; align-items: center; gap: 10px;
   }
-  .ti-field { flex: 1; }
+  .ti-field { flex: 1; min-width: 0; }
   .ti-tag {
-    font-size: 10px; font-weight: 800; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+    font-family: var(--mono);
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--rc-dim, #5E7568); margin-bottom: 5px;
   }
   .ti-input {
-    width: 100%; background: #F3F5F8; border: 1px solid #D0D5DC;
+    width: 100%; background: #0A1A12; border: 1px solid #2B4A3C;
     border-radius: 10px; color: var(--chalk);
     font-family: var(--sans); font-size: 13px; font-weight: 600;
     padding: 10px 11px; outline: none; transition: .12s;
   }
-  .ti-input:focus { border-color: var(--green); }
-  .ti-input::placeholder { color: #6A3A44; font-weight: 400; }
+  .ti-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(200,255,61,.14); }
+  .ti-input::placeholder { color: #5E7568; font-weight: 400; }
   .ti-vs {
-    flex: 0 0 auto; font-size: 11px; font-weight: 800;
-    color: var(--muted); letter-spacing: .1em; margin-top: 16px;
+    flex: 0 0 auto; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--rc-dim, #5E7568); letter-spacing: .1em; margin-top: 16px;
   }
 
   /* ---- Scan status ---- */
@@ -346,9 +387,10 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   .scan-status.ok    { color: var(--green); }
   .scan-status.warn  { color: var(--amber); }
   .scan-status.busy  { color: var(--blue); }
+  #rb-status, #spin-status { margin: 12px 0 4px; color: var(--chalk); text-align: center; }
   .ss-spinner {
     width: 13px; height: 13px; border-radius: 50%;
-    border: 2px solid rgba(79,209,255,.25); border-top-color: var(--blue);
+    border: 2px solid rgba(87,199,255,.25); border-top-color: var(--blue);
     animation: ssspin .7s linear infinite; flex: 0 0 auto;
   }
   @keyframes ssspin { to { transform: rotate(360deg); } }
@@ -356,20 +398,25 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   /* ---- Shuffle button ---- */
   .shuffle-btn {
     width: 100%; margin-top: 12px; padding: 9px;
-    background: rgba(79,209,255,.08); color: var(--blue);
-    border: 1px solid rgba(79,209,255,.3); border-radius: 10px;
+    background: rgba(87,199,255,.08); color: var(--blue);
+    border: 1px solid rgba(87,199,255,.3); border-radius: 10px;
     font-family: var(--sans); font-size: 12px; font-weight: 700;
     cursor: pointer; transition: .12s;
   }
-  .shuffle-btn:hover { background: rgba(79,209,255,.15); border-color: var(--blue); }
+  .shuffle-btn:hover { background: rgba(87,199,255,.15); border-color: var(--blue); }
 
   .no-credits {
     text-align: center; padding: 30px 20px;
-    background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 18px; margin-top: 14px;
+    background: linear-gradient(180deg, #0F2219, #0A1A12); border: 1px solid #1F3A2E; border-radius: 18px; margin-top: 14px;
   }
-  .no-credits .nc-icon { font-size: 38px; margin-bottom: 12px; }
-  .no-credits h3 { margin: 0 0 8px; font-size: 18px; }
-  .no-credits p  { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+  .no-credits .nc-icon {
+    font-size: 26px; width: 58px; height: 58px; margin: 0 auto 14px;
+    display: grid; place-items: center; border-radius: 16px;
+    background: rgba(255,181,71,.10); border: 1px solid rgba(255,181,71,.3);
+  }
+  .no-credits h3 { margin: 0 0 8px; font-size: 20px; color: #EAF5EE; }
+  .no-credits p  { font-size: 13px; color: var(--muted); margin: 0 0 18px; line-height: 1.55; }
+
 </style>
 <link rel="stylesheet" href="ch-theme.css">
 </head>
@@ -381,10 +428,10 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   <div class="brand">
     <div class="logo">
       <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
-        <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#1A0509"/>
+        <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#0B1511"/>
       </svg>
     </div>
-    Casino Hacks
+    SportyHacks
   </div>
   <div class="spacer"></div>
   <div id="user-email" title="Signed in" style="font-size:13px;color:var(--muted);margin-right:14px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
@@ -788,7 +835,7 @@ async function scanScreenshot(dataUrl){
   document.getElementById('inp-away').value = '';
   document.getElementById('shuffle-btn').style.display = 'none';
 
-  document.getElementById('ti-label').textContent = 'Casino Hacks is reading your screenshot…';
+  document.getElementById('ti-label').textContent = 'SportyHacks is reading your screenshot…';
   setScanStatus('busy', 'Analyzing…');
   screenshotIsInstant = null;
 
@@ -1016,9 +1063,9 @@ function startAnalysis(){
    Based on historical stats from the stored results database
    ============================================================ */
 const TEAMS = [
-  { name:'Red Lions',      color:'#E41827' },
-  { name:'Blue Eagles',    color:'#4FD1FF' },
-  { name:'Gold Stars',     color:'#FFC247' },
+  { name:'Red Lions',      color:'#FF5B4A' },
+  { name:'Blue Eagles',    color:'#57C7FF' },
+  { name:'Gold Stars',     color:'#FFB547' },
   { name:'Green Panthers', color:'#FF4D6D' },
   { name:'Black Sharks',   color:'#FF8FB1' },
   { name:'White Wolves',   color:'#C9A0FF' },
@@ -1030,7 +1077,7 @@ function generatePrediction(homeName, awayName, matchOdds){
   const results = JSON.parse(localStorage.getItem('ve_results') || '[]');
 
   /* Use the names the user typed; assign a colour based on name hash */
-  const colorPalette = ['#E41827','#4FD1FF','#FFC247','#FF4D6D','#FF8FB1','#C9A0FF','#FFB36B','#9FB0C0'];
+  const colorPalette = ['#FF5B4A','#57C7FF','#FFB547','#FF4D6D','#FF8FB1','#C9A0FF','#FFB36B','#9FB0C0'];
   const hashColor = s => colorPalette[s.split('').reduce((a,c)=>a+c.charCodeAt(0),0) % colorPalette.length];
   const home = { name: homeName, color: hashColor(homeName) };
   const away = { name: awayName, color: hashColor(awayName) };
@@ -1121,7 +1168,7 @@ function showResult(pred){
       <div class="result-head">
         <div class="rh-icon">🎯</div>
         <div>
-          <div class="rh-title">Casino Hacks Pick</div>
+          <div class="rh-title">SportyHacks Pick</div>
           <div class="rh-sub">Instant Virtual Football</div>
         </div>
         <div class="rh-live"><span class="dot"></span> LIVE</div>
@@ -1360,14 +1407,14 @@ function rbPredict(){
       <div class="rb-pick">${picks[0].pick === 'red' ? '🔴 RED' : '⚫ BLACK'}</div>
     </div>
     ${picks.slice(1).map((p, i) => `
-      <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:12px 14px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
-        <div style="width:30px;height:40px;border-radius:6px;background:${p.pick === 'red' ? '#E41827' : '#1A1C22'};color:#fff;display:grid;place-items:center;font-weight:800">${p.pick === 'red' ? 'R' : 'B'}</div>
+      <div style="display:flex;align-items:center;gap:12px;background:#0F2219;border:1px solid #1F3A2E;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
+        <div style="width:30px;height:40px;border-radius:6px;background:${p.pick === 'red' ? '#FF5B4A' : '#0B0F0D'};color:${p.pick === 'red' ? '#0B1511' : '#EAF5EE'};box-shadow:${p.pick === 'red' ? 'none' : 'inset 0 0 0 1px rgba(234,245,238,.24)'};display:grid;place-items:center;font-family:var(--mono);font-weight:700">${p.pick === 'red' ? 'R' : 'B'}</div>
         <div style="flex:1">
-          <div style="font-weight:800;color:var(--chalk)">${p.pick === 'red' ? 'RED' : 'BLACK'}</div>
+          <div style="font-weight:800;color:${p.pick === 'red' ? '#FF5B4A' : 'var(--chalk)'}">${p.pick === 'red' ? 'RED' : 'BLACK'}</div>
         </div>
       </div>`).join('')}
-    <div class="stat-pill" style="display:flex;justify-content:space-around;padding:12px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
+    <div class="stat-pill" style="display:flex;justify-content:space-around;padding:12px;border:1px solid #1F3A2E;border-radius:12px;background:#0F2219;margin-bottom:14px">
       <span style="font-size:13px;color:var(--muted)">🔴 Reds <b style="color:var(--chalk)">${reds}</b></span>
       <span style="font-size:13px;color:var(--muted)">⚫ Blacks <b style="color:var(--chalk)">${blacks}</b></span>
       <span style="font-size:13px;color:var(--muted)">🃏 Jokers <b style="color:var(--chalk)">${jokers}</b></span>
@@ -1424,7 +1471,7 @@ function spinUpdateProgress(){
   document.getElementById('spin-history').innerHTML = strip.length
     ? '<div class="ti-label" style="margin-top:12px">Spins collected so far · ' + strip.length + ' (newest first)</div>'
       + '<div class="rb-strip">' + strip.map(h =>
-          `<div class="rb-dot" title="${spinMeta(h).label}" style="background:${spinColour(h)};width:auto;min-width:30px;padding:0 8px;font-size:13px">${spinMeta(h).short}</div>`
+          `<div class="rb-dot" title="${spinMeta(h).label}" style="background:${spinColour(h)};color:#0B1511;width:auto;min-width:30px;padding:0 8px;font-size:13px">${spinMeta(h).short}</div>`
         ).join('') + '</div>'
     : '';
 }
@@ -1454,11 +1501,11 @@ function spinStatus(kind, msg){
 
 /* the bottle lands on one of three positions */
 const SPIN_META = {
-  up:     { label: 'UP',     short: '↑', colour: '#1F9E48' },
-  middle: { label: 'MIDDLE', short: '→', colour: '#B07E12' },
-  down:   { label: 'DOWN',   short: '↓', colour: '#E41827' },
+  up:     { label: 'UP',     short: '↑', colour: '#C8FF3D' },
+  middle: { label: 'MIDDLE', short: '→', colour: '#FFB547' },
+  down:   { label: 'DOWN',   short: '↓', colour: '#FF5B4A' },
 };
-const spinMeta = k => SPIN_META[k] || { label: String(k || '?').toUpperCase(), short: '?', colour: '#5B6472' };
+const spinMeta = k => SPIN_META[k] || { label: String(k || '?').toUpperCase(), short: '?', colour: '#8FA89A' };
 const spinColour = k => spinMeta(k).colour;
 
 async function spinScan(dataUrl){
@@ -1541,17 +1588,17 @@ function spinPredict(){
 
   const el = document.getElementById('spin-result');
   el.innerHTML = `
-    <div class="rb-card" style="background:linear-gradient(160deg, ${spinColour(picks[0])}, rgba(0,0,0,.35))">
+    <div class="rb-card" style="background:linear-gradient(160deg, ${spinColour(picks[0])}2E, #0F2219 75%);border-color:${spinColour(picks[0])}8C;color:${spinColour(picks[0])};box-shadow:0 18px 44px -22px ${spinColour(picks[0])}99">
       <div class="rb-next">Next spin</div>
       <div class="rb-pick" style="font-size:40px">${spinMeta(picks[0]).short} ${spinMeta(picks[0]).label}</div>
     </div>
     ${picks.slice(1).map((p, i) => `
-      <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:12px 14px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
-        <div style="width:34px;height:40px;border-radius:6px;background:${spinColour(p)};color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px">${spinMeta(p).short}</div>
+      <div style="display:flex;align-items:center;gap:12px;background:#0F2219;border:1px solid #1F3A2E;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);width:56px">${i === 0 ? 'THEN' : '3RD'}</div>
+        <div style="width:34px;height:40px;border-radius:6px;background:${spinColour(p)};color:#0B1511;display:grid;place-items:center;font-weight:800;font-size:16px">${spinMeta(p).short}</div>
         <div style="flex:1"><div style="font-weight:800;color:var(--chalk)">${spinMeta(p).label}</div></div>
       </div>`).join('')}
-    <div style="padding:12px 14px;border:1px solid #E2E5EA;border-radius:12px;background:#fff;margin-bottom:14px">
+    <div style="padding:12px 14px;border:1px solid #1F3A2E;border-radius:12px;background:#0F2219;margin-bottom:14px">
       <div class="ti-label" style="margin-bottom:8px">What has been landing</div>
       ${['up','middle','down'].map(k => {
         const c = tally[k] || 0;
@@ -1559,7 +1606,7 @@ function spinPredict(){
         return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
           <span style="width:22px;text-align:center;font-weight:800;color:${spinColour(k)}">${spinMeta(k).short}</span>
           <span style="width:66px;font-size:13px;color:var(--chalk)">${spinMeta(k).label}</span>
-          <span style="flex:1;height:10px;background:rgba(25,28,34,.06);border-radius:4px;overflow:hidden">
+          <span style="flex:1;height:10px;background:rgba(214,255,228,.08);border-radius:4px;overflow:hidden">
             <span style="display:block;width:${pct}%;height:100%;background:${spinColour(k)}"></span></span>
           <b style="width:26px;text-align:right;font-size:13px;color:var(--chalk)">${c}</b>
         </div>`;

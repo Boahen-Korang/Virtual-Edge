@@ -8,34 +8,46 @@
 
   var css = document.createElement('style');
   css.textContent =
+    /* SportyHacks palette — matches ch-theme.css / index.html */
     /* the hidden attribute must always win over display rules below */
     '.ch-sup [hidden]{display:none!important}' +
-    '.ch-sup{position:fixed;right:18px;bottom:18px;z-index:9000;font-family:Archivo,system-ui,sans-serif}' +
-    '.ch-sup-btn{position:relative;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;background:#E41827;color:#fff;font-size:24px;box-shadow:0 8px 24px rgba(228,24,39,.45);display:grid;place-items:center;transition:transform .15s}' +
+    '.ch-sup{position:fixed;right:18px;bottom:18px;z-index:9000;font-family:Manrope,system-ui,sans-serif}' +
+    '.ch-sup-btn{position:relative;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;background:#C8FF3D;color:#0B1511;font-size:24px;box-shadow:0 10px 28px -6px rgba(200,255,61,.55);display:grid;place-items:center;transition:transform .15s}' +
     '.ch-sup-btn:hover{transform:scale(1.07)}' +
-    '.ch-sup-btn:focus-visible{outline:3px solid #9B0C17;outline-offset:2px}' +
-    '.ch-sup-dot{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;border-radius:10px;background:#FFCC00;color:#3A2A00;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;border:2px solid #fff}' +
-    '.ch-chat{position:absolute;right:0;bottom:66px;width:min(340px,calc(100vw - 36px));height:440px;max-height:calc(100vh - 120px);background:#F6F7F9;border:1px solid #E8EAEF;border-radius:14px;box-shadow:0 24px 60px rgba(14,20,32,.3);display:flex;flex-direction:column;overflow:hidden}' +
-    '.ch-chat-h{background:#E41827;color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}' +
-    '.ch-chat-h b{font-size:15px}' +
-    '.ch-chat-h small{display:block;font-weight:500;font-size:11px;opacity:.85}' +
-    '.ch-chat-x{margin-left:auto;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px;line-height:1}' +
+    /* phones: smaller and tucked into the corner so it covers less of the page */
+    '@media(max-width:520px){.ch-sup{right:10px;bottom:10px}.ch-sup-btn{width:46px;height:46px;font-size:20px}.ch-chat,.ch-menu{bottom:56px}}' +
+    '.ch-sup-btn:focus-visible{outline:3px solid #EAF5EE;outline-offset:2px}' +
+    '.ch-sup-dot{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;border-radius:10px;background:#FF5B4A;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;border:2px solid #06100B}' +
+    '.ch-chat{position:absolute;right:0;bottom:66px;width:min(340px,calc(100vw - 36px));height:440px;max-height:calc(100vh - 120px);background:#0A1A12;border:1px solid #2B4A3C;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.65);display:flex;flex-direction:column;overflow:hidden;color:#EAF5EE}' +
+    '.ch-chat-h{background:#0F2219;border-bottom:1px solid #1F3A2E;color:#EAF5EE;padding:12px 14px;display:flex;align-items:center;gap:10px}' +
+    '.ch-chat-h b{font-size:15px;font-family:"Bricolage Grotesque",Manrope,system-ui,sans-serif}' +
+    '.ch-chat-h small{display:block;font-weight:600;font-size:11px;color:#C8FF3D}' +
+    '.ch-chat-x{margin-left:auto;background:none;border:none;color:#8FA89A;font-size:18px;cursor:pointer;padding:4px;line-height:1}' +
+    '.ch-chat-x:hover{color:#EAF5EE}' +
     '.ch-msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px}' +
     '.ch-b{max-width:80%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}' +
-    '.ch-b.me{align-self:flex-end;background:#E41827;color:#fff;border-bottom-right-radius:4px}' +
-    '.ch-b.them{align-self:flex-start;background:#fff;color:#1B1E25;border:1px solid #E8EAEF;border-bottom-left-radius:4px}' +
+    '.ch-b.me{align-self:flex-end;background:#C8FF3D;color:#0B1511;border-bottom-right-radius:4px}' +
+    '.ch-b.them{align-self:flex-start;background:#132A20;color:#EAF5EE;border:1px solid #1F3A2E;border-bottom-left-radius:4px}' +
     '.ch-b time{display:block;font-size:10px;opacity:.65;margin-top:4px}' +
-    '.ch-empty{color:#8A93A3;font-size:13px;text-align:center;margin:auto;padding:0 18px;line-height:1.6}' +
-    '.ch-in{display:flex;gap:8px;padding:10px;background:#fff;border-top:1px solid #E8EAEF}' +
-    '.ch-in textarea{flex:1;border:1px solid #E8EAEF;border-radius:10px;padding:9px 11px;font:14px Archivo,system-ui,sans-serif;resize:none;height:40px;outline:none}' +
-    '.ch-in textarea:focus{border-color:#E41827}' +
-    '.ch-send{width:40px;height:40px;border-radius:10px;border:none;background:#E41827;color:#fff;font-size:16px;cursor:pointer}' +
+    '.ch-empty{color:#8FA89A;font-size:13px;text-align:center;margin:auto;padding:0 18px;line-height:1.6}' +
+    '.ch-in{display:flex;gap:8px;padding:10px;background:#0F2219;border-top:1px solid #1F3A2E}' +
+    '.ch-in textarea{flex:1;background:#06100B;color:#EAF5EE;border:1px solid #2B4A3C;border-radius:10px;padding:9px 11px;font:14px Manrope,system-ui,sans-serif;resize:none;height:40px;outline:none}' +
+    '.ch-in textarea::placeholder{color:#5E7568}' +
+    '.ch-in textarea:focus{border-color:#C8FF3D}' +
+    '.ch-send{width:40px;height:40px;border-radius:10px;border:none;background:#C8FF3D;color:#0B1511;font-size:16px;cursor:pointer}' +
     '.ch-send:disabled{opacity:.5}' +
-    '.ch-menu{position:absolute;right:0;bottom:66px;background:#fff;border:1px solid #E8EAEF;border-radius:12px;box-shadow:0 18px 40px rgba(14,20,32,.22);overflow:hidden;min-width:230px}' +
-    '.ch-menu a,.ch-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:12px 16px;color:#1B1E25;text-decoration:none;font:600 14px Archivo,system-ui,sans-serif}' +
-    '.ch-menu a:hover,.ch-menu button:hover{background:#FDE8EA;color:#E41827}' +
-    '.ch-menu small{display:block;font-weight:500;font-size:11.5px;color:#8A93A3;margin-top:2px}' +
-    '.ch-menu .t{padding:10px 16px 8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8A93A3;border-bottom:1px solid #E8EAEF}';
+    '.ch-menu{position:absolute;right:0;bottom:66px;background:#0F2219;border:1px solid #2B4A3C;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.6);overflow:hidden;min-width:230px}' +
+    '.ch-menu a,.ch-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:12px 16px;color:#EAF5EE;text-decoration:none;font:600 14px Manrope,system-ui,sans-serif}' +
+    '.ch-menu a:hover,.ch-menu button:hover{background:rgba(200,255,61,.08);color:#C8FF3D}' +
+    '.ch-menu small{display:block;font-weight:500;font-size:11.5px;color:#8FA89A;margin-top:2px}' +
+    '.ch-menu .t{padding:10px 16px 8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8FA89A;border-bottom:1px solid #1F3A2E}' +
+    '.ch-note{padding:12px 16px;background:rgba(200,255,61,.06);border-top:1px solid #2B4A3C;border-bottom:1px solid #2B4A3C;font:500 13px Manrope,system-ui,sans-serif;color:#EAF5EE;line-height:1.5}' +
+    '.ch-note-row{display:flex;gap:8px;margin-top:10px}' +
+    '.ch-note-row a{flex:1;justify-content:center;text-align:center;border-radius:999px;font-weight:800;font-size:13px;padding:9px 10px;text-decoration:none}' +
+    '.ch-menu .ch-note-row a.pri{background:#C8FF3D;color:#0B1511}' +
+    '.ch-menu .ch-note-row a.sec{border:1.5px solid #2B4A3C;color:#EAF5EE}' +
+    '.ch-menu .ch-note-row a.pri:hover{background:#D8FF6E;color:#0B1511}' +
+    '.ch-menu .ch-note-row a.sec:hover{border-color:#C8FF3D;color:#C8FF3D;background:none}';
   document.head.appendChild(css);
 
   var api = function (method, path, body) {
@@ -188,11 +200,11 @@
     wrap.innerHTML =
       '<div class="ch-menu" hidden><div class="t">Customer Support</div>' +
       '<button type="button" data-act="need-acct">💬 <span>Chat with an agent<small>Message us right in the app</small></span></button>' +
-      '<div class="ch-note" hidden style="padding:12px 16px;background:#FFF7E0;border-top:1px solid #E5C55A;border-bottom:1px solid #E5C55A;font:500 13px Archivo,system-ui,sans-serif;color:#5C4A00;line-height:1.5">' +
+      '<div class="ch-note" hidden>' +
       'You need an account to chat with us — it takes a minute.' +
-      '<div style="display:flex;gap:8px;margin-top:10px">' +
-      '<a href="login.html#register" style="flex:1;text-align:center;background:#E41827;color:#fff;border-radius:6px;font-weight:800;font-size:13px;padding:9px 10px;text-decoration:none">Create Account</a>' +
-      '<a href="login.html" style="flex:1;text-align:center;border:1.5px solid #E41827;color:#E41827;border-radius:6px;font-weight:800;font-size:13px;padding:9px 10px;text-decoration:none">Sign In</a>' +
+      '<div class="ch-note-row">' +
+      '<a class="pri" href="login.html#register">Create Account</a>' +
+      '<a class="sec" href="login.html">Sign In</a>' +
       '</div></div>' +
       links.map(function (l) {
         var ext = l.href.indexOf('http') === 0 || l.href.indexOf('mailto') === 0;

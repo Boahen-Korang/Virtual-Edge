@@ -1,5 +1,5 @@
 /* ================================================================
-   Casino Hacks — Express server
+   SportyHacks — Express server
    Serves the static site (public/) AND a JSON REST API backed by
    PostgreSQL. Auth is via JWT (member / partner / admin roles).
    ================================================================ */
@@ -101,8 +101,8 @@ const mailConfigured = () => !!(mailer || (RESEND_API_KEY && MAIL_FROM));
 
 async function sendMail(to, subject, html) {
   // Gmail forces the authenticated address as the sender, but honors a display
-  // name — so recipients see "Casino Hacks" instead of a bare Gmail address.
-  const from = MAIL_FROM || ('"Casino Hacks" <' + SMTP_USER + '>');
+  // name — so recipients see "SportyHacks" instead of a bare Gmail address.
+  const from = MAIL_FROM || ('"SportyHacks" <' + SMTP_USER + '>');
   if (mailer) {
     try { await mailer.sendMail({ from, to, subject, html }); return true; }
     catch (e) { console.warn('[mail] smtp send failed', e && e.message); return false; }
@@ -171,7 +171,7 @@ function auth(role) {
         // blocked accounts are cut off immediately, existing tokens included
         query('SELECT blocked FROM users WHERE email=$1', [decoded.email]).then(({ rows }) => {
           if (rows[0] && rows[0].blocked) {
-            return res.status(403).json({ error: 'Your account has been blocked. Contact Casino Hacks support.' });
+            return res.status(403).json({ error: 'Your account has been blocked. Contact SportyHacks support.' });
           }
           req.user = decoded;
           next();
@@ -341,7 +341,7 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM users WHERE email=$1', [email]);
   const u = rows[0];
   if (!u || !check(password, u.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
-  if (u.blocked) return res.status(403).json({ error: 'Your account has been blocked. Contact Casino Hacks support.' });
+  if (u.blocked) return res.status(403).json({ error: 'Your account has been blocked. Contact SportyHacks support.' });
   clearLimit('login:' + email);   // a good password wipes the slate
   res.json({ token: sign({ email, role: 'member' }), user: userOut(u) });
 }));
@@ -358,11 +358,11 @@ app.post('/api/auth/forgot', wrap(async (req, res) => {
     const token = jwt.sign({ email, role: 'pwreset', h: String(rows[0].pw_hash || '').slice(-12) },
       JWT_SECRET, { expiresIn: '30m' });
     const link = PUBLIC_URL + '/login.html?reset=' + encodeURIComponent(token);
-    await sendMail(email, 'Reset your Casino Hacks password',
+    await sendMail(email, 'Reset your SportyHacks password',
       `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#222">
          <h2 style="margin:0 0 12px">Reset your password</h2>
          <p>Hi ${rows[0].name || 'there'},</p>
-         <p>Someone (hopefully you) asked to reset the password for this Casino Hacks account.
+         <p>Someone (hopefully you) asked to reset the password for this SportyHacks account.
             Click the button below to choose a new one. The link works for <b>30 minutes</b>.</p>
          <p style="text-align:center;margin:26px 0">
            <a href="${link}" style="background:#A40E1E;color:#fff;text-decoration:none;padding:13px 26px;border-radius:6px;font-weight:bold">Set a new password</a>
@@ -451,13 +451,13 @@ app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
   // fire-and-forget confirmation email (best effort)
   sendMail(
     user.email,
-    'Your SportyBet account is connected — Casino Hacks',
+    'Your SportyBet account is connected — SportyHacks',
     `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
-       <h2 style="color:#E11D2A">Casino Hacks</h2>
+       <h2 style="color:#0F6B3A">SportyHacks</h2>
        <p>Hi ${user.name || 'there'},</p>
-       <p>Your SportyBet account <b>${account}</b> has been <b>connected successfully</b> to your Casino Hacks account.</p>
+       <p>Your SportyBet account <b>${account}</b> has been <b>connected successfully</b> to your SportyHacks account.</p>
        <p>You can now buy a package and start getting instant predictions.</p>
-       <p style="color:#888;font-size:12px">If you didn't do this, please contact Casino Hacks support.</p>
+       <p style="color:#888;font-size:12px">If you didn't do this, please contact SportyHacks support.</p>
      </div>`
   );
   res.json({ ok: true, user });
@@ -690,8 +690,8 @@ app.post('/api/partner/login', wrap(async (req, res) => {
   const p = rows[0];
   if (!p || !check(password, p.pw_hash)) return res.status(401).json({ error: 'Wrong email or password.' });
   if (p.status === 'pending') return res.status(403).json({ error: 'Your application is still awaiting admin approval.' });
-  if (p.status === 'rejected') return res.status(403).json({ error: 'Your application was not approved. Contact Casino Hacks.' });
-  if (p.locked) return res.status(403).json({ error: 'Your account has been locked. Contact Casino Hacks.' });
+  if (p.status === 'rejected') return res.status(403).json({ error: 'Your application was not approved. Contact SportyHacks.' });
+  if (p.locked) return res.status(403).json({ error: 'Your account has been locked. Contact SportyHacks.' });
   res.json({ token: sign({ code: p.code, email: p.email, role: 'partner' }), partner: partnerOut(p) });
 }));
 
@@ -1305,7 +1305,7 @@ app.put('/api/admin/payment-config', auth('admin'), wrap(async (req, res) => {
        momo_number=$6, momo_name=$7, momo_network=$8, momo_accounts=$9::jsonb,
        bank_accounts=$10::jsonb, providers=COALESCE($11::jsonb, providers),
        support=COALESCE($12::jsonb, support) WHERE id=1`,
-    [provider, currency || 'GHS', key, secret, business || 'Casino Hacks',
+    [provider, currency || 'GHS', key, secret, business || 'SportyHacks',
      first.number, first.name, first.network, JSON.stringify(accounts),
      JSON.stringify(banks), provs ? JSON.stringify(provs) : null,
      support ? JSON.stringify(support) : null]
@@ -1933,5 +1933,5 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 initSchema()
   .catch((e) => console.error('Schema init failed (continuing):', e.message))
   .finally(() => {
-    app.listen(PORT, () => console.log(`✓ Casino Hacks running on :${PORT}`));
+    app.listen(PORT, () => console.log(`✓ SportyHacks running on :${PORT}`));
   });

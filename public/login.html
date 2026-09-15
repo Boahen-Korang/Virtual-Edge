@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casino Hacks — Login / Register</title>
+<title>SportyHacks — Login / Register</title>
 <!-- Arriving at #sporty (back from paying the fee) does an async check that can
      bounce to pricing — keep the form hidden until that settles. -->
 <style>html.booting body{visibility:hidden}</style>
@@ -19,18 +19,18 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <style>
   body {
     background:
-      radial-gradient(900px 400px at 50% 0%, rgba(228,24,39,.05), transparent 60%),
+      radial-gradient(900px 400px at 50% 0%, rgba(200,255,61,.08), transparent 60%),
       var(--bg);
   }
   .auth-logo {
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin-bottom: 22px; font-weight: 800; font-size: 18px; letter-spacing: .05em;
+    margin-bottom: 22px; font-family: var(--rc-display); font-weight: 800; font-size: 20px; letter-spacing: -.01em;
   }
   .auth-logo .logo {
     width: 36px; height: 36px; border-radius: 10px;
-    background: conic-gradient(from 200deg,var(--green),var(--amber),var(--green));
+    background: var(--rc-lime);
     display: grid; place-items: center;
-    box-shadow: 0 0 16px rgba(228,24,39,.25);
+    box-shadow: 0 0 16px rgba(200,255,61,.25);
   }
   .step { display: none; }
   .step.on { display: block; }
@@ -67,10 +67,25 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   .success-check h3 { margin: 12px 0 6px; font-size: 20px; }
   .success-check p { font-size: 13px; color: var(--muted); margin: 0; }
   .error-msg {
-    background: rgba(255,92,92,.1); border: 1px solid rgba(255,92,92,.3);
-    border-radius: var(--rs); padding: 10px 12px;
-    font-size: 12px; color: var(--red); margin-bottom: 14px; display: none;
+    background: var(--rc-coral-soft); border: 1px solid rgba(255,91,74,.35);
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 12.5px; font-weight: 600; color: var(--rc-coral); margin-bottom: 14px; display: none;
   }
+  .error-msg.ok {
+    background: var(--rc-lime-soft); border-color: rgba(200,255,61,.30); color: var(--rc-lime);
+  }
+  /* SportyHacks card + pill actions */
+  .auth-card.card { border-radius: 18px; background: linear-gradient(180deg, var(--rc-panel2), var(--rc-panel)); }
+  .auth-card .btn-primary { border-radius: 999px; font-size: 15px; padding: 13px 22px; }
+  .auth-card .form-input, .auth-card .form-select { border-radius: 10px; }
+  .auth-card .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238FA89A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .auth-tab.on { color: var(--rc-lime); border-bottom-color: var(--rc-lime); }
+  .auth-tab:hover { color: var(--rc-text); }
+  .auth-tab.on:hover { color: var(--rc-lime); }
+  .success-check h3 { font-family: var(--rc-display); }
   .pw-wrap { position: relative; }
   .pw-toggle {
     position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -93,10 +108,10 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
         <div class="auth-logo">
           <div class="logo">
             <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-              <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#1A0509"/>
+              <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v2h-2zm2-2h2v2h-2zm2 2h2v2h-2z" fill="#0B1511"/>
             </svg>
           </div>
-          Casino Hacks
+          SportyHacks
         </div>
 
         <div class="auth-tabs">
@@ -190,7 +205,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
       <div class="step" id="step-sporty">
         <div id="sporty-form">
           <h3 style="margin:0 0 4px;font-size:18px">Connect your SportyBet account</h3>
-          <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Enter your SportyBet account number to link it to Casino Hacks.</p>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Enter your SportyBet account number to link it to SportyHacks.</p>
           <div style="text-align:center;margin:0 0 18px">
             <img src="sporty-logo.svg" alt="SportyBet" width="72" height="72" style="border-radius:14px">
           </div>
@@ -208,7 +223,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
               <input class="form-input" id="sporty-num" type="tel" inputmode="numeric" placeholder="244 123 456" autocomplete="off" style="flex:1;min-width:0">
             </div>
           </div>
-          <div id="sporty-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
+          <div id="sporty-err" style="display:none;color:var(--rc-coral);font-size:13px;font-weight:600;margin-bottom:12px"></div>
           <button class="btn btn-primary btn-full" id="sporty-btn" onclick="connectSporty()">Connect account →</button>
         </div>
 
@@ -233,7 +248,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
         <div class="success-check">
           <div class="check">✅</div>
           <h3>You're in!</h3>
-          <p>Payment confirmed. Welcome to Casino Hacks.</p>
+          <p>Payment confirmed. Welcome to SportyHacks.</p>
         </div>
         <a href="dashboard.html" class="btn btn-primary btn-full btn-lg">Go to dashboard →</a>
       </div>
@@ -249,12 +264,12 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
 <script src="api.js"></script>
 <script>
 /* ================================================================
-   Casino Hacks Auth + Payment — now backed by the API (window.VE).
+   SportyHacks Auth + Payment — now backed by the API (window.VE).
    The Paystack public key is loaded from the server config.
    ================================================================ */
 let PAYSTACK_PUBLIC_KEY = 'pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY';
 let PAY_CURRENCY = 'GHS';
-let PAY_BUSINESS = 'Casino Hacks';
+let PAY_BUSINESS = 'SportyHacks';
 let PAY_PROVIDER = 'paystack';
 
 let pendingUser = {};    // Holds registration data before payment
@@ -323,6 +338,7 @@ async function doReset(){
     showTab('login');
     const errL = document.getElementById('login-err');
     errL.textContent = '✓ Password updated — log in with your new password.';
+    errL.classList.add('ok');
     errL.style.display = 'block';
   } catch(e){
     errEl.textContent = e.message || 'Could not reset the password.'; errEl.style.display='block';
@@ -358,6 +374,7 @@ async function doLogin(){
   const pw    = document.getElementById('l-pw').value;
   const errEl = document.getElementById('login-err');
   errEl.style.display = 'none';
+  errEl.classList.remove('ok');
 
   if(!email || !pw){
     errEl.textContent = 'Please fill in all fields.'; errEl.style.display='block'; return;

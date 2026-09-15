@@ -1,5 +1,5 @@
 /* ================================================================
-   Virtual Oracle — PostgreSQL connection + schema init
+   SportyHacks — PostgreSQL connection + schema init
    Render provides DATABASE_URL for a managed Postgres instance.
    ================================================================ */
 const fs = require('fs');

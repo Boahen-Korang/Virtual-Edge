@@ -1,48 +1,128 @@
 /* ================================================================
-   Casino Hacks theme — loaded AFTER each page's own styles so the
-   whole site shares the landing page's look: Archivo type, red
-   primary actions, gold accents, light grey ground.
-   Greens stay green where they mean money or success.
+   SportyHacks theme — loaded AFTER each page's own styles so the whole
+   site shares the landing page's look: night-pitch greens, lime
+   primary actions (with dark ink text), coral for errors/destructive,
+   Bricolage Grotesque headings, Manrope body, JetBrains Mono numbers.
+   The palette lives in the --rc-* tokens; every older token family the
+   pages use is mapped onto them below.
    ================================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Archivo+Narrow:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
 :root{
-  /* shared app tokens (style.css pages: login, dashboard) */
-  --bg:#F6F7F9; --surface:#FFFFFF; --surface2:#F6F7F9; --surface3:#EDEFF3;
-  --border:#E8EAEF; --border2:#D6DAE1;
-  --green:#E41827;                 /* the brand-accent slot → landing red */
-  --amber:#FFCC00;                 /* landing gold */
-  --chalk:#1B1E25; --muted:#5B6472;
-  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
 
-  /* serif-era tokens (pricing, partners, admin, partner-login) */
-  --void:#F6F7F9; --panel:#FFFFFF; --panel2:#FFFFFF;
-  --bone:#1B1E25; --ash:#5B6472; --ash-dim:#8A93A3; --sulfur:#B98A00;
-  --display:'Archivo',system-ui,sans-serif;
-  --body:'Archivo',system-ui,sans-serif;
-  --ui:'Archivo Narrow','Arial Narrow',system-ui,sans-serif;
+  /* ---- SportyHacks palette (same values as index.html) ---- */
+  --rc-night:#06100B;   /* page ground */
+  --rc-pitch:#0A1A12;   /* raised ground / inputs */
+  --rc-panel:#0F2219;   /* cards */
+  --rc-panel2:#132A20;  /* cards, lighter */
+  --rc-panel3:#18342A;  /* hover / table heads */
+  --rc-line:#1F3A2E;    /* hairlines */
+  --rc-line2:#2B4A3C;   /* stronger borders */
+  --rc-text:#EAF5EE;
+  --rc-mut:#8FA89A;
+  --rc-dim:#5E7568;
+  --rc-lime:#C8FF3D;    /* primary accent, success, money */
+  --rc-lime-deep:#9BD11A;
+  --rc-lime-soft:rgba(200,255,61,.10);
+  --rc-ink:#0B1511;     /* text ON lime */
+  --rc-coral:#FF5B4A;   /* errors, destructive, live */
+  --rc-coral-soft:rgba(255,91,74,.12);
+  --rc-amber:#FFB547;   /* warnings, pending */
+  --rc-sky:#57C7FF;     /* info */
+  --rc-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --rc-body:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --rc-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
 
-  /* admin-login tokens */
-  --green-hi:#F0303E; --green-bd:#C00F1D;
-  --ink:#1B1E25; --gray:#5B6472; --gray-dim:#8A93A3; --line:#E8EAEF;
+  /* ---- style.css tokens (login, dashboard, pricing) ---- */
+  --bg:var(--rc-night); --surface:var(--rc-panel); --surface2:var(--rc-pitch); --surface3:var(--rc-panel3);
+  --border:var(--rc-line); --border2:var(--rc-line2);
+  --green:var(--rc-lime); --amber:var(--rc-amber); --red:var(--rc-coral); --blue:var(--rc-sky);
+  --chalk:var(--rc-text); --muted:var(--rc-mut);
+  --sans:var(--rc-body); --mono:var(--rc-mono);
+
+  /* ---- serif-era tokens (pricing, partners, admin, partner-login) ---- */
+  --void:var(--rc-night); --panel:var(--rc-panel); --panel2:var(--rc-panel2);
+  --bone:var(--rc-text); --ash:var(--rc-mut); --ash-dim:var(--rc-dim);
+  --sulfur:var(--rc-lime);
+  --crimson:var(--rc-lime); --blood:var(--rc-lime-deep); --ember:var(--rc-coral); --gore:var(--rc-lime-soft);
+  --display:var(--rc-display); --body:var(--rc-body); --ui:var(--rc-body);
+
+  /* ---- admin-login tokens ---- */
+  --green-hi:#D8FF6E; --green-bd:var(--rc-lime-deep);
+  --ink:var(--rc-text); --gray:var(--rc-mut); --gray-dim:var(--rc-dim); --line:var(--rc-line);
 }
 
-/* landing headings are tight and heavy, not wide serif caps */
-h1,h2,h3{letter-spacing:-.3px}
+html{background:var(--rc-night)}
+body{background-color:var(--rc-night);color:var(--rc-text);font-family:var(--rc-body)}
+::selection{background:var(--rc-lime);color:var(--rc-ink)}
+h1,h2,h3{font-family:var(--rc-display);letter-spacing:-.02em}
 
-/* primary actions: the landing's red button, not betslip green */
-.btn-primary{
-  background:linear-gradient(180deg,#F0303E,#E41827);
-  border-color:#C00F1D;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 18px -6px rgba(228,24,39,.5);
-}
-.pkg-btn,.momo-btn{
-  background:linear-gradient(180deg,#F0303E,#E41827);
-  border-color:#C00F1D;
-  box-shadow:0 6px 18px -6px rgba(228,24,39,.5);
-}
-.pkg-btn:hover,.momo-btn:hover,.btn-primary:hover{filter:brightness(1.06)}
+/* thin dark scrollbars */
+*{scrollbar-color:var(--rc-line2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--rc-line2);border-radius:10px;border:2px solid var(--rc-night)}
+::-webkit-scrollbar-track{background:transparent}
 
-/* money and success stay green (the landing's win-green) */
-.toast.success{border-color:#2BB44A;color:#2BB44A}
-.badge-green{background:rgba(43,180,74,.14);color:#1E7E3E}
+/* the pages' grain/vignette overlays were tuned for a light ground */
+.grain{display:none}
+.vig{box-shadow:none!important;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.35) 100%)}
+
+/* ---- primary actions: lime with dark ink ---- */
+.btn-primary,.pkg-btn,.momo-btn{
+  background:var(--rc-lime)!important;
+  color:var(--rc-ink)!important;
+  border-color:var(--rc-lime)!important;
+  box-shadow:0 8px 24px -10px rgba(200,255,61,.55)!important;
+  font-weight:800;
+}
+.btn-primary:hover,.pkg-btn:hover,.momo-btn:hover{filter:none;background:#D8FF6E!important;color:var(--rc-ink)!important}
+.btn-primary svg,.pkg-btn svg,.momo-btn svg{color:var(--rc-ink)}
+
+/* secondary .btn comes from style.css (already token-driven); pages with their
+   own .btn keep theirs. Only the amber variant needs dark ink here. */
+.btn-amber{background:var(--rc-amber);border-color:var(--rc-amber);color:var(--rc-ink);box-shadow:none}
+.btn-amber:hover{color:var(--rc-ink);filter:brightness(1.06)}
+
+/* ---- forms ---- */
+input,select,textarea{color:var(--rc-text)}
+.form-input,.form-select{background:var(--rc-pitch);border-color:var(--rc-line2);color:var(--rc-text)}
+.form-input:focus,.form-select:focus{border-color:var(--rc-lime);box-shadow:0 0 0 3px rgba(200,255,61,.14)}
+.form-input::placeholder{color:var(--rc-dim)}
+option{background:var(--rc-panel);color:var(--rc-text)}
+
+/* ---- surfaces from style.css ---- */
+.card,.stat-card,.price-card,.feat-card{box-shadow:0 18px 40px -24px rgba(0,0,0,.7)}
+.card:hover,.stat-card:hover,.price-card:hover,.feat-card:hover{box-shadow:0 22px 48px -24px rgba(0,0,0,.8)}
+.card-header{background:transparent}
+.card-header::before,.nav-item.active::before{background:var(--rc-lime);box-shadow:0 0 10px rgba(200,255,61,.5)}
+.stat-card.green::before{box-shadow:0 0 12px rgba(200,255,61,.45)}
+.tbl thead th{background:var(--rc-panel3)}
+.tbl tbody td{border-bottom-color:var(--rc-line)}
+.tbl tbody tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+.tbl tbody tr:hover td{background:rgba(200,255,61,.05)}
+.nav-item.active{background:linear-gradient(90deg,rgba(200,255,61,.12),transparent)}
+.nav-brand .logo,.sidebar-brand .logo,.user-avatar,.auth-logo .logo{background:var(--rc-lime)!important;box-shadow:0 0 16px rgba(200,255,61,.25)!important}
+.nav-brand .logo svg path,.sidebar-brand .logo svg path,.auth-logo .logo svg path{fill:var(--rc-ink)}
+.user-avatar{color:var(--rc-ink)!important}
+.price-card.featured{box-shadow:0 0 0 1px rgba(200,255,61,.3),0 24px 56px -22px rgba(200,255,61,.28)}
+.popular-badge{color:var(--rc-ink)}
+.plan-card.sel{background:rgba(200,255,61,.07)}
+.plan-card.sel .radio::after{background:var(--rc-ink)}
+.upload-zone:hover,.upload-zone.over{background:rgba(200,255,61,.05);box-shadow:inset 0 0 40px -20px rgba(200,255,61,.4)}
+.pg-btn.active{background:rgba(200,255,61,.1)}
+.lock-overlay{background:rgba(6,16,11,.72)}
+.auth-wrap{background:radial-gradient(900px 420px at 50% 0%,rgba(200,255,61,.08),transparent 60%),var(--rc-night)}
+.sidebar-backdrop{background:rgba(0,0,0,.55)}
+
+/* ---- badges & toasts ---- */
+.badge-green{background:rgba(200,255,61,.14);color:var(--rc-lime)}
+.badge-amber{background:rgba(255,181,71,.14);color:var(--rc-amber)}
+.badge-red{background:var(--rc-coral-soft);color:var(--rc-coral)}
+.badge-blue{background:rgba(87,199,255,.14);color:var(--rc-sky)}
+.toast{background:var(--rc-panel2);color:var(--rc-text);border-color:var(--rc-line2);box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.toast.success{border-color:var(--rc-lime);color:var(--rc-lime)}
+.toast.error{border-color:var(--rc-coral);color:var(--rc-coral)}
+
+/* ---- links ---- */
+a{color:var(--rc-lime)}
