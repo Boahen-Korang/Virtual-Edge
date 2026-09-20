@@ -833,7 +833,9 @@ function startPayment(pkg, m){
   // checkout, remember the reference, and send the buyer there.
   if(m.id === 'royaltech'){
     document.getElementById('paying-overlay').classList.add('show');
-    VE.royaltechInit(pkg.label).then(r => {
+    let payCountry = BUYER_COUNTRY || '';
+    if(!payCountry){ try { payCountry = localStorage.getItem('ve_pay_country') || ''; } catch(e){} }
+    VE.royaltechInit(pkg.label, payCountry).then(r => {
       try { localStorage.setItem('ve_pending_ref', r.reference); } catch(e){}
       try { localStorage.setItem('ve_pending_pkg', pkg.label || ''); } catch(e){}
       window.location.href = r.checkoutUrl;

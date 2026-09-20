@@ -58,7 +58,7 @@
     },
     me: () => req('GET', '/me', null, 'member'),
     setCountry: (country) => req('POST', '/me/country', { country }, 'member'),
-    royaltechInit: (pkg) => req('POST', '/pay/royaltech/init', { pkg }, 'member'),
+    royaltechInit: (pkg, country) => req('POST', '/pay/royaltech/init', { pkg, country }, 'member'),
     async connectSporty(account) {
       const r = await req('POST', '/me/sporty', { account }, 'member');
       if (r && r.user) localStorage.setItem('ve_me', JSON.stringify(r.user));

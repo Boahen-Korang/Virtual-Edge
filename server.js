@@ -493,10 +493,18 @@ app.post('/api/pay/royaltech/init', auth('member'), wrap(async (req, res) => {
     if (!isRBPackage(pkg) && !isSpinPackage(pkg) && !ge.football) return res.status(400).json({ error: 'Instant Football packages are currently unavailable.' });
   }
 
-  // Nigerians are charged in NGN at the configured rate; everyone else GHS
+  // Nigerians are charged in NGN at the configured rate; everyone else GHS.
+  // At the fee step the account may not have a stored country yet, so the
+  // page sends the choice the buyer just made; it never overrides a stored one.
+  let declared = String(req.body.country || '').toUpperCase();
+  if (declared !== 'GH' && declared !== 'NG') declared = '';
   const u = await query('SELECT country, sporty_account, name FROM users WHERE email=$1', [req.user.email]);
   const row = u.rows[0] || {};
-  const isNG = row.country === 'NG' || (row.country !== 'GH' && String(row.sporty_account || '').startsWith('+234'));
+  if (declared && !row.country) {
+    query("UPDATE users SET country=$2 WHERE email=$1 AND country=''", [req.user.email, declared]).catch(() => {});
+  }
+  const isNG = row.country === 'NG'
+    || (row.country !== 'GH' && (declared === 'NG' || (!declared && String(row.sporty_account || '').startsWith('+234'))));
   let currency = 'GHS', amount = parsePrice(pkg);
   if (isNG) {
     const fx = await query("SELECT rate FROM fx_rates WHERE code='NGN'");
@@ -529,7 +537,7 @@ app.post('/api/pay/royaltech/init', auth('member'), wrap(async (req, res) => {
     'INSERT INTO royaltech_payments (reference, payment_id, email, pkg, amount, currency) ' +
     'VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (reference) DO NOTHING',
     [reference, String(d.id || d.paymentId || ''), req.user.email, pkg, amount, currency]);
-  res.json({ ok: true, reference, checkoutUrl: d.checkout_url });
+  res.json({ ok: true, reference, checkoutUrl: d.checkout_url, currency, amount });
 }));
 
 /* Confirm a Royaltech charge before crediting: the stored values from init
