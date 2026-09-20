@@ -464,6 +464,103 @@ app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
 }));
 
 // record a purchase + extend plan / add credits
+/* ===================== Royaltech Solutions Payment =====================
+   Hosted checkout (api.payment.royaltechsol.com). The rtp_live key is a
+   server-side Bearer secret, so the browser talks to these endpoints and
+   is redirected to Royaltech's checkout_url. Amount, package and currency
+   are decided HERE from our own price list, never taken from the client. */
+const RTP_BASE = 'https://api.payment.royaltechsol.com/v1';
+
+async function royaltechCfg() {
+  const { rows } = await query('SELECT providers FROM payment_config WHERE id=1');
+  const p = ((rows[0] || {}).providers || {}).royaltech || {};
+  return { enabled: !!p.enabled, secret: String(p.secret || '') };
+}
+
+app.post('/api/pay/royaltech/init', auth('member'), wrap(async (req, res) => {
+  const cfg = await royaltechCfg();
+  if (!cfg.enabled || !cfg.secret) return res.status(503).json({ error: 'This payment method is unavailable right now.' });
+  const pkg = String(req.body.pkg || '').slice(0, 40);
+  const credits = CLAIM_PACKAGES[pkg];
+  if (credits === undefined) return res.status(400).json({ error: 'Unknown package - please refresh the page and try again.' });
+  if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
+  }
+  if (pkg !== REG_FEE_PKG) {
+    const ge = await gamesEnabled();
+    if (isRBPackage(pkg) && !ge.redblack) return res.status(400).json({ error: 'Red & Black is currently unavailable.' });
+    if (isSpinPackage(pkg) && !ge.spin) return res.status(400).json({ error: 'Spin the Bottle is currently unavailable.' });
+    if (!isRBPackage(pkg) && !isSpinPackage(pkg) && !ge.football) return res.status(400).json({ error: 'Instant Football packages are currently unavailable.' });
+  }
+
+  // Nigerians are charged in NGN at the configured rate; everyone else GHS
+  const u = await query('SELECT country, sporty_account, name FROM users WHERE email=$1', [req.user.email]);
+  const row = u.rows[0] || {};
+  const isNG = row.country === 'NG' || (row.country !== 'GH' && String(row.sporty_account || '').startsWith('+234'));
+  let currency = 'GHS', amount = parsePrice(pkg);
+  if (isNG) {
+    const fx = await query("SELECT rate FROM fx_rates WHERE code='NGN'");
+    if (fx.rows.length) { currency = 'NGN'; amount = Math.round(amount * Number(fx.rows[0].rate)); }
+  }
+
+  const reference = 'RTP_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8).toUpperCase();
+  let d;
+  try {
+    const r = await fetch(RTP_BASE + '/payments', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cfg.secret, 'Idempotency-Key': reference },
+      body: JSON.stringify({
+        amount, currency, reference,
+        customer: { email: req.user.email, name: row.name || '' },
+        redirect_url: PUBLIC_URL + '/pricing.html',
+        metadata: { package: pkg },
+      }),
+    });
+    d = await r.json().catch(() => null);
+    if (!r.ok || !d || !d.checkout_url) {
+      console.warn('[royaltech] init failed', r.status, JSON.stringify(d || {}).slice(0, 200));
+      return res.status(502).json({ error: (d && d.error) || 'Could not start the payment. Please try again.' });
+    }
+  } catch (e) {
+    return res.status(502).json({ error: 'Could not reach the payment provider. Please try again.' });
+  }
+
+  await query(
+    'INSERT INTO royaltech_payments (reference, payment_id, email, pkg, amount, currency) ' +
+    'VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (reference) DO NOTHING',
+    [reference, String(d.id || d.paymentId || ''), req.user.email, pkg, amount, currency]);
+  res.json({ ok: true, reference, checkoutUrl: d.checkout_url });
+}));
+
+/* Confirm a Royaltech charge before crediting: the stored values from init
+   must all match what the provider verified. */
+async function verifyRoyaltechCharge(reference, claimantEmail) {
+  const cfg = await royaltechCfg();
+  if (!cfg.secret) return { ok: false, reason: 'This payment method is unavailable right now.' };
+  const { rows } = await query('SELECT * FROM royaltech_payments WHERE reference=$1', [reference]);
+  const p = rows[0];
+  if (!p) return { ok: false, reason: 'Payment not found.' };
+  if (p.email !== claimantEmail) return { ok: false, reason: 'This payment belongs to another account.' };
+  let r, d;
+  try {
+    r = await fetch(RTP_BASE + '/payments/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cfg.secret },
+      body: JSON.stringify({
+        payment_id: p.payment_id, customer_email: p.email, reference,
+        amount: Number(p.amount), currency: p.currency,
+      }),
+    });
+    d = await r.json().catch(() => null);
+  } catch (e) { return { ok: false, reason: 'Could not reach the payment provider.', transient: true }; }
+  if (r.status === 202) return { ok: false, reason: 'Payment is not confirmed yet.', pending: true };
+  if (!r.ok || !d || d.verified !== true || (d.status && d.status !== 'successful')) {
+    return { ok: false, reason: (d && d.error) || 'Payment could not be verified.' };
+  }
+  const credits = CLAIM_PACKAGES[p.pkg];
+  return { ok: true, pkg: p.pkg, credits: credits === undefined ? 0 : credits };
+}
+
 /* ---- Flutterwave verification (the secret never leaves the server) ----
    The checkout modal charges with tx_ref "VE_..."; we confirm that exact
    reference with Flutterwave, check it was paid by this member, and take the
@@ -517,6 +614,18 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
     if (v.email && v.email !== req.user.email) return res.status(403).json({ error: 'This payment belongs to another account.' });
     predictions = v.credits;     // gateway is the source of truth
     pkg = v.pkg || pkg;
+  } else if (/^RTP_/.test(reference)) {
+    const f = await verifyRoyaltechCharge(reference, req.user.email);
+    if (!f.ok) {
+      if (f.transient) return res.status(502).json({ error: f.reason });
+      if (f.pending) return res.status(402).json({ error: f.reason });
+      query('INSERT INTO security_alerts (email,kind,detail) VALUES ($1,$2,$3)',
+        [req.user.email, 'unverified_purchase',
+         'Royaltech ref "' + reference.slice(0, 40) + '" rejected: ' + f.reason]).catch(() => {});
+      return res.status(400).json({ error: 'Payment could not be verified.' });
+    }
+    predictions = f.credits;
+    pkg = f.pkg;
   } else if (/^VE_/.test(reference)) {
     const f = await verifyFlutterwaveCharge(reference, req.user.email);
     if (!f.ok) {
@@ -1195,7 +1304,7 @@ app.delete('/api/admin/picks/:id', auth('admin'), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const PROVIDER_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual', 'bank'];
+const PROVIDER_IDS = ['paystack', 'flutterwave', 'royaltech', 'cowrie', 'manual', 'bank'];
 
 /* Per-method config {id:{enabled,key,secret}}. Falls back to the legacy
    single-provider columns for configs saved before the toggles existed. */
@@ -1657,7 +1766,7 @@ app.get('/api/payment-config/public', wrap(async (req, res) => {
   const r = rows[0] || {};
   const provs = providersOut(r);   // never sent raw — secrets stay server-side
   const methods = PROVIDER_IDS.filter((id) => provs[id].enabled)
-    .map((id) => ({ id, key: (id === 'manual' || id === 'bank') ? '' : provs[id].key }));
+    .map((id) => ({ id, key: (id === 'manual' || id === 'bank' || id === 'royaltech') ? '' : provs[id].key }));
   const ge = (r.games_enabled || {});
   res.json({ provider: r.provider, currency: r.currency, key: r.public_key, business: r.business,
     momoAccounts: momoAccountsOut(r), bankAccounts: bankAccountsOut(r), methods,

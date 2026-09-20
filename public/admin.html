@@ -782,6 +782,17 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
                 </div>
               </div>
 
+              <div class="pm-card" id="pmc-royaltech">
+                <div class="pm-head">
+                  <div><div class="pm-name">Royaltech</div><div class="pm-sub">Hosted checkout · MoMo &amp; card · instant credit</div></div>
+                  <div class="sp"></div>
+                  <label class="switch"><input type="checkbox" id="pm-royaltech" onchange="pmToggled()"><span class="sl"></span></label>
+                </div>
+                <div class="pm-body">
+                  <input id="pm-royaltech-secret" type="password" placeholder="API key (rtp_live_…) — kept on the server" autocomplete="off">
+                </div>
+              </div>
+
               <div class="pm-card" id="pmc-cowrie">
                 <div class="pm-head">
                   <div><div class="pm-name">Cowrie</div><div class="pm-sub">Hosted checkout via your server proxy</div></div>
@@ -1691,8 +1702,8 @@ async function openGateway(){
   }
 }
 
-const PM_IDS = ['paystack', 'flutterwave', 'cowrie', 'manual', 'bank'];
-const PM_NAMES = { paystack: 'Paystack', flutterwave: 'Flutterwave', cowrie: 'Cowrie', manual: 'Direct MoMo', bank: 'Bank Transfer' };
+const PM_IDS = ['paystack', 'flutterwave', 'royaltech', 'cowrie', 'manual', 'bank'];
+const PM_NAMES = { paystack: 'Paystack', flutterwave: 'Flutterwave', royaltech: 'Royaltech', cowrie: 'Cowrie', manual: 'Direct MoMo', bank: 'Bank Transfer' };
 const PM_KEYLESS = { manual: true, bank: true };   // methods without gateway keys
 
 function loadGateway(){
@@ -1707,7 +1718,8 @@ function loadGateway(){
     const p = provs[id] || {};
     document.getElementById('pm-' + id).checked = !!p.enabled;
     if(!PM_KEYLESS[id]){
-      document.getElementById('pm-' + id + '-key').value = p.key || '';
+      const kEl = document.getElementById('pm-' + id + '-key');
+      if(kEl) kEl.value = p.key || '';
       document.getElementById('pm-' + id + '-secret').value = p.secret || '';
     }
   });
@@ -1728,7 +1740,7 @@ function collectProviders(){
   PM_IDS.forEach(id => {
     out[id] = {
       enabled: document.getElementById('pm-' + id).checked,
-      key: PM_KEYLESS[id] ? '' : document.getElementById('pm-' + id + '-key').value.trim(),
+      key: (PM_KEYLESS[id] || !document.getElementById('pm-' + id + '-key')) ? '' : document.getElementById('pm-' + id + '-key').value.trim(),
       secret: PM_KEYLESS[id] ? '' : document.getElementById('pm-' + id + '-secret').value.trim(),
     };
   });
@@ -1804,6 +1816,10 @@ async function saveGateway(){
     }
     if(id === 'bank' && !bankAccounts.length){
       toast('Bank Transfer is on — add at least one bank account.', 'error'); return;
+    }
+    if(id === 'royaltech'){
+      if(!providers[id].secret){ toast('Royaltech is on — paste its rtp_live API key (or turn it off).', 'error'); return; }
+      continue;
     }
     if(!PM_KEYLESS[id] && !providers[id].key){
       toast(PM_NAMES[id] + ' is on — paste its public key (or turn it off).', 'error'); return;

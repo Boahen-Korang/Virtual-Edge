@@ -829,6 +829,21 @@ function startPayment(pkg, m){
     return;
   }
 
+  // Royaltech: the key lives on the server — ask it to create the hosted
+  // checkout, remember the reference, and send the buyer there.
+  if(m.id === 'royaltech'){
+    document.getElementById('paying-overlay').classList.add('show');
+    VE.royaltechInit(pkg.label).then(r => {
+      try { localStorage.setItem('ve_pending_ref', r.reference); } catch(e){}
+      try { localStorage.setItem('ve_pending_pkg', pkg.label || ''); } catch(e){}
+      window.location.href = r.checkoutUrl;
+    }).catch(e => {
+      document.getElementById('paying-overlay').classList.remove('show');
+      toast(e.message || 'Could not start the payment. Please try again.', 'error');
+    });
+    return;
+  }
+
   // No real gateway key loaded → fail safe, never simulate a payment.
   if(!m.key || m.key.includes('REPLACE')){
     toast('Payment is temporarily unavailable. Please refresh and try again.', 'error');
@@ -873,6 +888,7 @@ function startPayment(pkg, m){
 const METHOD_LABELS = {
   paystack:    ['Paystack', 'Card & mobile money'],
   flutterwave: ['Flutterwave', 'Card, mobile money, USSD & bank'],
+  royaltech:   ['Pay Online', 'Mobile money & card — instant credit'],
   cowrie:      ['Online Checkout', 'Card & mobile money'],
   manual:      ['Direct MoMo Transfer', 'Send to our wallet — confirmed by our team'],
   bank:        ['Bank Transfer', 'Send to our bank account — confirmed by our team'],

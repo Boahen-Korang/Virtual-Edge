@@ -106,6 +106,18 @@ CREATE TABLE IF NOT EXISTS scan_meter (
 );
 INSERT INTO scan_meter (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
+-- Royaltech hosted payments created by /api/pay/royaltech/init; verification
+-- must match these stored values before any credit moves.
+CREATE TABLE IF NOT EXISTS royaltech_payments (
+  reference  TEXT PRIMARY KEY,
+  payment_id TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  pkg        TEXT NOT NULL,
+  amount     NUMERIC NOT NULL,
+  currency   TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- In-app support chat: one thread per member, messages both ways.
 CREATE TABLE IF NOT EXISTS support_messages (
   id           SERIAL PRIMARY KEY,
