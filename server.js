@@ -10,6 +10,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { pool, query, initSchema } = require('./db');
 
 const app = express();
@@ -60,7 +61,7 @@ if (ANTHROPIC_API_KEY) {
 
 app.set('trust proxy', 1);   // Render runs behind a proxy — needed for correct client IPs
 app.use(cors());
-app.use(express.json({ limit: '8mb' }));   // screenshots (base64) can be a few MB
+app.use(express.json({ limit: '8mb', verify: (req, res, buf) => { req.rawBody = buf; } }));   // screenshots (base64) can be a few MB; rawBody kept for webhook signatures
 
 /* Baseline security headers (no extra deps needed) */
 app.use((req, res, next) => {
@@ -538,6 +539,44 @@ app.post('/api/pay/royaltech/init', auth('member'), wrap(async (req, res) => {
     'VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (reference) DO NOTHING',
     [reference, String(d.id || d.paymentId || ''), req.user.email, pkg, amount, currency]);
   res.json({ ok: true, reference, checkoutUrl: d.checkout_url, currency, amount });
+}));
+
+/* Royaltech webhook: fires when a payment changes state, so buyers are
+   credited even if they never come back to the site. SAFETY: the payload is
+   only ever a trigger - we re-verify the charge against Royaltech's API and
+   credit through the same idempotent path as the browser poll, so a forged
+   webhook cannot mint credits. If a signing secret is saved
+   (providers.royaltech.webhook), the HMAC signature must also match. */
+app.post('/api/pay/royaltech/webhook', wrap(async (req, res) => {
+  const { rows } = await query('SELECT providers FROM payment_config WHERE id=1');
+  const rc = ((rows[0] || {}).providers || {}).royaltech || {};
+  const whSecret = String(rc.webhook || '');
+  if (whSecret) {
+    const sig = String(req.headers['x-royaltech-signature'] || '');
+    const want = crypto.createHmac('sha256', whSecret).update(req.rawBody || Buffer.alloc(0)).digest('hex');
+    const ok = sig && sig.length === want.length &&
+      crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want));
+    if (!ok) return res.status(401).json({ error: 'bad signature' });
+  }
+  // find the reference wherever the payload carries it
+  const b = req.body || {};
+  const reference = String(
+    b.reference || (b.data && b.data.reference) || (b.payment && b.payment.reference) || ''
+  ).slice(0, 60);
+  res.json({ ok: true });   // acknowledge fast; the work below is best-effort
+  if (!/^RTP_/.test(reference)) return;
+  try {
+    const p = await query('SELECT * FROM royaltech_payments WHERE reference=$1', [reference]);
+    if (!p.rows.length) return;
+    const row = p.rows[0];
+    const v = await verifyRoyaltechCharge(reference, row.email);
+    if (!v.ok) return;                                   // pending or failed - the poll can still finish it
+    await creditPurchaseOnce(row.email, v.pkg, reference, v.credits);
+    await markFeeIfPaid(row.email, v.pkg);
+    console.log('[royaltech] webhook credited', reference, row.email, v.pkg);
+  } catch (e) {
+    console.warn('[royaltech] webhook error', e && e.message);
+  }
 }));
 
 /* Confirm a Royaltech charge before crediting: the stored values from init
