@@ -703,6 +703,18 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   const amount = String(req.body.amount || '').slice(0, 80);
   const txid = String(req.body.txid || '').trim().slice(0, 80);
   const method = String(req.body.method || '').slice(0, 10);
+  // A claim is only valid for a method the admin currently offers. With the
+  // direct rails switched off, cached pages and direct API calls used to keep
+  // filing claims - a fake-receipt trap waiting for an autopilot approval.
+  {
+    const pc = await query('SELECT providers FROM payment_config WHERE id=1');
+    const provs = (pc.rows[0] || {}).providers || {};
+    const manualOn = !!(provs.manual && provs.manual.enabled);
+    const bankOn = !!(provs.bank && provs.bank.enabled);
+    if (method === 'bank' ? !bankOn : !manualOn) {
+      return res.status(400).json({ error: 'This payment method is no longer available - please refresh the page and pay online.' });
+    }
+  }
   // Bank transfers are verified by the receipt screenshot alone — no reference needed.
   // MoMo payments are matched by the sender's registered MoMo name (stored in txid).
   if (method !== 'bank' && txid.length < 4) return res.status(400).json({ error: 'Enter the name on the MoMo number you paid from.' });
