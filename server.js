@@ -581,7 +581,7 @@ app.post('/api/pay/royaltech/webhook', wrap(async (req, res) => {
 
 /* Confirm a Royaltech charge before crediting: the stored values from init
    must all match what the provider verified. */
-async function verifyRoyaltechCharge(reference, claimantEmail) {
+async function verifyRoyaltechCharge(reference, claimantEmail, providerTxId) {
   const cfg = await royaltechCfg();
   if (!cfg.secret) return { ok: false, reason: 'This payment method is unavailable right now.' };
   const { rows } = await query('SELECT * FROM royaltech_payments WHERE reference=$1', [reference]);
@@ -596,6 +596,9 @@ async function verifyRoyaltechCharge(reference, claimantEmail) {
       body: JSON.stringify({
         payment_id: p.payment_id, customer_email: p.email, reference,
         amount: Number(p.amount), currency: p.currency,
+        // the Flutterwave transaction id from the return URL makes Royaltech
+        // check the provider directly instead of waiting for its own sync
+        ...(providerTxId ? { provider_transaction_id: providerTxId } : {}),
       }),
     });
     d = await r.json().catch(() => null);
@@ -670,7 +673,8 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
     predictions = v.credits;     // gateway is the source of truth
     pkg = v.pkg || pkg;
   } else if (/^RTP_/.test(reference)) {
-    const f = await verifyRoyaltechCharge(reference, req.user.email);
+    const ptid = String(req.body.ptid || '').replace(/[^0-9]/g, '').slice(0, 30);
+    const f = await verifyRoyaltechCharge(reference, req.user.email, ptid);
     if (!f.ok) {
       if (f.transient) return res.status(502).json({ error: f.reason });
       if (f.pending) return res.status(402).json({ error: f.reason });

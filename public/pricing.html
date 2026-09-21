@@ -1186,9 +1186,10 @@ function showPayingActions(show){
 async function confirmPending(ref, deadlineMs){
   while(Date.now() < deadlineMs){
     try {
-      const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
+      let ptid = ''; try { ptid = localStorage.getItem('ve_pending_ptid') || ''; } catch(e){}
+      const r = await VE.recordPurchase({ reference: ref, ptid });   // server verifies with the gateway
       if(r && r.ok){                                           // paid (or already credited by the webhook)
-        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); } catch(e){}
+        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); localStorage.removeItem('ve_pending_ptid'); } catch(e){}
         setPayingText('Payment confirmed! Continuing…');
         window.location.href = postPayUrl();
         return true;
@@ -1199,7 +1200,7 @@ async function confirmPending(ref, deadlineMs){
       else if(st === 403){ setPayingText('This payment belongs to another account. Please sign in with the account you paid from.'); return false; }
       else if(st === 400){
         // the server has given a final no (cancelled/mismatched) — forget it
-        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); } catch(e){}
+        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); localStorage.removeItem('ve_pending_ptid'); } catch(e){}
         setPayingText((err && err.message) || 'This payment could not be confirmed.');
         return false;
       }
@@ -1211,6 +1212,17 @@ async function confirmPending(ref, deadlineMs){
 }
 
 (async function handlePaymentReturn(){
+  // Flutterwave appends ?status=…&tx_ref=…&transaction_id=… when it sends the
+  // buyer back. That transaction_id lets the server verify against the
+  // provider directly - capture it before anything else, then clean the URL.
+  try {
+    const q = new URLSearchParams(location.search);
+    const ptid = q.get('transaction_id') || '';
+    if(ptid) localStorage.setItem('ve_pending_ptid', ptid.replace(/[^0-9]/g, ''));
+    if(q.has('transaction_id') || q.has('tx_ref') || q.has('status')){
+      history.replaceState(null, '', location.pathname + location.hash);
+    }
+  } catch(e){}
   let ref = '';
   try { ref = localStorage.getItem('ve_pending_ref') || ''; } catch(e){}
   if(!ref) return;
@@ -1219,6 +1231,7 @@ async function confirmPending(ref, deadlineMs){
       localStorage.removeItem('ve_pending_ref');
       localStorage.removeItem('ve_pending_ts');
       localStorage.removeItem('ve_pending_pkg');
+      localStorage.removeItem('ve_pending_ptid');
     } catch(e){}
   };
   // A reference older than a day is an abandoned checkout, not a payment in

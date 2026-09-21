@@ -73,7 +73,7 @@
     cachedMe: () => { try { return JSON.parse(localStorage.getItem('ve_me') || 'null'); } catch { return null; } },
     signOutMember() {
       setTok('member', null);
-      ['ve_me', 've_pending_ref', 've_pending_ts', 've_pending_pkg', 've_momo_claim'].forEach((k) => {
+      ['ve_me', 've_pending_ref', 've_pending_ts', 've_pending_pkg', 've_pending_ptid', 've_momo_claim'].forEach((k) => {
         try { localStorage.removeItem(k); } catch (e) {}
       });
     },
