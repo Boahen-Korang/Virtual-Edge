@@ -71,7 +71,12 @@
     manualClaimStatus: (id) => req('GET', '/me/manual-claims/' + id, null, 'member'),
     spendCredit: (amount, game) => req('POST', '/me/credits/spend', { amount: amount || 1, game }, 'member'),
     cachedMe: () => { try { return JSON.parse(localStorage.getItem('ve_me') || 'null'); } catch { return null; } },
-    signOutMember() { setTok('member', null); localStorage.removeItem('ve_me'); },
+    signOutMember() {
+      setTok('member', null);
+      ['ve_me', 've_pending_ref', 've_pending_ts', 've_pending_pkg', 've_momo_claim'].forEach((k) => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+    },
 
     /* ---- partner auth ---- */
     partnerRegister: (name, email, password) => req('POST', '/partner/register', { name, email, password }),

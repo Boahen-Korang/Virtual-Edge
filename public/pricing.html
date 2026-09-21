@@ -483,6 +483,7 @@ function pageReady(){ document.documentElement.classList.remove('booting'); }
   <p class="paying-text" id="paying-text">Opening payment…</p>
   <div id="paying-actions" style="display:none;gap:10px;margin-top:14px;flex-direction:column;align-items:center">
     <button id="paying-check" style="min-width:200px;padding:12px 20px;border:none;border-radius:10px;background:#b8123a;color:#fff;font-weight:700;font-size:15px;cursor:pointer">I've paid — check again</button>
+    <button id="paying-cancel" type="button" style="min-width:200px;padding:11px 20px;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;background:none;color:#fff;font-weight:600;font-size:14px;cursor:pointer">I didn't pay — cancel</button>
     <a id="paying-dash" href="dashboard.html" style="color:#fff;opacity:.8;font-size:14px;text-decoration:underline">Go to my dashboard</a>
   </div>
 </div>
@@ -837,6 +838,7 @@ function startPayment(pkg, m){
     if(!payCountry){ try { payCountry = localStorage.getItem('ve_pay_country') || ''; } catch(e){} }
     VE.royaltechInit(pkg.label, payCountry).then(r => {
       try { localStorage.setItem('ve_pending_ref', r.reference); } catch(e){}
+      try { localStorage.setItem('ve_pending_ts', String(Date.now())); } catch(e){}
       try { localStorage.setItem('ve_pending_pkg', pkg.label || ''); } catch(e){}
       window.location.href = r.checkoutUrl;
     }).catch(e => {
@@ -1186,7 +1188,7 @@ async function confirmPending(ref, deadlineMs){
     try {
       const r = await VE.recordPurchase({ reference: ref });   // server verifies with Cowrie
       if(r && r.ok){                                           // paid (or already credited by the webhook)
-        try { localStorage.removeItem('ve_pending_ref'); } catch(e){}
+        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); } catch(e){}
         setPayingText('Payment confirmed! Continuing…');
         window.location.href = postPayUrl();
         return true;
@@ -1195,6 +1197,12 @@ async function confirmPending(ref, deadlineMs){
       const st = err && err.status;
       if(st === 402 || st === 502){ /* not confirmed yet / transient — keep waiting */ }
       else if(st === 403){ setPayingText('This payment belongs to another account. Please sign in with the account you paid from.'); return false; }
+      else if(st === 400){
+        // the server has given a final no (cancelled/mismatched) — forget it
+        try { localStorage.removeItem('ve_pending_ref'); localStorage.removeItem('ve_pending_ts'); localStorage.removeItem('ve_pending_pkg'); } catch(e){}
+        setPayingText((err && err.message) || 'This payment could not be confirmed.');
+        return false;
+      }
       else { setPayingText((err && err.message) || 'We couldn’t confirm this payment.'); return false; }
     }
     await new Promise(res => setTimeout(res, 3000));
@@ -1206,13 +1214,32 @@ async function confirmPending(ref, deadlineMs){
   let ref = '';
   try { ref = localStorage.getItem('ve_pending_ref') || ''; } catch(e){}
   if(!ref) return;
+  const clearPending = () => {
+    try {
+      localStorage.removeItem('ve_pending_ref');
+      localStorage.removeItem('ve_pending_ts');
+      localStorage.removeItem('ve_pending_pkg');
+    } catch(e){}
+  };
+  // A reference older than a day is an abandoned checkout, not a payment in
+  // flight — stop resurrecting the confirm screen for it.
+  let age = 0;
+  try { age = Date.now() - (Number(localStorage.getItem('ve_pending_ts')) || 0); } catch(e){}
+  if(age > 24 * 3600 * 1000){ clearPending(); return; }
   const overlay = document.getElementById('paying-overlay');
+  const cancelBtn = document.getElementById('paying-cancel');
+  if(cancelBtn) cancelBtn.onclick = () => {
+    clearPending();
+    if(overlay) overlay.classList.remove('show');
+  };
   showPayingActions(false);
   setPayingText('Confirming your payment…');
   if(overlay) overlay.classList.add('show');
 
-  // Mobile-money can take up to a minute or so — wait patiently before giving up.
-  const done = await confirmPending(ref, Date.now() + 150000);
+  // First return from checkout gets the patient wait; a buyer coming back
+  // later (cancelled, or just browsing) gets a quick check and the buttons.
+  const patient = age < 10 * 60 * 1000;
+  const done = await confirmPending(ref, Date.now() + (patient ? 150000 : 15000));
   if(done) return;   // confirmed → already redirecting
 
   // Timed out: keep the reference so the webhook (or a manual re-check) can still
