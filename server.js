@@ -600,12 +600,20 @@ async function verifyRoyaltechCharge(reference, claimantEmail) {
     });
     d = await r.json().catch(() => null);
   } catch (e) { return { ok: false, reason: 'Could not reach the payment provider.', transient: true }; }
-  if (r.status === 202) return { ok: false, reason: 'Payment is not confirmed yet.', pending: true };
-  if (!r.ok || !d || d.verified !== true || (d.status && d.status !== 'successful')) {
-    return { ok: false, reason: (d && d.error) || 'Payment could not be verified.' };
+  // Their API can answer 202 for BOTH a successful and a pending verification -
+  // the body's status string is the verdict, not the HTTP code. 409 means the
+  // details do not match this payment: final, never retried.
+  if (r.status === 409) return { ok: false, reason: 'Payment details did not match.' };
+  const body = (d && typeof d.data === 'object' && d.data) ? d.data : d;   // sometimes nested
+  const st = String((body && body.status) || '').toLowerCase();
+  if (r.ok) {
+    if (st === 'successful' || (body && body.verified === true)) {
+      const credits = CLAIM_PACKAGES[p.pkg];
+      return { ok: true, pkg: p.pkg, credits: credits === undefined ? 0 : credits };
+    }
+    return { ok: false, reason: 'Payment is not confirmed yet.', pending: true };
   }
-  const credits = CLAIM_PACKAGES[p.pkg];
-  return { ok: true, pkg: p.pkg, credits: credits === undefined ? 0 : credits };
+  return { ok: false, reason: (body && body.error) || 'Payment could not be verified.' };
 }
 
 /* ---- Flutterwave verification (the secret never leaves the server) ----
