@@ -54,6 +54,11 @@
       const r = await req('POST', '/auth/login', { email, password });
       setTok('member', r.token);
       localStorage.setItem('ve_me', JSON.stringify(r.user));
+      // a fresh sign-in starts clean: no leftover "confirming payment" state
+      // from an earlier session on this device
+      ['ve_pending_ref', 've_pending_ts', 've_pending_pkg', 've_pending_ptid', 've_momo_claim'].forEach((k) => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
       return r.user;
     },
     me: () => req('GET', '/me', null, 'member'),
