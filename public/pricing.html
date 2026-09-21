@@ -649,7 +649,7 @@ function applyLocalCurrency(sportyAccount){
 
 /* One-time registration fee: gates new accounts until paid (server enforces
    the flag; this page collects the payment through the normal rails). */
-const FEE_PKG = { id:'fee', price:50, label:'GHS 50', preds:0, desc:'One-time registration fee', icon:'🎫', tag:'Registration' };
+const FEE_PKG = { id:'fee', price:1, label:'GHS 1', preds:0, desc:'One-time registration fee', icon:'🎫', tag:'Registration' };
 let FEE_DUE = false;
 
 /* ---- Packages ----
@@ -747,11 +747,11 @@ function renderFeeMode(){
   const sw = document.querySelector('.steps-wrap'); if(sw) sw.style.display = 'none';
   const bb = document.getElementById('balance-banner'); if(bb) bb.style.display = 'none';
   const h = document.querySelector('.pkg-header h2'); if(h) h.textContent = 'Activate Your Account';
-  const p = document.querySelector('.pkg-header p'); if(p) p.textContent = 'Pay the one-time GHS 50 registration fee, then connect your SportyBet account.';
+  const p = document.querySelector('.pkg-header p'); if(p) p.textContent = 'Pay the one-time GHS 1 registration fee, then connect your SportyBet account.';
   document.getElementById('packages-list').innerHTML = `
     <div class="pkg-card selected">
       <div class="pkg-top">
-        <div><div class="pkg-price">GHS 50</div><div class="pkg-local" id="fee-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div></div>
+        <div><div class="pkg-price">GHS 1</div><div class="pkg-local" id="fee-local" style="font-size:12px;color:var(--muted);margin-top:2px"></div></div>
         <span class="pkg-avail">One-time</span>
         <div class="pkg-icon">🎫</div>
       </div>
