@@ -232,9 +232,9 @@ const userOut = (r) => r && ({
   created: r.created_at || null,
 });
 
-/* The one-time registration fee is sold as the "GHS 1" package (0 credits).
+/* The one-time registration fee is sold as the "GHS 50" package (0 credits).
    Whenever such a purchase is credited, flip the member's paid flag. */
-const REG_FEE_PKG = 'GHS 1';
+const REG_FEE_PKG = 'GHS 50';
 const markFeeIfPaid = (email, pkg) => {
   if (pkg !== REG_FEE_PKG || !email) return Promise.resolve();
   return query('UPDATE users SET reg_fee_paid=true WHERE email=$1', [email]).catch(() => {});
@@ -439,7 +439,7 @@ app.post('/api/me/country', auth('member'), wrap(async (req, res) => {
 
 app.post('/api/me/sporty', auth('member'), wrap(async (req, res) => {
   if (await regFeeUnpaid(req.user.email)) {
-    return res.status(402).json({ error: 'Pay the GHS 1 registration fee first.' });
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee first.' });
   }
   const account = String(req.body.account || '').trim();
   if (!account) return res.status(400).json({ error: 'Enter your SportyBet account number.' });
@@ -485,7 +485,7 @@ app.post('/api/pay/royaltech/init', auth('member'), wrap(async (req, res) => {
   const credits = CLAIM_PACKAGES[pkg];
   if (credits === undefined) return res.status(400).json({ error: 'Unknown package - please refresh the page and try again.' });
   if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
-    return res.status(402).json({ error: 'Pay the GHS 1 registration fee before buying a package.' });
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
   if (pkg !== REG_FEE_PKG) {
     const ge = await gamesEnabled();
@@ -704,7 +704,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
     return res.status(400).json({ error: 'Payment could not be verified.' });
   }
   if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
-    return res.status(402).json({ error: 'Pay the GHS 1 registration fee before buying a package.' });
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
 
   // Credit exactly once (atomic; safe against the webhook racing this).
@@ -728,7 +728,7 @@ app.post('/api/me/purchases', auth('member'), wrap(async (req, res) => {
    public/pricing.html. Credits come from HERE, never from the client, so a
    tampered request can't claim more than the package grants. */
 const CLAIM_PACKAGES = {
-  'GHS 1': 0,                                  // registration fee
+  'GHS 50': 0,                                 // registration fee
   'GHS 300': 1, 'GHS 400': 2, 'GHS 500': 3,    // Instant Football packages
   'GHS 550 · Red & Black': 3,                  // one session: 3 screenshots -> 3 predictions
   'GHS 550 · Spin the Bottle': 3,              // same deal for the spin game
@@ -742,7 +742,7 @@ app.post('/api/me/manual-claims', auth('member'), wrap(async (req, res) => {
   }
   // packages are locked until the registration fee is paid (the fee itself is exempt)
   if (pkg !== REG_FEE_PKG && await regFeeUnpaid(req.user.email)) {
-    return res.status(402).json({ error: 'Pay the GHS 1 registration fee before buying a package.' });
+    return res.status(402).json({ error: 'Pay the GHS 50 registration fee before buying a package.' });
   }
   // no buying packages for a game the admin has switched off (fee exempt)
   if (pkg !== REG_FEE_PKG) {
