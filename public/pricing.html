@@ -1215,14 +1215,33 @@ async function confirmPending(ref, deadlineMs){
   // Flutterwave appends ?status=…&tx_ref=…&transaction_id=… when it sends the
   // buyer back. That transaction_id lets the server verify against the
   // provider directly - capture it before anything else, then clean the URL.
+  let cameBackCancelled = false;
   try {
     const q = new URLSearchParams(location.search);
     const ptid = q.get('transaction_id') || '';
     if(ptid) localStorage.setItem('ve_pending_ptid', ptid.replace(/[^0-9]/g, ''));
+    const st = String(q.get('status') || '').toLowerCase();
+    if(st === 'cancelled' || st === 'canceled' || st === 'failed'){ cameBackCancelled = true; }
     if(q.has('transaction_id') || q.has('tx_ref') || q.has('status')){
       history.replaceState(null, '', location.pathname + location.hash);
     }
   } catch(e){}
+  // The buyer cancelled on the payment page: say so briefly, forget the
+  // attempt, and leave them on the page underneath - the country chooser
+  // for fee payers, the packages for everyone else.
+  if(cameBackCancelled){
+    try {
+      ['ve_pending_ref','ve_pending_ts','ve_pending_pkg','ve_pending_ptid'].forEach(k => localStorage.removeItem(k));
+    } catch(e){}
+    const ov = document.getElementById('paying-overlay');
+    showPayingActions(false);
+    setPayingText('Payment cancelled. No money was taken - you can try again below.');
+    if(ov){
+      ov.classList.add('show');
+      setTimeout(() => ov.classList.remove('show'), 2600);
+    }
+    return;
+  }
   let ref = '';
   try { ref = localStorage.getItem('ve_pending_ref') || ''; } catch(e){}
   if(!ref) return;
